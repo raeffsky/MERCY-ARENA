@@ -2,39 +2,53 @@
 
 MERCY ARENA — турнирная платформа для Mobile Legends: Bang Bang.
 
-## Public frontend
+## Публикация
 
-The static frontend is published with GitHub Pages:
+Основной вариант хостинга: **Cloudflare Pages**.
+
+Настройки проекта Cloudflare Pages для Git-интеграции:
+
+- Repository: `raeffsky/MERCY-ARENA`
+- Production branch: `main`
+- Framework preset: `None`
+- Build command: `bash scripts/build-pages.sh`
+- Build output directory: `dist`
+- Root directory: пусто (корень репозитория)
+
+Скрипт сборки копирует статический сайт и все файлы `public/` в `dist/`. Никакие зависимости или npm-сборка не требуются. Файл `_headers` задаёт базовые HTTP-заголовки и кеширование.
+
+GitHub Pages пока оставлен как резерв до подтверждения успешной публикации на Cloudflare Pages:
 
 - https://raeffsky.github.io/MERCY-ARENA/
 
-Current public sections:
-- Home dashboard
-- Tournaments
-- Teams
-- Players
-- Match center and brackets
-- Rankings
-- Seasons
-- Auto Result Engine status and validation flow
-- Organizer hub
-- About the platform
+## Разделы
 
-All sections use separate hash routes. The interface is responsive and uses the approved MERCY ARENA visual system.
+- Главная панель
+- Турниры
+- Команды
+- Игроки
+- Центр матчей и сетки
+- Рейтинги
+- Сезоны
+- Статус Auto Result Engine
+- Кабинет организатора
+- О платформе
 
-## Data integrity
+Разделы используют отдельные hash-маршруты. Интерфейс адаптивный и сохраняет утверждённую визуальную систему MERCY ARENA.
 
-No demo tournaments, teams, players, schedules, scores, or rankings are inserted. Empty states are intentional until a trusted backend is connected.
+## Целостность данных
 
-The Auto Result Engine is not active yet. The frontend does not claim to retrieve live MLBB match results. See [Backend integration contract](docs/BACKEND-INTEGRATION.md) for the required API, validation flow, security rules, and data model.
+Демо-турниры, команды, игроки, расписания, результаты и рейтинги не добавляются. Пустые состояния остаются пустыми до подключения доверенного backend.
 
-## Brand
+Auto Result Engine пока не активирован. Frontend не заявляет о получении live-результатов MLBB. См. [контракт интеграции backend](docs/BACKEND-INTEGRATION.md): API, проверка результатов, требования безопасности и модель данных.
 
-- Background: `#08090D`
-- Primary accent: `#D7FF5E`
-- Text: `#F5F6FA`
-- Secondary accent: `#6D78FF`
-- Brand mark: `public/assets/brand/mercy-mark.png`
-- Vector mark: `public/assets/brand/mercy-mark.svg`
+## Бренд
 
-Icons use Iconify. Typography uses Barlow Condensed and Manrope.
+- Фон: `#08090D`
+- Основной акцент: `#D7FF5E`
+- Текст: `#F5F6FA`
+- Вторичный акцент: `#6D78FF`
+- Логотип: `public/assets/brand/mercy-mark.png`
+- Векторный логотип: `public/assets/brand/mercy-mark.svg`
+
+Иконки: Iconify. Шрифты: Barlow Condensed и Manrope.
