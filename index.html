@@ -589,6 +589,33 @@ th{background:var(--panel)!important}
 .ranking-table-wrap table{min-width:620px;width:100%}
 @media(max-width:560px){.ranking-switch{display:grid;grid-template-columns:1fr 1fr}.ranking-tab{justify-content:center;padding:12px 8px}}
 
+
+.match-toolbar{display:grid;grid-template-columns:1fr 220px;gap:12px;margin-bottom:18px}
+.match-filter-label{display:grid;gap:8px;color:var(--lime);font-size:9px;font-weight:900;letter-spacing:1.7px}
+.match-filter-label .field{width:100%;min-height:46px;background:#10131a;color:#f5f6fa;border:1px solid var(--line);padding:0 13px}
+.match-tabs{display:flex;gap:7px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:15px}
+.match-tab{white-space:nowrap;padding:13px 17px;background:transparent;border:0;border-bottom:2px solid transparent;color:#9298a7;font:800 10px Manrope;cursor:pointer}
+.match-tab.active{color:var(--lime);border-bottom-color:var(--lime)}
+.match-view[hidden]{display:none!important}
+.match-bracket{display:flex;gap:14px;overflow-x:auto;padding:5px 2px 18px;align-items:stretch}
+.match-round{flex:0 0 265px;min-width:265px;display:flex;flex-direction:column;gap:12px}
+.match-round-title{font-size:9px;font-weight:900;letter-spacing:1.6px;color:var(--lime);padding:9px 3px;border-bottom:1px solid var(--line)}
+.match-card{background:#11151c;border:1px solid #2b303a;padding:13px}
+.match-card-top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:11px;font-size:8px;color:#8f96a3;letter-spacing:.8px}
+.match-state{color:#a8b0bd}.match-state.live{color:var(--lime)}.match-state.done{color:#c5d0ae}
+.match-side{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #252a33;font-size:11px}
+.match-side.winner{color:var(--lime);font-weight:900}
+.match-score{font:800 17px 'Barlow Condensed';min-width:20px;text-align:right}
+.match-verify{font-size:8px;color:#9aa58b;margin-top:9px}
+.match-list{display:grid;gap:10px}
+.match-list-card{display:grid;grid-template-columns:115px 1fr auto;gap:14px;align-items:center;padding:15px;background:#11151c;border:1px solid #292f39}
+.match-list-date{font-size:9px;color:#a2a9b5;line-height:1.7}
+.match-list-teams{display:grid;gap:5px;font-size:11px;font-weight:800}
+.match-list-teams small{font-size:8px;color:#8d95a2;font-weight:500}
+.match-list-score{font:800 20px 'Barlow Condensed';white-space:nowrap}
+.match-empty{padding:28px 18px;text-align:center;background:#10131a;border:1px dashed #343b45;color:#9ca3af;font-size:11px;line-height:1.8}
+@media(max-width:600px){.match-toolbar{grid-template-columns:1fr}.match-tabs{margin-right:-18px}.match-list-card{grid-template-columns:1fr auto;gap:8px}.match-list-date{grid-column:1/-1}.match-list-teams{font-size:10px}.match-round{flex-basis:245px;min-width:245px}}
+
 </style>
 </head>
 <body>
@@ -675,8 +702,8 @@ teams:function(){return pageHead('COMMUNITY / SQUADS','КОМАНДЫ','Ката
 '<section class="wrap section"><div id="teamResults">'+empty('mdi:account-group-outline','Команд пока нет','Здесь появятся команды, зарегистрированные в MERCY ARENA.')+'</div></section>'},
 players:function(){return pageHead('PLAYER DATABASE','ИГРОКИ','Профили участников: игровой ник, команда, основная роль и подтверждённая статистика.')+
 '<section class="wrap section"><div id="playerResults">'+empty('mdi:account-search-outline','Игроки не найдены','Профили появятся после подключения регистрации игроков.')+'</div></section>'},
-brackets:function(){return pageHead('MATCH CENTER','СЕТКИ И МАТЧИ','Центр соревнований: расписание, пары, статусы встреч и подтверждённые результаты.')+
-'<section class="wrap section"><div class="grid two"><div class="panel"><div class="kicker">SCHEDULE</div><h3 class="panel-title" style="margin-top:10px">Расписание</h3><div id="matchSchedule"><p class="muted">Здесь будут предстоящие матчи и время начала.</p></div></div><div class="panel"><div class="kicker">RESULTS</div><h3 class="panel-title" style="margin-top:10px">Результаты</h3><div id="matchResults"><p class="muted">Итоги появляются только после подтверждения.</p></div></div></div><div id="matchEmpty" style="margin-top:14px">'+empty('mdi:tournament','Матчей пока нет','Сначала должен быть опубликован турнир и сформирована его сетка.')+'</div></section>'},
+brackets:function(){return pageHead('MATCH CENTER','СЕТКИ И МАТЧИ','Все матчи MERCY CIRCUIT: турнирная сетка, расписание и подтверждённые результаты.')+
+'<section class="wrap section"><div class="match-toolbar"><label class="match-filter-label">ТУРНИР<select id="matchTournament" class="field"><option value="">Все турниры</option></select></label><label class="match-filter-label">СТАТУС<select id="matchStatus" class="field"><option value="">Все матчи</option><option value="scheduled">Запланированы</option><option value="in_progress">Идут сейчас</option><option value="completed">Завершены</option><option value="postponed">Перенесены</option><option value="cancelled">Отменены</option></select></label></div><div class="match-tabs" role="tablist"><button class="match-tab active" data-match-view="bracket" type="button">Турнирная сетка</button><button class="match-tab" data-match-view="schedule" type="button">Расписание</button><button class="match-tab" data-match-view="results" type="button">Результаты</button></div><div id="matchCenterStatus" class="ranking-note">Загружаем соревнования и матчи…</div><div id="matchBracketView" class="match-view"><div id="matchBracket" class="match-bracket"></div></div><div id="matchScheduleView" class="match-view" hidden><div id="matchSchedule" class="match-list"></div></div><div id="matchResultsView" class="match-view" hidden><div id="matchResults" class="match-list"></div></div></section>'},
 rankings:function(){return pageHead('COMPETITIVE LADDER','РЕЙТИНГИ','Индивидуальная и командная таблицы MERCY CIRCUIT. В расчёт командного рейтинга попадают только подтверждённые результаты.')+
 '<section class="wrap section"><div class="ranking-switch" role="tablist" aria-label="Тип рейтинга"><button class="ranking-tab active" type="button" role="tab" aria-selected="true" data-ranking-scope="players"><iconify-icon icon="mdi:account-outline"></iconify-icon> Игроки</button><button class="ranking-tab" type="button" role="tab" aria-selected="false" data-ranking-scope="teams"><iconify-icon icon="mdi:account-group-outline"></iconify-icon> Команды</button></div><div class="ranking-note" id="rankingNote">Индивидуальная таблица игроков. Персональная система очков будет включена после утверждения методики расчёта.</div><div class="table-wrap ranking-table-wrap"><table><thead id="rankingHead"><tr><th>#</th><th>ИГРОК</th><th>РОЛЬ</th><th>КОМАНДА</th><th>ОЧКИ</th></tr></thead><tbody id="rankingRows"><tr><td colspan="5" style="text-align:center;padding:35px;color:#9298a7">Загружаем рейтинг…</td></tr></tbody></table></div></section>'},
 seasons:function(){return pageHead('SEASON SYSTEM','СЕЗОНЫ','Соревновательные периоды, этапы, квалификации и итоговые чемпионаты.')+
@@ -880,7 +907,47 @@ try{
 if(key==='tournaments'){var tournaments=await apiList('tournaments');var target=document.getElementById('tResults');if(target&&tournaments.length)target.innerHTML=cardList(tournaments,'tournaments')}
 if(key==='teams'){var teams=await apiList('teams');var target=document.getElementById('teamResults');if(target&&teams.length)target.innerHTML=cardList(teams,'teams')}
 if(key==='players'){var players=await apiList('players');var target=document.getElementById('playerResults');if(target&&players.length)target.innerHTML=cardList(players,'players')}
-if(key==='brackets'){var matches=await apiList('matches');var schedule=document.getElementById('matchSchedule'),results=document.getElementById('matchResults'),emptyState=document.getElementById('matchEmpty');if(matches.length){if(emptyState)emptyState.innerHTML='';var upcoming=matches.filter(function(m){return m.status!=='completed'}),finished=matches.filter(function(m){return m.status==='completed'&&m.result_verified_at});if(schedule)schedule.innerHTML=upcoming.length?upcoming.map(function(m){return '<p class="muted">'+esc(dateLabel(m.scheduled_at))+' · Раунд '+esc(m.round_number)+' · '+esc(m.status)+'</p>'}).join(''):'<p class="muted">Предстоящих матчей нет.</p>';if(results)results.innerHTML=finished.length?finished.map(function(m){return '<p class="muted">Раунд '+esc(m.round_number)+' · '+esc(m.score_a)+' : '+esc(m.score_b)+'</p>'}).join(''):'<p class="muted">Подтверждённых результатов пока нет.</p>'}}
+if(key==='brackets'){
+var tournamentSelect=document.getElementById('matchTournament'),statusSelect=document.getElementById('matchStatus');
+var centerStatus=document.getElementById('matchCenterStatus'),bracket=document.getElementById('matchBracket');
+var schedule=document.getElementById('matchSchedule'),results=document.getElementById('matchResults');
+var matchView='bracket',allMatches=[],teamMap={},tournamentMap={};
+var stateLabels={scheduled:'ЗАПЛАНИРОВАН',in_progress:'ИДЁТ',completed:'ЗАВЕРШЁН',postponed:'ПЕРЕНЕСЁН',cancelled:'ОТМЕНЁН'};
+function matchTeam(id){return teamMap[String(id)]||('Команда #'+id)}
+function matchCard(m){
+var a=matchTeam(m.team_a_id),b=matchTeam(m.team_b_id),winner=String(m.winner_team_id||'');
+var state=stateLabels[m.status]||m.status||'СТАТУС НЕ УКАЗАН';
+return '<article class="match-card"><div class="match-card-top"><span>МАТЧ #'+esc(m.match_number||m.id)+'</span><span class="match-state '+(m.status==='in_progress'?'live':m.status==='completed'?'done':'')+'">'+esc(state)+'</span></div><div class="match-side '+(winner&&winner===String(m.team_a_id)?'winner':'')+'"><span>'+esc(a)+'</span><b class="match-score">'+(m.score_a==null?'—':esc(m.score_a))+'</b></div><div class="match-side '+(winner&&winner===String(m.team_b_id)?'winner':'')+'"><span>'+esc(b)+'</span><b class="match-score">'+(m.score_b==null?'—':esc(m.score_b))+'</b></div>'+(m.result_verified_at?'<div class="match-verify">✓ РЕЗУЛЬТАТ ПОДТВЕРЖДЁН</div>':'')+'</article>'
+}
+function matchListCard(m){
+var when=m.scheduled_at?dateLabel(m.scheduled_at):'Время не назначено';
+return '<article class="match-list-card"><div class="match-list-date">'+esc(when)+'<br><small>'+esc(m.bracket||'Основная сетка')+' · Раунд '+esc(m.round_number||'—')+'</small></div><div class="match-list-teams"><span>'+esc(matchTeam(m.team_a_id))+'</span><span>'+esc(matchTeam(m.team_b_id))+'</span><small>'+esc(stateLabels[m.status]||m.status||'Статус не указан')+(m.result_verified_at?' · подтверждено':'')+'</small></div><div class="match-list-score">'+(m.score_a==null?'—':esc(m.score_a))+' : '+(m.score_b==null?'—':esc(m.score_b))+'</div></article>'
+}
+function renderMatchCenter(){
+var tournamentId=tournamentSelect.value,status=statusSelect.value;
+var filtered=allMatches.filter(function(m){return (!tournamentId||String(m.tournament_id)===tournamentId)&&(!status||m.status===status)});
+var visible=filtered.filter(function(m){return m.status!=='completed'||m.result_verified_at});
+centerStatus.textContent=filtered.length+' матчей найдено · отображаются только подтверждённые завершённые результаты';
+if(!filtered.length){bracket.innerHTML='<div class="match-empty">Для выбранных фильтров матчей пока нет.</div>';schedule.innerHTML='<div class="match-empty">Расписание пока пусто.</div>';results.innerHTML='<div class="match-empty">Подтверждённых результатов пока нет.</div>';return}
+var rounds={};visible.forEach(function(m){var key=(m.bracket||'main')+'|'+(m.round_number||0);(rounds[key]||(rounds[key]=[])).push(m)});
+var keys=Object.keys(rounds).sort(function(a,b){var aa=a.split('|'),bb=b.split('|');return aa[0].localeCompare(bb[0])||Number(aa[1])-Number(bb[1])});
+bracket.innerHTML=keys.length?keys.map(function(key){var parts=key.split('|'),roundName=parts[0]==='main'?'Основная сетка':parts[0].toUpperCase();return '<section class="match-round"><div class="match-round-title">'+esc(roundName)+' · РАУНД '+esc(parts[1])+'</div>'+rounds[key].map(matchCard).join('')+'</section>'}).join(''):'<div class="match-empty">Нет матчей для построения сетки.</div>';
+var upcoming=filtered.filter(function(m){return m.status!=='completed'&&m.status!=='cancelled'});
+var finished=filtered.filter(function(m){return m.status==='completed'&&m.result_verified_at);
+schedule.innerHTML=upcoming.length?upcoming.map(matchListCard).join(''):'<div class="match-empty">Предстоящих и текущих матчей нет.</div>';
+results.innerHTML=finished.length?finished.map(matchListCard).join(''):'<div class="match-empty">Подтверждённых результатов пока нет.</div>';
+}
+document.querySelectorAll('[data-match-view]').forEach(function(button){button.addEventListener('click',function(){matchView=button.dataset.matchView;document.querySelectorAll('[data-match-view]').forEach(function(b){b.classList.toggle('active',b===button)});['bracket','schedule','results'].forEach(function(v){document.getElementById('match'+v.charAt(0).toUpperCase()+v.slice(1)+'View').hidden=v!==matchView})})});
+tournamentSelect.addEventListener('change',renderMatchCenter);statusSelect.addEventListener('change',renderMatchCenter);
+try{
+var data=await Promise.all([apiList('tournaments'),apiList('matches'),apiList('teams')]);
+data[0].forEach(function(t){tournamentMap[String(t.id)]=t.title;tournamentSelect.insertAdjacentHTML('beforeend','<option value="'+esc(t.id)+'">'+esc(t.title)+'</option>')});
+data[2].forEach(function(t){teamMap[String(t.id)]=t.name});
+allMatches=data[1];
+if(!allMatches.length){centerStatus.textContent='Матчей пока нет. Они появятся после создания турнира и формирования расписания.'}
+renderMatchCenter();
+}catch(error){centerStatus.textContent='Не удалось загрузить данные центра матчей. Попробуйте обновить страницу.'}
+}
 if(key==='rankings'){
 var rankingButtons=Array.prototype.slice.call(document.querySelectorAll('[data-ranking-scope]'));
 async function showRanking(scope){
