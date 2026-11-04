@@ -47,7 +47,23 @@ main{min-height:65vh}.wrap{width:min(1180px,100%);margin:auto;padding-left:clamp
 @media(max-width:380px){.hero h1{font-size:43px}.arena-visual{height:250px}.journey-track{grid-template-columns:1fr 1fr}}
 
 @media(max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:1fr}.hero{min-height:440px}.hero:after{width:280px;height:280px;right:-140px;top:90px}.section-head{align-items:start;flex-direction:column}.section-head .sub{max-width:none}}
-@media(max-width:480px){.header{height:76px}.brandmark{width:42px;height:42px}.brandname{font-size:18px}.hero{padding-top:64px;padding-bottom:52px;min-height:410px}.hero h1{font-size:76px}.hero p{font-size:12px}.grid,.grid.two{grid-template-columns:1fr}.tile{min-height:0;padding:20px}.stat{padding:12px 9px}.stat strong{font-size:23px}.stat span{font-size:8px}.pagehead{padding-top:48px}}
+@media(max-width:480px){
+.header{height:76px}.brandmark{width:42px;height:42px}.brandname{font-size:18px}
+.hero{width:100%;max-width:100%;padding:42px 18px 34px;min-height:0;overflow:hidden}
+.hero-layout{width:100%;min-width:0;grid-template-columns:minmax(0,1fr);gap:24px}
+.hero-copy{width:100%;min-width:0}
+.hero h1{width:100%;max-width:100%;font-size:clamp(40px,11vw,54px);line-height:.94;letter-spacing:-.4px;overflow-wrap:normal;word-break:normal}
+.hero p{width:100%;max-width:100%;font-size:12px;overflow-wrap:anywhere}
+.hero .actions{width:100%;display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.hero .actions .btn{width:100%;min-width:0;max-width:100%;white-space:normal;text-align:center}
+.hero-note{max-width:100%;font-size:9px;line-height:1.6;overflow-wrap:anywhere}
+.arena-visual{width:100%;max-width:100%;height:260px;min-width:0}
+.journey{width:100%;min-width:0}
+.journey-heading{align-items:flex-start;line-height:1.6}
+.journey-track{grid-template-columns:1fr 1fr}
+.grid,.grid.two{grid-template-columns:1fr}.tile{min-height:0;padding:20px}
+.stat{padding:12px 9px}.stat strong{font-size:23px}.stat span{font-size:8px}.pagehead{padding-top:48px}
+}
 </style>
 </head>
 <body>
