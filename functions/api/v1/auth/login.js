@@ -50,16 +50,15 @@ export async function onRequestPost({ request, env }) {
 
   let user = await env.DB.prepare("SELECT id,email,display_name FROM users WHERE email=?").bind(adminEmail).first();
   if (!user) {
-    const id = crypto.randomUUID();
-    await env.DB.prepare("INSERT OR IGNORE INTO users (id,email,display_name) VALUES (?,?,?)").bind(id, adminEmail, adminEmail).run();
+    await env.DB.prepare("INSERT OR IGNORE INTO users (email,display_name) VALUES (?,?)").bind(adminEmail, adminEmail).run();
     user = await env.DB.prepare("SELECT id,email,display_name FROM users WHERE email=?").bind(adminEmail).first();
   }
   if (!user) return json({ error: { code: "ACCOUNT_SETUP_FAILED", message: "Не удалось создать учётную запись администратора." } }, 500);
 
   const granted = await env.DB.prepare("INSERT OR IGNORE INTO user_roles (user_id,role) VALUES (?,'administrator')").bind(user.id).run();
   if (granted.meta && granted.meta.changes === 1) {
-    await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'bootstrap_admin_created','user',?,?)")
-      .bind(crypto.randomUUID(), user.id, user.id, JSON.stringify({ email: adminEmail, role: "administrator", method: "password" })).run();
+    await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'bootstrap_admin_created','user',?,?)")
+      .bind(user.id, user.id, JSON.stringify({ email: adminEmail, role: "administrator", method: "password" })).run();
   }
 
   await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash, ipHash).run();
@@ -68,8 +67,8 @@ export async function onRequestPost({ request, env }) {
   const tokenHash = await sha256(token);
   await env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)")
     .bind(crypto.randomUUID(), user.id, tokenHash, now + SESSION_TTL).run();
-  await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'login','user',?,?)")
-    .bind(crypto.randomUUID(), user.id, user.id, JSON.stringify({ method: "password" })).run();
+  await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'login','user',?,?)")
+    .bind(user.id, user.id, JSON.stringify({ method: "password" })).run();
 
   return json({ authenticated: true, account: { email: user.email, name: user.display_name }, roles: ["administrator"] }, 200, { "set-cookie": sessionCookie(token) });
 }
