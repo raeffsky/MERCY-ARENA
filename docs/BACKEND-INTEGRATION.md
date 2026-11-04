@@ -1,10 +1,17 @@
 # MERCY ARENA — backend integration contract
 
-This repository currently deploys a static frontend through GitHub Pages. The UI must never invent tournaments, teams, players, match schedules, scores, rankings, or account state.
+The frontend is deployed through Cloudflare Pages. The first backend layer uses Cloudflare Pages Functions and Cloudflare D1. The UI must never invent tournaments, teams, players, match schedules, scores, rankings, or account state.
 
-## Required services
+## Current backend foundation
 
-- API service with persistent database and role-based authorization.
+- Pages Functions API routes live under `functions/api/v1/`.
+- Initial D1 schema is in `migrations/0001_initial_schema.sql`.
+- The API exposes public read endpoints for tournaments, teams, players, matches, seasons, rankings, and health.
+- Bind the D1 database to the Pages project using the binding name `DB` before expecting data routes to return records.
+- No organizer write routes are enabled until authentication and server-side role checks are configured.
+
+## Required next services
+
 - Organizer identity provider. Roles: player, team captain, organizer, referee, administrator.
 - Trusted match-result provider for MLBB. No official provider credentials or documented public endpoint are configured in this repository.
 - Background worker for polling/webhooks, validation, idempotency, and retry handling.
@@ -59,4 +66,15 @@ All responses are JSON. All timestamps are ISO-8601 UTC. Every list endpoint sup
 
 ## Current implementation boundary
 
-The public pages and navigation are implemented in `index.html`. The repository has no API server, database schema, authentication provider, or trusted MLBB result provider configured. GitHub Pages is static hosting and cannot safely run the required background workers or store secrets. The empty states are intentional until a real backend is connected.
+The public pages and navigation are implemented in `index.html`. The API and database schema are now scaffolded, but the D1 database binding and migration still need to be provisioned in Cloudflare. Authentication, organizer write operations, and a trusted MLBB result provider are not yet configured. Public pages must keep their honest empty states until real records exist. Secrets must remain in server-side Cloudflare bindings, never in frontend JavaScript or Git.
+
+
+## Initial D1 setup
+
+1. Create a Cloudflare D1 database named `mercy-arena-db`.
+2. In Cloudflare Pages → `mercy-arena` → Settings → Functions → D1 database bindings, add binding `DB` and select `mercy-arena-db` for production (and preview if required).
+3. Apply `migrations/0001_initial_schema.sql` to that database.
+4. Verify `GET /api/v1/health` returns `{"status":"ready","database":"connected"}`.
+5. Verify the public list endpoints return empty arrays until real data is entered.
+
+Do not enable organizer write endpoints until identity verification, role checks, CSRF/origin controls, rate limits, and audit logging are implemented.
