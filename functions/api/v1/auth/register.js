@@ -11,6 +11,25 @@ function b64url(bytes) { return btoa(String.fromCharCode(...bytes)).replace(/\+/
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ error:{code:"DATABASE_NOT_CONFIGURED",message:"База данных не подключена."} },503);
+  // Fail clearly when production D1 is missing the self-registration migration.
+  try {
+    const [userColumns, playerColumns] = await Promise.all([
+      env.DB.prepare("PRAGMA table_info(users)").all(),
+      env.DB.prepare("PRAGMA table_info(players)").all()
+    ]);
+    const userNames = new Set((userColumns.results || []).map(column => column.name));
+    const playerNames = new Set((playerColumns.results || []).map(column => column.name));
+    const missing = [];
+    if (!userNames.has("password_hash")) missing.push("users.password_hash");
+    if (!playerNames.has("profile_status")) missing.push("players.profile_status");
+    if (missing.length) {
+      console.error("Player registration schema is outdated:", missing.join(", "));
+      return json({error:{code:"REGISTRATION_MIGRATION_REQUIRED",message:"База данных MERCY ARENA не обновлена. Администратору нужно применить миграцию 0004_player_self_registration.sql."}},503);
+    }
+  } catch (error) {
+    console.error("Player registration schema check failed:", error);
+    return json({error:{code:"REGISTRATION_SCHEMA_CHECK_FAILED",message:"Не удалось проверить структуру базы данных. Повтори попытку позже."}},503);
+  }
   if (!request.headers.get("origin") || !sameOrigin(request,env)) return json({error:{code:"ORIGIN_REJECTED",message:"Запрос отклонён."}},403);
   let body; try { body=await request.json(); } catch { return json({error:{code:"INVALID_JSON",message:"Проверьте данные формы."}},400); }
   const email=normalizedEmail(body.email), password=String(body.password||"");
@@ -43,7 +62,14 @@ export async function onRequestPost({ request, env }) {
     ]);
   } catch(error) {
     console.error("Player registration failed",error);
-    return json({error:{code:"REGISTRATION_FAILED",message:"Не удалось создать аккаунт. Возможно, email или игровой профиль уже используются."}},409);
+    const detail = String(error?.message || "");
+    if (/UNIQUE constraint failed/i.test(detail)) {
+      return json({error:{code:"REGISTRATION_CONFLICT",message:"Этот email или игровой профиль уже зарегистрирован."}},409);
+    }
+    if (/FOREIGN KEY constraint failed/i.test(detail)) {
+      return json({error:{code:"REGISTRATION_RELATION_ERROR",message:"Не удалось связать аккаунт с игровым профилем. Обратись к администратору."}},409);
+    }
+    return json({error:{code:"REGISTRATION_FAILED",message:"Не удалось создать аккаунт. Проверь обновление базы данных и попробуй снова."}},500);
   }
   await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=?").bind(emailHash).run();
   const token=b64url(crypto.getRandomValues(new Uint8Array(32)));
