@@ -162,6 +162,71 @@ main{min-height:65vh}.wrap{width:min(1180px,100%);margin:auto;padding-left:clamp
  .journey-step b{font-size:6.5px!important}
 }
 
+
+/* HERO ARTWORK: full-width background beneath the copy, matching the reference banner */
+.hero{
+  position:relative!important;isolation:isolate;overflow:hidden;
+  width:100%;max-width:none;min-height:760px;
+  padding:42px clamp(22px,5.2vw,82px) 28px;
+  display:flex;flex-direction:column;justify-content:space-between;
+  background:#080b09!important;border-bottom:1px solid #d7ff5e30;
+}
+.hero:after{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(5,8,8,.97) 0%,rgba(5,8,8,.88) 34%,rgba(5,8,8,.42) 57%,rgba(5,8,8,.04) 100%),
+    linear-gradient(0deg,rgba(5,8,8,.88) 0%,transparent 32%,rgba(5,8,8,.12) 100%);
+}
+.hero-layout{
+  position:static!important;z-index:auto!important;display:block!important;
+  width:100%;max-width:1420px;min-height:0!important;margin:0 auto;flex:1;
+}
+.hero-copy{
+  position:relative!important;z-index:3!important;
+  width:min(720px,58%);max-width:720px;padding:46px 0 34px;
+}
+.hero-copy .eyebrow,.hero-copy h1,.hero-copy p,.hero-copy .actions{position:relative;z-index:3}
+.hero h1{font-size:clamp(58px,7vw,100px)!important;line-height:.88!important;max-width:760px}
+.hero p{max-width:610px!important;font-size:clamp(13px,1.05vw,15px)!important}
+.arena-visual{
+  position:absolute!important;inset:0!important;z-index:0!important;
+  width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;
+  margin:0!important;border:0!important;clip-path:none!important;box-shadow:none!important;
+  background:#080b09!important;pointer-events:none;
+}
+.arena-visual .arena-hero-image{
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+  object-fit:cover!important;object-position:center 43%!important;z-index:0!important;
+}
+.arena-visual:before{display:none!important}
+.journey{
+  position:relative!important;z-index:4!important;width:100%;max-width:1420px;
+  margin:24px auto 0!important;padding:20px 0 10px!important;
+  border-top:1px solid #ffffff35!important;
+}
+.journey-heading,.journey-track{position:relative;z-index:2}
+@media(max-width:900px){
+  .hero{min-height:700px;padding-top:34px}
+  .hero-copy{width:min(680px,75%);padding-top:40px}
+  .hero h1{font-size:clamp(54px,8vw,82px)!important}
+  .arena-visual .arena-hero-image{object-position:58% center!important}
+}
+@media(max-width:600px){
+  .hero{min-height:0!important;padding:30px 18px 22px!important;display:block!important}
+  .hero-layout{display:block!important;min-height:0!important}
+  .hero-copy{width:100%!important;max-width:100%!important;padding:22px 0 28px!important}
+  .hero-copy h1{font-size:clamp(39px,10.8vw,54px)!important;line-height:.93!important}
+  .hero-copy p{max-width:100%!important}
+  .arena-visual{inset:0!important;height:100%!important;min-height:100%!important}
+  .arena-visual .arena-hero-image{object-position:64% center!important;opacity:.76}
+  .hero:after{
+    background:
+      linear-gradient(90deg,rgba(5,8,8,.88),rgba(5,8,8,.54)),
+      linear-gradient(0deg,rgba(5,8,8,.96) 0%,rgba(5,8,8,.42) 52%,rgba(5,8,8,.5) 100%)!important;
+  }
+  .journey{margin-top:8px!important;padding-top:14px!important}
+}
+
 </style>
 </head>
 <body>
