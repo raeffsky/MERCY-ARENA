@@ -521,7 +521,7 @@ shade.addEventListener('click',function(){menu(false)});
 function pageHead(kicker,title,lead){return '<section class="wrap pagehead"><div class="kicker">'+kicker+'</div><h1 class="page-title">'+title+'</h1></section>'}
 function empty(icon,title,desc,link,label){return '<div class="empty"><div class="empty-row"><iconify-icon icon="'+icon+'"></iconify-icon><div><b>'+title+'</b><p>'+desc+'</p>'+(link?'<a class="btn secondary" style="margin-top:14px" href="'+link+'">'+label+'</a>':'')+'</div></div></div>'}
 function tile(icon,title,desc,href){return '<a class="tile" href="'+href+'"><iconify-icon icon="'+icon+'"></iconify-icon><h3>'+title+'</h3><p>'+desc+'</p></a>'}
-function section(kicker,title,sub,body){return '<section class="wrap section"><div class="section-head"><div><div class="kicker">'+kicker+'</div><h2>'+title+'</h2></div>'+(sub?'<p class="sub">'+sub+'</p>':'')+'</div>'+body+'</section>'}
+function section(kicker,title,sub,body){return '<section class="wrap section"><div class="section-head"><div><div class="kicker">'+kicker+'</div><h2>'+title+'</h2></div></div>'+body+'</section>'}
 var pages={
 home:function(){return [
 `<section class="hero">
