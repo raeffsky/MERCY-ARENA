@@ -583,7 +583,7 @@ seasons:function(){return pageHead('SEASON SYSTEM','СЕЗОНЫ','Соревн�
 engine:function(){return pageHead('AUTOMATION / VERIFIED DATA','AUTO RESULT ENGINE','Система получения и проверки результатов матчей. Автоматическая публикация требует официального или надёжного источника игровых данных.')+
 '<section class="wrap section"><div class="panel"><div class="statusbar"><span class="dot off"></span>ОЖИДАЕТ ПОДКЛЮЧЕНИЯ ИСТОЧНИКА</div><h3 class="panel-title" style="font-size:26px;margin-top:15px">Автоматическая обработка результатов отключена</h3><p class="muted">На данный момент MERCY ARENA не подключён к игровому API или поставщику турнирных данных. Поэтому сайт не может самостоятельно определить завершение матча или достоверно получить счёт.</p></div><div class="steps" style="margin-top:14px"><div class="step"><div class="step-num">01</div><h3>Получение</h3><p>Приём результата от подключённого источника с идентификатором матча и временем завершения.</p></div><div class="step"><div class="step-num">02</div><h3>Валидация</h3><p>Сверка участников, турнира, счёта и целостности данных. Конфликты отправляются на ручную проверку.</p></div><div class="step"><div class="step-num">03</div><h3>Публикация</h3><p>После подтверждения обновляются матч, сетка и рейтинг. Повторные события не должны дублировать результат.</p></div></div><div style="margin-top:14px">'+empty('mdi:shield-alert-outline','Публикация заблокирована до интеграции','Это намеренно: система не будет создавать фиктивные результаты или показывать неподтверждённые данные.')+'</div></section>'},
 organizer:function(){return pageHead('ORGANIZER HUB','КАБИНЕТ ОРГАНИЗАТОРА','Инструменты управления турнирами, заявками, сетками, матчами и судейскими решениями.')+
-'<section class="wrap section"><div class="grid two"><div class="panel"><div class="kicker">TOURNAMENT CONTROL</div><h3 class="panel-title" style="margin-top:10px">Управление турнирами</h3><p class="muted">Создание соревнований, выбор формата, расписания и правил.</p></div><div class="panel"><div class="kicker">TEAM APPLICATIONS</div><h3 class="panel-title" style="margin-top:10px">Заявки команд</h3><p class="muted">Проверка составов, допуск участников и управление слотами.</p></div><div class="panel"><div class="kicker">MATCH OPERATIONS</div><h3 class="panel-title" style="margin-top:10px">Матчи и сетки</h3><p class="muted">Назначение встреч, переносы и контроль статусов.</p></div><div class="panel"><div class="kicker">REFEREE DESK</div><h3 class="panel-title" style="margin-top:10px">Судейская</h3><p class="muted">Проверка спорных результатов и история решений.</p></div></div><div style="margin-top:14px">'+empty('mdi:lock-outline','Требуется аккаунт организатора','Авторизация и серверная ролевая модель ещё не подключены. Эта страница пока информационная, доступ к управлению не имитируется.')+'</div></section>'},
+'<section class="wrap section"><div class="grid two"><div class="panel"><div class="kicker">TOURNAMENT CONTROL</div><h3 class="panel-title" style="margin-top:10px">Управление турнирами</h3><p class="muted">Создание соревнований, выбор формата, расписания и правил.</p></div><div class="panel"><div class="kicker">TEAM APPLICATIONS</div><h3 class="panel-title" style="margin-top:10px">Заявки команд</h3><p class="muted">Проверка составов, допуск участников и управление слотами.</p></div><div class="panel"><div class="kicker">MATCH OPERATIONS</div><h3 class="panel-title" style="margin-top:10px">Матчи и сетки</h3><p class="muted">Назначение встреч, переносы и контроль статусов.</p></div><div class="panel"><div class="kicker">REFEREE DESK</div><h3 class="panel-title" style="margin-top:10px">Судейская</h3><p class="muted">Проверка спорных результатов и история решений.</p></div></div><div class="panel" id="organizerAuth" style="margin-top:14px"><div class="kicker">SECURE ACCESS</div><h3 class="panel-title" style="font-size:26px">Вход в кабинет</h3><p class="muted">Получите одноразовую ссылку на email. Ссылка действует 15 минут.</p><form id="magicLoginForm" class="toolbar"><input class="field" id="magicLoginEmail" type="email" autocomplete="email" placeholder="Ваш email" required><button class="btn primary" type="submit">Отправить ссылку</button></form><p class="muted" id="authMessage" role="status">Доступ к управлению откроется после подтверждения почты и проверки роли.</p><div id="authAccount"></div></div></section>'},
 about:function(){return pageHead('THE PLATFORM','О MERCY ARENA','Турнирная платформа для сообщества Mobile Legends: Bang Bang, где соревнования и результаты должны быть прозрачными и проверяемыми.')+
 '<section class="wrap section"><div class="grid"><div class="tile"><iconify-icon icon="mdi:trophy-outline"></iconify-icon><h3>Соревнования</h3><p>Турниры, правила, регистрация и сетки.</p></div><div class="tile"><iconify-icon icon="mdi:account-group-outline"></iconify-icon><h3>Сообщество</h3><p>Команды, игроки и история достижений.</p></div><div class="tile"><iconify-icon icon="mdi:shield-check-outline"></iconify-icon><h3>Достоверность</h3><p>Только проверенные результаты и прозрачные статусы.</p></div></div></section>'}
 };
@@ -593,12 +593,37 @@ if(!pages[key])key='home';
 app.innerHTML=pages[key]();
 document.querySelectorAll('[data-route]').forEach(function(a){a.classList.toggle('active',a.dataset.route===key)});
 menu(false);window.scrollTo(0,0);document.title=(key==='home'?'MERCY ARENA':key.toUpperCase()+' — MERCY ARENA');
-wireFilters(key);
+wireFilters(key);\nwireAuth(key);
 }
 function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]})}
 function dateLabel(value){if(!value)return 'Дата уточняется';var d=new Date(value);return Number.isNaN(d.getTime())?'Дата уточняется':new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short'}).format(d)}
 async function apiList(path){var response=await fetch('/api/v1/'+path,{headers:{accept:'application/json'},cache:'no-store'});if(!response.ok)throw new Error('API '+response.status);var payload=await response.json();return Array.isArray(payload.data)?payload.data:[]}
 function cardList(items,kind){if(!items.length)return '';return '<div class="grid two">'+items.map(function(item){if(kind==='tournaments')return '<article class="tile"><div class="statusbar"><span class="dot"></span>'+esc(item.status)+'</div><h3>'+esc(item.title)+'</h3><p>'+esc(item.description||item.format||'Турнир MERCY ARENA')+'</p><p class="muted" style="margin-top:10px">'+esc(dateLabel(item.starts_at))+'</p></article>';if(kind==='teams')return '<article class="tile"><div class="kicker">'+esc(item.tag)+'</div><h3>'+esc(item.name)+'</h3><p>'+esc(item.region||'Регион не указан')+'</p></article>';return '<article class="tile"><h3>'+esc(item.nickname)+'</h3><p>'+esc(item.role||'Роль не указана')+' · '+esc(item.game_id||'Игровой ID не указан')+'</p></article>'}).join('')+'</div>'}
+async function wireAuth(key){
+if(key!=='organizer')return;
+var form=document.getElementById('magicLoginForm'),email=document.getElementById('magicLoginEmail'),message=document.getElementById('authMessage'),account=document.getElementById('authAccount');
+if(!form)return;
+function showStatus(text){if(message)message.textContent=text}
+try{
+var response=await fetch('/api/v1/me',{cache:'no-store',credentials:'same-origin'});
+var me=await response.json();
+if(me.authenticated){
+showStatus('Вы вошли в систему. Роль: '+(me.roles||[]).join(', '));
+if(account)account.innerHTML='<p class="muted">'+esc(me.account.email)+'</p><button class="btn secondary" id="logoutButton" type="button">Выйти</button>';
+form.hidden=true;
+var logout=document.getElementById('logoutButton');
+if(logout)logout.addEventListener('click',async function(){await fetch('/api/v1/auth/logout',{method:'POST',credentials:'same-origin'});location.reload()});
+}else if(new URLSearchParams(location.search).get('auth')==='success'){showStatus('Почта подтверждена. Сессия создана. Обновите страницу, если статус ещё не обновился.')}
+}catch(e){showStatus('Не удалось проверить сессию. Попробуйте обновить страницу.')}
+form.addEventListener('submit',async function(event){
+event.preventDefault();var value=email.value.trim();var button=form.querySelector('button');button.disabled=true;showStatus('Отправляем ссылку…');
+try{
+var result=await fetch('/api/v1/auth/request-link',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({email:value})});
+var data=await result.json();showStatus(result.ok?(data.message||'Если адрес разрешён, ссылка отправлена.'):(data.error&&data.error.message||'Не удалось отправить ссылку.'));
+}catch(e){showStatus('Ошибка соединения. Попробуйте ещё раз.')}
+finally{button.disabled=false}
+});
+}
 async function wireFilters(key){
 try{
 if(key==='tournaments'){var tournaments=await apiList('tournaments');var target=document.getElementById('tResults');if(target&&tournaments.length)target.innerHTML=cardList(tournaments,'tournaments')}
