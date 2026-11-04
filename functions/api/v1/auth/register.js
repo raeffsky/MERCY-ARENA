@@ -20,7 +20,7 @@ export async function onRequestPost({ request, env }) {
   const displayName=String(body.display_name||nickname).trim().slice(0,80);
   if(!validEmail(email)) return json({error:{code:"INVALID_EMAIL",message:"Укажи корректный email."}},400);
   if(password.length<12||password.length>128) return json({error:{code:"WEAK_PASSWORD",message:"Пароль должен содержать от 12 до 128 символов."}},400);
-  if(nickname.length<2||!/^[\\p{L}\\p{N}_ .-]+$/u.test(nickname)) return json({error:{code:"INVALID_NICKNAME",message:"Ник должен содержать от 2 до 32 допустимых символов."}},400);
+  if(nickname.length<2||!/^[\p{L}\p{N}_ .-]+$/u.test(nickname)) return json({error:{code:"INVALID_NICKNAME",message:"Ник должен содержать от 2 до 32 допустимых символов."}},400);
   if(!gameId||!/^[0-9-]{5,40}$/.test(gameId)) return json({error:{code:"INVALID_GAME_ID",message:"Укажи корректный игровой ID MLBB."}},400);
   if(!["EXP","JUNGLE","MID","GOLD","ROAM","FLEX"].includes(role)) return json({error:{code:"INVALID_ROLE",message:"Выбери игровую роль."}},400);
   const emailHash=await sha256(email), ip=request.headers.get("CF-Connecting-IP")||"unknown";
