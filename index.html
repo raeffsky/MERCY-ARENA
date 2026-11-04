@@ -687,7 +687,7 @@ th{background:var(--panel)!important}
 <a href="#/organizer" data-route="organizer"><iconify-icon icon="mdi:shield-crown-outline"></iconify-icon>Кабинет организатора</a>
 <a href="#/about" data-route="about"><iconify-icon icon="mdi:information-outline"></iconify-icon>О платформе</a>
 </nav></aside>
-<main id="app"></main>
+<main id="app"><section class="wrap section" data-app-fallback><div class="kicker">MERCY CIRCUIT / MOBILE LEGENDS</div><h1 class="page-title">ТВОЙ ПУТЬ В КИБЕРСПОРТ НАЧИНАЕТСЯ ЗДЕСЬ</h1><p class="muted">Участвуй в турнирах, развивайся как игрок и находи свою команду.</p><a class="btn primary" href="#/tournaments">Открыть турниры <iconify-icon icon="mdi:arrow-right"></iconify-icon></a></section></main>
 <footer class="footer"><strong>MERCY ARENA</strong> · MERCY CIRCUIT · <span>PLAY FAIR. WIN CLEAR.</span></footer>
 <script>
 (function(){
@@ -834,7 +834,7 @@ function route(){
 var routeParts=(location.hash.indexOf('#/')===0?location.hash.slice(2):location.hash.replace('#','')).split('/');
 var key=routeParts[0]||'home';if(key==='player')key='player-profile';
 if(!pages[key])key='home';
-app.innerHTML=pages[key]();
+try{app.innerHTML=pages[key]();}catch(renderError){console.error('MERCY ARENA route render failed:',renderError);app.innerHTML='<section class="wrap section"><div class="empty"><iconify-icon icon="mdi:alert-circle-outline"></iconify-icon><b>Не удалось загрузить раздел</b><p>Обнови страницу. Если ошибка повторится, сообщи нам.</p><a class="btn secondary" href="#/home">На главную</a></div></section>';}
 document.querySelectorAll('[data-route]').forEach(function(a){a.classList.toggle('active',a.dataset.route===key)});
 menu(false);window.scrollTo(0,0);document.title=(key==='home'?'MERCY ARENA':key.toUpperCase()+' — MERCY ARENA');
 wireFilters(key);
