@@ -94,7 +94,7 @@ about:function(){return pageHead('THE PLATFORM','О MERCY ARENA','Турнирн
 '<section class="wrap section"><div class="grid"><div class="tile"><iconify-icon icon="mdi:trophy-outline"></iconify-icon><h3>Соревнования</h3><p>Турниры, правила, регистрация и сетки.</p></div><div class="tile"><iconify-icon icon="mdi:account-group-outline"></iconify-icon><h3>Сообщество</h3><p>Команды, игроки и история достижений.</p></div><div class="tile"><iconify-icon icon="mdi:shield-check-outline"></iconify-icon><h3>Достоверность</h3><p>Только проверенные результаты и прозрачные статусы.</p></div></div></section>'}
 };
 function route(){
-var key=location.hash.replace(/^#\\/?/,'').split('/')[0]||'home';
+var key=(location.hash.indexOf('#/')===0?location.hash.slice(2):location.hash.replace('#','')).split('/')[0]||'home';
 if(!pages[key])key='home';
 app.innerHTML=pages[key]();
 document.querySelectorAll('[data-route]').forEach(function(a){a.classList.toggle('active',a.dataset.route===key)});
