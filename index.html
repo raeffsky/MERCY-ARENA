@@ -621,7 +621,7 @@ function val(v){return v==null?'':String(v)}
 function dt(v){if(!v)return '';var d=new Date(v);if(Number.isNaN(d.getTime()))return String(v).slice(0,16);var p=function(n){return String(n).padStart(2,'0')};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}
 async function request(resource,body){
 var response=await fetch('/api/v1/admin'+(body?'':'?resource='+encodeURIComponent(resource)),body?{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store',credentials:'same-origin'});
-var result=await response.json();if(!response.ok)throw new Error(result.error&&result.error.message||'Ошибка API '+response.status);return result.data;
+var raw=await response.text(),result;try{result=JSON.parse(raw)}catch(parseError){var detail=raw.replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim().slice(0,220);throw new Error('Сервер вернул HTML вместо JSON (HTTP '+response.status+'). '+(detail||'Проверьте deployment Functions в Cloudflare.'))}if(!response.ok)throw new Error(result.error&&result.error.message||'Ошибка API '+response.status);return result.data;
 }
 function fieldMarkup(f,users){
 var key=f[0],label=f[1],type=f[2],required=f[3],opts=f[4],value='';
