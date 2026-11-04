@@ -579,6 +579,16 @@ th{background:var(--panel)!important}
 @media(max-width:850px){.about-hero-grid{grid-template-columns:1fr}.about-emblem-panel{min-height:300px}.about-pillar-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.about-trust-grid{grid-template-columns:1fr;gap:30px}.about-contact-inner{grid-template-columns:1fr}.about-contact-actions{grid-template-columns:auto auto;align-items:center}.about-contact-actions>span{grid-column:1/-1}}
 @media(max-width:560px){.about-hero-inner{padding:38px 18px 22px}.about-hero-grid{padding:35px 0 30px;gap:24px}.about-hero-copy h1{font-size:clamp(54px,15vw,76px)}.about-hero-copy p{font-size:12px}.about-hero-actions{display:grid}.about-hero-actions .btn{width:100%}.about-emblem-panel{min-height:250px}.about-manifesto{grid-template-columns:1fr;gap:9px}.about-intro{padding-top:50px;padding-bottom:52px}.about-intro-grid,.about-flow-heading{grid-template-columns:1fr;gap:18px}.about-pillar-grid{grid-template-columns:1fr}.about-pillar{min-height:0}.about-dark-band{padding:48px 0}.about-flow{padding-top:52px;padding-bottom:55px}.about-flow-item{grid-template-columns:42px 1fr 24px;gap:10px;padding:17px 0}.about-flow-item>b{font-size:26px}.about-flow-item h3{font-size:20px}.about-trust{padding:50px 0}.about-circuit{padding-top:50px;padding-bottom:50px}.about-circuit-card{grid-template-columns:1fr}.about-circuit-mark{min-height:100px}.about-circuit-mark img{width:100px}.about-faq{padding-bottom:52px}.about-faq summary{font-size:19px}.about-contact{padding:38px 0}.about-contact-actions{grid-template-columns:1fr}.about-contact-actions>span{grid-column:auto}.about-disclaimer{padding-top:17px;padding-bottom:17px}}
 
+
+.ranking-switch{display:flex;gap:8px;margin-bottom:14px}
+.ranking-tab{display:inline-flex;align-items:center;gap:9px;padding:13px 20px;border:1px solid var(--line);background:#10131a;color:#9da3b0;font:800 12px Manrope;letter-spacing:.5px;cursor:pointer}
+.ranking-tab iconify-icon{font-size:17px}
+.ranking-tab.active{background:var(--lime);border-color:var(--lime);color:#10130b}
+.ranking-note{padding:14px 16px;margin-bottom:14px;background:#10131a;border-left:2px solid var(--lime);color:#aab0bc;font-size:11px;line-height:1.7}
+.ranking-table-wrap{overflow-x:auto}
+.ranking-table-wrap table{min-width:620px;width:100%}
+@media(max-width:560px){.ranking-switch{display:grid;grid-template-columns:1fr 1fr}.ranking-tab{justify-content:center;padding:12px 8px}}
+
 </style>
 </head>
 <body>
@@ -667,8 +677,8 @@ players:function(){return pageHead('PLAYER DATABASE','ИГРОКИ','Профи�
 '<section class="wrap section"><div id="playerResults">'+empty('mdi:account-search-outline','Игроки не найдены','Профили появятся после подключения регистрации игроков.')+'</div></section>'},
 brackets:function(){return pageHead('MATCH CENTER','СЕТКИ И МАТЧИ','Центр соревнований: расписание, пары, статусы встреч и подтверждённые результаты.')+
 '<section class="wrap section"><div class="grid two"><div class="panel"><div class="kicker">SCHEDULE</div><h3 class="panel-title" style="margin-top:10px">Расписание</h3><div id="matchSchedule"><p class="muted">Здесь будут предстоящие матчи и время начала.</p></div></div><div class="panel"><div class="kicker">RESULTS</div><h3 class="panel-title" style="margin-top:10px">Результаты</h3><div id="matchResults"><p class="muted">Итоги появляются только после подтверждения.</p></div></div></div><div id="matchEmpty" style="margin-top:14px">'+empty('mdi:tournament','Матчей пока нет','Сначала должен быть опубликован турнир и сформирована его сетка.')+'</div></section>'},
-rankings:function(){return pageHead('COMPETITIVE LADDER','РЕЙТИНГИ','Турнирные таблицы команд и игроков. Рейтинг не рассчитывается по неподтверждённым матчам.')+
-'<section class="wrap section"><div class="table-wrap"><table><thead><tr><th>#</th><th>Участник</th><th>Матчи</th><th>Победы</th><th>Очки</th></tr></thead><tbody id="rankingRows"><tr><td colspan="5" style="text-align:center;padding:35px;color:#9298a7">Рейтинг будет сформирован после первых подтверждённых матчей.</td></tr></tbody></table></div></section>'},
+rankings:function(){return pageHead('COMPETITIVE LADDER','РЕЙТИНГИ','Индивидуальная и командная таблицы MERCY CIRCUIT. В расчёт командного рейтинга попадают только подтверждённые результаты.')+
+'<section class="wrap section"><div class="ranking-switch" role="tablist" aria-label="Тип рейтинга"><button class="ranking-tab active" type="button" role="tab" aria-selected="true" data-ranking-scope="players"><iconify-icon icon="mdi:account-outline"></iconify-icon> Игроки</button><button class="ranking-tab" type="button" role="tab" aria-selected="false" data-ranking-scope="teams"><iconify-icon icon="mdi:account-group-outline"></iconify-icon> Команды</button></div><div class="ranking-note" id="rankingNote">Индивидуальная таблица игроков. Персональная система очков будет включена после утверждения методики расчёта.</div><div class="table-wrap ranking-table-wrap"><table><thead id="rankingHead"><tr><th>#</th><th>ИГРОК</th><th>РОЛЬ</th><th>КОМАНДА</th><th>ОЧКИ</th></tr></thead><tbody id="rankingRows"><tr><td colspan="5" style="text-align:center;padding:35px;color:#9298a7">Загружаем рейтинг…</td></tr></tbody></table></div></section>'},
 seasons:function(){return pageHead('SEASON SYSTEM','СЕЗОНЫ','Соревновательные периоды, этапы, квалификации и итоговые чемпионаты.')+
 '<section class="wrap section"><div id="seasonResults"><div class="grid two"><div class="panel"><div class="statusbar"><span class="dot off"></span>НЕ АКТИВЕН</div><h3 class="panel-title" style="margin-top:14px">Текущий сезон</h3><p class="muted">Сезон будет объявлен вместе с календарём соревнований.</p></div><div class="panel"><div class="kicker">SEASON ARCHIVE</div><h3 class="panel-title" style="margin-top:14px">Архив сезонов</h3><p class="muted">Здесь сохраняются итоговые таблицы и чемпионы завершённых сезонов.</p></div></div></div><div style="margin-top:14px">'+empty('mdi:calendar-star-outline','Сезоны ещё не запущены','После объявления первого сезона здесь появятся этапы и календарь.')+'</div></section>'},
 organizer:function(){return pageHead('ORGANIZER HUB','ПАНЕЛЬ УПРАВЛЕНИЯ','Управление соревновательной системой MERCY ARENA.')+
@@ -871,7 +881,31 @@ if(key==='tournaments'){var tournaments=await apiList('tournaments');var target=
 if(key==='teams'){var teams=await apiList('teams');var target=document.getElementById('teamResults');if(target&&teams.length)target.innerHTML=cardList(teams,'teams')}
 if(key==='players'){var players=await apiList('players');var target=document.getElementById('playerResults');if(target&&players.length)target.innerHTML=cardList(players,'players')}
 if(key==='brackets'){var matches=await apiList('matches');var schedule=document.getElementById('matchSchedule'),results=document.getElementById('matchResults'),emptyState=document.getElementById('matchEmpty');if(matches.length){if(emptyState)emptyState.innerHTML='';var upcoming=matches.filter(function(m){return m.status!=='completed'}),finished=matches.filter(function(m){return m.status==='completed'&&m.result_verified_at});if(schedule)schedule.innerHTML=upcoming.length?upcoming.map(function(m){return '<p class="muted">'+esc(dateLabel(m.scheduled_at))+' · Раунд '+esc(m.round_number)+' · '+esc(m.status)+'</p>'}).join(''):'<p class="muted">Предстоящих матчей нет.</p>';if(results)results.innerHTML=finished.length?finished.map(function(m){return '<p class="muted">Раунд '+esc(m.round_number)+' · '+esc(m.score_a)+' : '+esc(m.score_b)+'</p>'}).join(''):'<p class="muted">Подтверждённых результатов пока нет.</p>'}}
-if(key==='rankings'){var rows=await apiList('rankings?scope=teams');var body=document.getElementById('rankingRows');if(body&&rows.length)body.innerHTML=rows.map(function(row,i){return '<tr><td>'+(i+1)+'</td><td>'+esc(row.name)+' <span class="muted">'+esc(row.tag)+'</span></td><td>'+esc(row.matches_played||0)+'</td><td>'+esc(row.wins||0)+'</td><td>—</td></tr>'}).join('')}
+if(key==='rankings'){
+var rankingButtons=Array.prototype.slice.call(document.querySelectorAll('[data-ranking-scope]'));
+async function showRanking(scope){
+rankingButtons.forEach(function(button){var active=button.dataset.rankingScope===scope;button.classList.toggle('active',active);button.setAttribute('aria-selected',active?'true':'false')});
+var body=document.getElementById('rankingRows'),head=document.getElementById('rankingHead'),note=document.getElementById('rankingNote');
+if(!body||!head)return;
+body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:35px;color:#9298a7">Загружаем данные…</td></tr>';
+if(scope==='teams'){
+head.innerHTML='<tr><th>#</th><th>КОМАНДА</th><th>МАТЧИ</th><th>ПОБЕДЫ</th><th>ПОБЕДЫ %</th></tr>';
+note.textContent='Командный рейтинг рассчитывается по завершённым матчам с подтверждённым результатом.';
+try{var teams=await apiList('rankings?scope=teams');if(!teams.length){body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:35px;color:#9298a7">Командный рейтинг появится после первых подтверждённых матчей.</td></tr>';return}
+body.innerHTML=teams.map(function(row,index){var played=Number(row.matches_played)||0,wins=Number(row.wins)||0,rate=played?Math.round(wins/played*100):0;return '<tr><td>'+(index+1)+'</td><td>'+esc(row.name)+' <span class="muted">'+esc(row.tag||'')+'</span></td><td>'+played+'</td><td>'+wins+'</td><td>'+rate+'%</td></tr>'}).join('')}
+catch(error){body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:35px;color:#9298a7">Не удалось загрузить командный рейтинг.</td></tr>'}
+}else{
+head.innerHTML='<tr><th>#</th><th>ИГРОК</th><th>РОЛЬ</th><th>КОМАНДА</th><th>ОЧКИ</th></tr>';
+note.textContent='Список зарегистрированных игроков. Индивидуальные очки и позиции пока не рассчитываются: методика персонального рейтинга ещё не утверждена.';
+try{var players=await apiList('players');if(!players.length){body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:35px;color:#9298a7">Игроки появятся после регистрации участников.</td></tr>';return}
+var teams=await apiList('teams');var teamNames={};teams.forEach(function(team){teamNames[String(team.id)]=team.name});
+body.innerHTML=players.map(function(row,index){return '<tr><td>'+(index+1)+'</td><td>'+esc(row.nickname)+'</td><td>'+esc(row.role||'—')+'</td><td>'+esc(teamNames[String(row.team_id)]||'Без команды')+'</td><td>—</td></tr>'}).join('')}
+catch(error){body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:35px;color:#9298a7">Не удалось загрузить список игроков.</td></tr>'}
+}
+}
+rankingButtons.forEach(function(button){button.addEventListener('click',function(){showRanking(button.dataset.rankingScope)})});
+showRanking('players');
+}
 if(key==='seasons'){var seasons=await apiList('seasons');var target=document.getElementById('seasonResults');if(target&&seasons.length)target.innerHTML=cardList(seasons.map(function(s){return {title:s.title,description:s.status,starts_at:s.starts_at}}),'tournaments')}
 }catch(error){console.warn('MERCY ARENA API unavailable:',error.message)}
 }
