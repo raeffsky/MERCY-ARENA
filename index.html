@@ -933,7 +933,7 @@ var rounds={};visible.forEach(function(m){var key=(m.bracket||'main')+'|'+(m.rou
 var keys=Object.keys(rounds).sort(function(a,b){var aa=a.split('|'),bb=b.split('|');return aa[0].localeCompare(bb[0])||Number(aa[1])-Number(bb[1])});
 bracket.innerHTML=keys.length?keys.map(function(key){var parts=key.split('|'),roundName=parts[0]==='main'?'Основная сетка':parts[0].toUpperCase();return '<section class="match-round"><div class="match-round-title">'+esc(roundName)+' · РАУНД '+esc(parts[1])+'</div>'+rounds[key].map(matchCard).join('')+'</section>'}).join(''):'<div class="match-empty">Нет матчей для построения сетки.</div>';
 var upcoming=filtered.filter(function(m){return m.status!=='completed'&&m.status!=='cancelled'});
-var finished=filtered.filter(function(m){return m.status==='completed'&&m.result_verified_at);
+var finished=filtered.filter(function(m){return m.status==='completed'&&m.result_verified_at});
 schedule.innerHTML=upcoming.length?upcoming.map(matchListCard).join(''):'<div class="match-empty">Предстоящих и текущих матчей нет.</div>';
 results.innerHTML=finished.length?finished.map(matchListCard).join(''):'<div class="match-empty">Подтверждённых результатов пока нет.</div>';
 }
