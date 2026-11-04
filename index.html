@@ -593,7 +593,8 @@ if(!pages[key])key='home';
 app.innerHTML=pages[key]();
 document.querySelectorAll('[data-route]').forEach(function(a){a.classList.toggle('active',a.dataset.route===key)});
 menu(false);window.scrollTo(0,0);document.title=(key==='home'?'MERCY ARENA':key.toUpperCase()+' — MERCY ARENA');
-wireFilters(key);\nwireAuth(key);
+wireFilters(key);
+wireAuth(key);
 }
 function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]})}
 function dateLabel(value){if(!value)return 'Дата уточняется';var d=new Date(value);return Number.isNaN(d.getTime())?'Дата уточняется':new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short'}).format(d)}
