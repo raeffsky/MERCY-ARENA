@@ -64,6 +64,73 @@ main{min-height:65vh}.wrap{width:min(1180px,100%);margin:auto;padding-left:clamp
 .grid,.grid.two{grid-template-columns:1fr}.tile{min-height:0;padding:20px}
 .stat{padding:12px 9px}.stat strong{font-size:23px}.stat span{font-size:8px}.pagehead{padding-top:48px}
 }
+
+/* Homepage refinement: bold esports composition, clear hierarchy and connected career path */
+.hero{
+  max-width:none;width:100%;padding:34px clamp(22px,5.2vw,82px) 30px;
+  background:
+    radial-gradient(ellipse at 78% 42%,#d7ff5e18 0,transparent 37%),
+    linear-gradient(105deg,#07090b 0%,#090c0d 54%,#10170b 100%);
+  border-bottom:1px solid #d7ff5e30;
+}
+.hero-layout{max-width:1420px;margin:0 auto;grid-template-columns:minmax(0,1.03fr) minmax(360px,.97fr);gap:clamp(18px,3vw,48px);min-height:430px}
+.hero-copy{padding:18px 0 10px}
+.hero .eyebrow{font-size:10px;letter-spacing:1.8px}
+.hero h1{font-size:clamp(54px,6.4vw,94px);line-height:.86;letter-spacing:-1.4px;margin:27px 0 22px;max-width:760px}
+.hero h1 span{color:var(--lime);white-space:normal}
+.hero p{max-width:590px;font-size:clamp(12px,.95vw,14px);line-height:1.8;color:#d0d2d2}
+.hero .actions{margin-top:28px}
+.hero-cta{min-width:260px;min-height:58px;padding:17px 25px;font-size:clamp(13px,1.2vw,17px);letter-spacing:.2px;text-transform:none;font-style:italic;font-weight:900;clip-path:polygon(5% 0,100% 0,95% 100%,0 100%);box-shadow:0 0 28px #d7ff5e35}
+.arena-visual{height:430px;border:0;background:
+  radial-gradient(ellipse at 48% 66%,#c7ff4a30 0,transparent 44%),
+  linear-gradient(150deg,#1a2113 0%,#090c0b 58%,#060807 100%);
+  clip-path:polygon(8% 0,100% 0,100% 88%,91% 100%,0 100%,0 12%);
+}
+.arena-visual:before{background:
+  linear-gradient(112deg,transparent 0 34%,#d7ff5e13 34.2%,transparent 35%),
+  linear-gradient(68deg,transparent 0 62%,#d7ff5e18 62.2%,transparent 63%),
+  repeating-linear-gradient(115deg,transparent 0 56px,#d7ff5e08 57px 58px);}
+.arena-ring{border-color:#d7ff5e60;box-shadow:0 0 35px #d7ff5e18}
+.arena-stage{bottom:10%;height:38%;border-top:2px solid #d7ff5e;box-shadow:0 -10px 35px #d7ff5e18}
+.arena-emblem{top:34%;width:148px;height:148px}
+.player-silhouette{width:48%;height:88%;right:4%;bottom:0;filter:drop-shadow(-16px 0 25px #d7ff5e25)}
+.player-head{right:23%;top:2%;width:36%;height:29%;background:radial-gradient(ellipse at 36% 30%,#68714d,#252c1c 46%,#080a08 75%);border-color:#d7ff5e66}
+.player-body{width:88%;height:68%;background:linear-gradient(115deg,#394329 0%,#171d12 26%,#080a08 72%);border-color:#d7ff5e55}
+.player-arm{right:40%;bottom:25%;width:62%;height:13%;background:linear-gradient(90deg,#727c50,#2a321f 65%,#12170d);box-shadow:0 0 12px #d7ff5e1a}
+.player-phone{right:61%;bottom:18%;width:82px;height:116px;border-color:#d7ff5e;background:linear-gradient(145deg,#29391b,#080d08)}
+.arena-trophy{top:18%;left:11%}
+.journey{max-width:1420px;margin:26px auto 0;padding:21px 0 10px;border-top:1px solid #ffffff25}
+.journey-heading{font-size:9px;letter-spacing:1.4px;margin-bottom:21px}
+.journey-track{position:relative;gap:14px;padding:0 8px}
+.journey-track:before{content:"";position:absolute;left:4%;right:4%;height:2px;bottom:-18px;background:linear-gradient(90deg,#d7ff5e44,var(--lime),#d7ff5e44);box-shadow:0 0 13px #d7ff5e77}
+.journey-step{position:relative;z-index:1;flex:1;flex-direction:column;justify-content:center;text-align:center;gap:9px;min-height:78px}
+.journey-icon{width:42px;height:42px;border:0;background:transparent}
+.journey-icon iconify-icon{font-size:34px;filter:drop-shadow(0 0 8px #d7ff5e40)}
+.journey-step b{font-size:clamp(8px,.75vw,11px);line-height:1.45;white-space:normal;min-height:27px}
+.journey-arrow{position:relative;z-index:1;font-size:25px;line-height:1;color:var(--lime);text-shadow:0 0 10px #d7ff5e55}
+@media(max-width:900px){
+ .hero{padding-top:36px}.hero-layout{grid-template-columns:1fr;gap:22px;min-height:0}
+ .hero-copy{max-width:720px}.arena-visual{height:350px;max-width:720px}
+ .journey-track{gap:7px}
+}
+@media(max-width:600px){
+ .hero{padding:35px 18px 22px}.hero h1{font-size:clamp(43px,11.5vw,64px);line-height:.9;margin:21px 0 17px}
+ .hero p{font-size:12px;line-height:1.75}.hero-cta{min-width:0;width:100%;min-height:54px}
+ .arena-visual{height:270px}.arena-emblem{width:105px;height:105px}
+ .journey{margin-top:20px;padding-top:16px}.journey-heading{font-size:7px;letter-spacing:.7px;margin-bottom:13px}
+ .journey-track{grid-template-columns:repeat(5,minmax(0,1fr));display:grid;gap:3px;padding:0}
+ .journey-track:before{left:8%;right:8%;bottom:32px}
+ .journey-step{min-width:0;gap:6px;min-height:85px}
+ .journey-icon{width:30px;height:30px}.journey-icon iconify-icon{font-size:25px}
+ .journey-step b{font-size:6.5px;letter-spacing:0;line-height:1.35}
+ .journey-arrow{display:none}
+}
+@media(max-width:380px){
+ .hero h1{font-size:40px}.arena-visual{height:245px}
+ .journey-heading span:last-child{max-width:48%;text-align:right}
+ .journey-step b{font-size:6px}
+}
+
 </style>
 </head>
 <body>
@@ -107,13 +174,11 @@ home:function(){return [
 <div class="hero-layout">
   <div class="hero-copy">
     <div class="eyebrow"><span class="live-mark"></span> MOBILE LEGENDS: BANG BANG <i>·</i> MERCY CIRCUIT</div>
-    <h1>ТВОЙ ПУТЬ<br>В КИБЕРСПОРТ <span>НАЧИНАЕТСЯ ЗДЕСЬ.</span></h1>
-    <p>MERCY ARENA открывает дорогу в соревновательную сцену Mobile Legends: Bang Bang. Покажи свой уровень, найди команду, развивайся через турниры и получи шанс выйти на полупрофессиональную и профессиональную сцену.</p>
+    <h1>ТВОЙ ПУТЬ<br>В КИБЕРСПОРТ <span>НАЧИНАЕТСЯ ЗДЕСЬ</span></h1>
+    <p>Участвуй в турнирах, развивай свой скилл, найди команду, выходи на полупрофессиональную и профессиональную сцену и зарабатывай, играя в Mobile Legends: Bang Bang.</p>
     <div class="actions">
-      <a class="btn primary hero-cta" href="#/tournaments">Начать свой путь <iconify-icon icon="mdi:arrow-top-right"></iconify-icon></a>
-      <a class="btn secondary" href="#/about">Как это работает</a>
+      <a class="btn primary hero-cta" href="#/tournaments">Начать свой путь <iconify-icon icon="mdi:arrow-right"></iconify-icon></a>
     </div>
-    <div class="hero-note"><iconify-icon icon="mdi:shield-check-outline"></iconify-icon> Честные соревнования · Проверяемые результаты · Реальные возможности</div>
   </div>
   <div class="arena-visual" aria-label="MERCY ARENA — путь игрока к киберспорту">
     <div class="arena-beam beam-a"></div><div class="arena-beam beam-b"></div>
@@ -127,17 +192,17 @@ home:function(){return [
   </div>
 </div>
 <div class="journey">
-  <div class="journey-heading"><span>ТВОЙ МАРШРУТ</span><span>ОТ ПЕРВОГО ТУРНИРА ДО PRO-СЦЕНЫ</span></div>
+  <div class="journey-heading"><span>ТВОЙ ПУТЬ В MERCY ARENA</span><span>ОТ ПЕРВОГО МАТЧА ДО ПРОФЕССИОНАЛЬНОЙ СЦЕНЫ</span></div>
   <div class="journey-track">
-    <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:gamepad-variant-outline"></iconify-icon></span><b>ИГРОК</b></div>
-    <span class="journey-arrow">›</span>
-    <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:trophy-outline"></iconify-icon></span><b>ТУРНИРЫ</b></div>
-    <span class="journey-arrow">›</span>
-    <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:chart-line"></iconify-icon></span><b>РОСТ И РЕЙТИНГ</b></div>
-    <span class="journey-arrow">›</span>
-    <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:account-group-outline"></iconify-icon></span><b>ПОЛУПРО-СЦЕНА</b></div>
-    <span class="journey-arrow">›</span>
-    <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:crown-outline"></iconify-icon></span><b>PRO</b></div>
+    <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:gamepad-variant-outline"></iconify-icon></span><b>ОБЫЧНЫЙ<br>ИГРОК</b></div>
+    <span class="journey-arrow">»</span>
+    <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:trophy-outline"></iconify-icon></span><b>УЧАСТНИК<br>ТУРНИРОВ</b></div>
+    <span class="journey-arrow">»</span>
+    <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:chart-box-outline"></iconify-icon></span><b>ПЕРСПЕКТИВНЫЙ<br>ИГРОК</b></div>
+    <span class="journey-arrow">»</span>
+    <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:account-group-outline"></iconify-icon></span><b>ПОЛУПРОФЕССИОНАЛЬНАЯ<br>СЦЕНА</b></div>
+    <span class="journey-arrow">»</span>
+    <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:crown-outline"></iconify-icon></span><b>ПРОФЕССИОНАЛЬНЫЙ<br>КИБЕРСПОРТ</b></div>
   </div>
 </div>
 </section>`,
