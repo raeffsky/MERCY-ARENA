@@ -17,7 +17,7 @@ CREATE INDEX IF NOT EXISTS idx_auth_magic_links_expiry ON auth_magic_links(expir
 
 CREATE TABLE IF NOT EXISTS auth_sessions (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,
   expires_at INTEGER NOT NULL,
   revoked_at INTEGER,
