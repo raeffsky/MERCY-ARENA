@@ -25,13 +25,15 @@ export async function onRequestGet({ request, env }) {
     const id = crypto.randomUUID();
     await env.DB.prepare("INSERT OR IGNORE INTO users (id,email,display_name) VALUES (?,?,?)").bind(id, email, email).run();
     user = await env.DB.prepare("SELECT id,email,display_name FROM users WHERE email=?").bind(email).first();
-    if (user) {
-      await env.DB.prepare("INSERT OR IGNORE INTO user_roles (user_id,role) VALUES (?,'administrator')").bind(user.id).run();
+  }
+  if (!user) return redirect("/#/organizer?auth=not_allowed");
+  if (bootstrapEmail && email === bootstrapEmail) {
+    const granted = await env.DB.prepare("INSERT OR IGNORE INTO user_roles (user_id,role) VALUES (?,'administrator')").bind(user.id).run();
+    if (granted.meta && granted.meta.changes === 1) {
       await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'bootstrap_admin_created','user',?,?)")
         .bind(crypto.randomUUID(), user.id, user.id, JSON.stringify({ email, role: "administrator", method: "email_magic_link" })).run();
     }
   }
-  if (!user) return redirect("/#/organizer?auth=not_allowed");
 
   const tokenValue = randomToken(32);
   const tokenDigest = await sha256(tokenValue);
