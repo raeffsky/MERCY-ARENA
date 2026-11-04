@@ -7,13 +7,12 @@ async function passwordHash(password, saltBytes) {
   const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: saltBytes, iterations: ITERATIONS }, material, 256);
   return "pbkdf2-sha256$" + ITERATIONS + "$" + btoa(String.fromCharCode(...saltBytes)) + "$" + btoa(String.fromCharCode(...new Uint8Array(bits)));
 }
-function b64url(bytes) { return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,""); }
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({error:{code:"DATABASE_NOT_CONFIGURED",message:"База данных не подключена."}},503);
   if (!request.headers.get("origin") || !sameOrigin(request,env)) return json({error:{code:"ORIGIN_REJECTED",message:"Запрос отклонён."}},403);
 
-  let emailHash = "", ipHash = "";
+  let userId = null, emailHash = "", ipHash = "";
   try {
     let body;
     try { body=await request.json(); } catch { return json({error:{code:"INVALID_JSON",message:"Проверьте данные формы."}},400); }
@@ -27,13 +26,10 @@ export async function onRequestPost({ request, env }) {
     if(!gameId||!/^[0-9-]{5,40}$/.test(gameId)) return json({error:{code:"INVALID_GAME_ID",message:"Укажи корректный игровой ID MLBB."}},400);
     if(!["EXP","JUNGLE","MID","GOLD","ROAM","FLEX"].includes(role)) return json({error:{code:"INVALID_ROLE",message:"Выбери игровую роль."}},400);
 
-    // Verify every table touched by registration before writing anything.
-    const requiredTables = ["users","players","user_roles","audit_events","auth_sessions","auth_login_attempts"];
-    const tableChecks = await Promise.all(requiredTables.map(name =>
-      env.DB.prepare("PRAGMA table_info("+name+")").all()
-    ));
-    const columns = Object.fromEntries(requiredTables.map((name,i) => [name,new Set((tableChecks[i].results||[]).map(col=>col.name))]));
-    const requiredColumns = {
+    const requiredTables=["users","players","user_roles","audit_events","auth_sessions","auth_login_attempts"];
+    const tableChecks=await Promise.all(requiredTables.map(name=>env.DB.prepare("PRAGMA table_info("+name+")").all()));
+    const columns=Object.fromEntries(requiredTables.map((name,i)=>[name,new Map((tableChecks[i].results||[]).map(col=>[col.name,{type:String(col.type||"").toUpperCase(),pk:Number(col.pk||0)}]))]));
+    const requiredColumns={
       users:["id","email","display_name","password_hash"],
       players:["id","user_id","game_id","nickname","role","region","profile_status"],
       user_roles:["user_id","role"],
@@ -43,33 +39,26 @@ export async function onRequestPost({ request, env }) {
     };
     const missing=[];
     for(const [table,names] of Object.entries(requiredColumns)) for(const name of names) if(!columns[table].has(name)) missing.push(table+"."+name);
-    const sessionUserId = (tableChecks[4].results||[]).find(col=>col.name==="user_id");
-    if(missing.length) {
-      console.error("Registration schema is incomplete:",missing.join(", "));
-      return json({error:{code:"REGISTRATION_MIGRATION_REQUIRED",message:"База данных не обновлена (отсутствуют: "+missing.join(", ")+"). Примени миграции MERCY ARENA."}},503);
-    }
-    // Production D1 may have tables created from an older schema. Check
-    // the declared types for every value written by this registration flow.
-    const expectedTypes = {
-      users:{id:"TEXT",email:"TEXT",display_name:"TEXT",password_hash:"TEXT"},
-      players:{id:"TEXT",user_id:"TEXT",game_id:"TEXT",nickname:"TEXT",role:"TEXT",region:"TEXT",profile_status:"TEXT"},
-      user_roles:{user_id:"TEXT",role:"TEXT"},
-      audit_events:{id:"TEXT",actor_id:"TEXT",action:"TEXT",entity_type:"TEXT",entity_id:"TEXT",after_json:"TEXT"},
-      auth_sessions:{id:"TEXT",user_id:"TEXT",token_hash:"TEXT",expires_at:"INTEGER"},
+    if(missing.length) return json({error:{code:"REGISTRATION_MIGRATION_REQUIRED",message:"В D1 отсутствуют колонки: "+missing.join(", ")}},503);
+
+    // This production database uses legacy INTEGER primary/foreign keys.
+    // Keep the registration flow compatible with that schema.
+    const expected={
+      users:{id:"INTEGER",email:"TEXT",display_name:"TEXT",password_hash:"TEXT"},
+      players:{id:"INTEGER",user_id:"INTEGER",game_id:"TEXT",nickname:"TEXT",role:"TEXT",region:"TEXT",profile_status:"TEXT"},
+      user_roles:{user_id:"INTEGER",role:"TEXT"},
+      audit_events:{id:"INTEGER",actor_id:"INTEGER",action:"TEXT",entity_type:"TEXT",entity_id:"INTEGER",after_json:"TEXT"},
+      auth_sessions:{id:"TEXT",user_id:"INTEGER",token_hash:"TEXT",expires_at:"INTEGER"},
       auth_login_attempts:{id:"TEXT",email_hash:"TEXT",ip_hash:"TEXT",attempted_at:"INTEGER"}
     };
-    const typeMismatches=[];
-    for(let i=0;i<requiredTables.length;i++){
-      const table=requiredTables[i], actual=new Map((tableChecks[i].results||[]).map(col=>[col.name,String(col.type||"").toUpperCase()]));
-      for(const [column,expected] of Object.entries(expectedTypes[table])){
-        const found=actual.get(column);
-        if(found!==expected) typeMismatches.push(table+"."+column+": "+(found||"без типа")+" (нужно "+expected+")");
-      }
+    const mismatches=[];
+    for(const [table,cols] of Object.entries(expected)) for(const [name,type] of Object.entries(cols)){
+      const actual=columns[table].get(name)?.type;
+      if(actual!==type) mismatches.push(table+"."+name+"="+(actual||"unknown")+" (expected "+type+")");
     }
-    if(typeMismatches.length){
-      console.error("Registration schema type mismatch:",typeMismatches.join("; "));
-      return json({error:{code:"REGISTRATION_SCHEMA_TYPE_MISMATCH",message:"Структура D1 не совпадает со схемой регистрации: "+typeMismatches.join("; ")+". Нужна миграция для исправления указанных колонок."}},503);
-    }
+    if(mismatches.length) return json({error:{code:"REGISTRATION_SCHEMA_MISMATCH",message:"Схема D1 отличается от поддерживаемой: "+mismatches.join("; ")}},503);
+    const userPk=columns.users.get("id"), playerPk=columns.players.get("id"), auditPk=columns.audit_events.get("id");
+    if(userPk.pk!==1||playerPk.pk!==1||auditPk.pk!==1) return json({error:{code:"REGISTRATION_SCHEMA_MISMATCH",message:"Колонки users.id, players.id и audit_events.id должны быть INTEGER PRIMARY KEY."}},503);
 
     emailHash=await sha256(email);
     const ip=request.headers.get("CF-Connecting-IP")||"unknown";
@@ -78,33 +67,37 @@ export async function onRequestPost({ request, env }) {
     await env.DB.prepare("DELETE FROM auth_login_attempts WHERE attempted_at<=?").bind(now-3600).run();
     const attempts=await env.DB.prepare("SELECT COUNT(*) AS total FROM auth_login_attempts WHERE (email_hash=? OR ip_hash=?) AND attempted_at>?").bind(emailHash,ipHash,now-3600).first();
     if((attempts?.total||0)>=20) return json({error:{code:"REGISTER_RATE_LIMITED",message:"Слишком много попыток регистрации. Подожди немного и попробуй снова."}},429);
-
     const existing=await env.DB.prepare("SELECT id FROM users WHERE email=?").bind(email).first();
     if(existing) return json({error:{code:"EMAIL_EXISTS",message:"Аккаунт с таким email уже существует. Войди в него."}},409);
 
     const salt=crypto.getRandomValues(new Uint8Array(16));
     const storedHash=await passwordHash(password,salt);
-    const userId=crypto.randomUUID(), playerId=crypto.randomUUID();
-    const token=b64url(crypto.getRandomValues(new Uint8Array(32)));
+    const tokenBytes=crypto.getRandomValues(new Uint8Array(32));
+    const token=btoa(String.fromCharCode(...tokenBytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
     const tokenHash=await sha256(token);
-    await env.DB.batch([
-      env.DB.prepare("INSERT INTO auth_login_attempts (id,email_hash,ip_hash,attempted_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),emailHash,ipHash,now),
-      env.DB.prepare("INSERT INTO users (id,email,display_name,password_hash) VALUES (?,?,?,?)").bind(userId,email,displayName||nickname,storedHash),
-      env.DB.prepare("INSERT INTO user_roles (user_id,role) VALUES (?,'player')").bind(userId),
-      env.DB.prepare("INSERT INTO players (id,user_id,game_id,nickname,role,region,profile_status) VALUES (?,?,?,?,?,?, 'pending')").bind(playerId,userId,gameId,nickname,role,region||null),
-      env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (? ,?,'player_profile_submitted','player',?,?)").bind(crypto.randomUUID(),userId,playerId,JSON.stringify({nickname,role,region,profile_status:"pending"})),
-      env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),userId,tokenHash,now+SESSION_TTL)
-    ]);
+
+    const userInsert=await env.DB.prepare("INSERT INTO users (email,display_name,password_hash) VALUES (?,?,?)").bind(email,displayName||nickname,storedHash).run();
+    userId=Number(userInsert.meta?.last_row_id);
+    if(!Number.isSafeInteger(userId)||userId<=0) throw new Error("D1 did not return users.id after insert");
+
+    await env.DB.prepare("INSERT INTO user_roles (user_id,role) VALUES (?,'player')").bind(userId).run();
+    const playerInsert=await env.DB.prepare("INSERT INTO players (user_id,game_id,nickname,role,region,profile_status) VALUES (?,?,?,?,?,'pending')").bind(userId,gameId,nickname,role,region||null).run();
+    const playerId=Number(playerInsert.meta?.last_row_id);
+    if(!Number.isSafeInteger(playerId)||playerId<=0) throw new Error("D1 did not return players.id after insert");
+
+    await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'player_profile_submitted','player',?,?)").bind(userId,playerId,JSON.stringify({nickname,role,region,profile_status:"pending"})).run();
+    await env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),userId,tokenHash,now+SESSION_TTL).run();
+    await env.DB.prepare("INSERT INTO auth_login_attempts (id,email_hash,ip_hash,attempted_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),emailHash,ipHash,now).run();
     await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash,ipHash).run();
-    return json({authenticated:true,account:{id:userId,email,name:displayName||nickname},profile:{id:playerId,status:"pending",nickname}},201,{"set-cookie":sessionCookie(token)});
+    return json({authenticated:true,account:{id:String(userId),email,name:displayName||nickname},profile:{id:String(playerId),status:"pending",nickname}},201,{"set-cookie":sessionCookie(token)});
   } catch(error) {
     console.error("Player registration request failed:",error);
+    if(userId!==null) await env.DB.prepare("DELETE FROM users WHERE id=?").bind(userId).run().catch(()=>{});
     if(emailHash||ipHash) await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash||"__none__",ipHash||"__none__").run().catch(()=>{});
-    const detail=String(error?.message||"");
+    const detail=String(error?.message||"").replace(/[\r\n\t]+/g," ").slice(0,180);
     if(/UNIQUE constraint failed/i.test(detail)) return json({error:{code:"REGISTRATION_CONFLICT",message:"Этот email или игровой профиль уже зарегистрирован."}},409);
-    if(/FOREIGN KEY constraint failed/i.test(detail)) return json({error:{code:"REGISTRATION_RELATION_ERROR",message:"Не удалось связать аккаунт с игровым профилем. Проверь структуру базы данных."}},409);
-    const safeDetail=detail.replace(/[\r\n\t]+/g," ").slice(0,180);
-    return json({error:{code:"REGISTRATION_FAILED",message:"Регистрация не завершена: "+(safeDetail||"ошибка базы данных или конфигурации")}},500);
+    if(/FOREIGN KEY constraint failed/i.test(detail)) return json({error:{code:"REGISTRATION_RELATION_ERROR",message:"Ошибка связи аккаунта с игровым профилем: "+detail}},409);
+    return json({error:{code:"REGISTRATION_FAILED",message:"Регистрация не завершена: "+(detail||"ошибка базы данных")}},500);
   }
 }
 
