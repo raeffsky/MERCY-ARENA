@@ -655,6 +655,7 @@ var me=await response.json();
 if(me.authenticated && (me.roles||[]).includes('administrator')){
 showStatus('Доступ подтверждён. Роль: administrator');
 form.hidden=true;
+window.__mercyAdminEmail=me.account.email;
 var dashboard=document.getElementById('adminDashboard');
 if(dashboard){dashboard.hidden=false;dashboard.innerHTML=adminDashboardMarkup(me.account.email);initAdminDashboard();}
 }else if(me.authenticated){showStatus('У аккаунта нет прав администратора.');}
