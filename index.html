@@ -450,6 +450,31 @@ main{min-height:65vh}.wrap{width:min(1180px,100%);margin:auto;padding-left:clamp
   }
 }
 
+
+/* MERCY ARENA unified surface system */
+:root{
+  --bg:#08090d;
+  --panel:#101319;
+  --panel2:#101319;
+  --line:#292e38;
+  --muted:#9ba2af;
+}
+body{background:var(--bg)!important}
+.header{background:rgba(8,9,13,.96)!important}
+.drawer{background:var(--panel)!important;border-left-color:var(--line)!important}
+.panel,.tile,.step,.statline,.empty,.field,th,.quiet{
+  background-color:var(--panel)!important;
+}
+.panel,.tile,.step,.statline,.empty,.field,.table-wrap{
+  border-color:var(--line)!important;
+}
+.stat{border-color:var(--line)!important}
+.empty{border-style:dashed!important}
+th{background:var(--panel)!important}
+.field:focus{border-color:var(--blue)!important}
+.quiet{color:#d7dbe3!important}
+.links a:hover,.links a.active{background:#d7ff5e0a!important}
+
 </style>
 </head>
 <body>
