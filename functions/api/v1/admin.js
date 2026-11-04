@@ -55,6 +55,7 @@ async function getById(db, table, id) {
 }
 
 export async function onRequestGet({ request, env }) {
+  try {
   const auth = await authorize(request, env);
   if (auth.response) return auth.response;
   const resource = new URL(request.url).searchParams.get("resource") || "";
@@ -70,9 +71,14 @@ export async function onRequestGet({ request, env }) {
   if (!config) return bad("Неизвестный раздел.");
   const { results } = await env.DB.prepare("SELECT * FROM " + config.table + " ORDER BY id DESC LIMIT 200").all();
   return json({ data: results || [] });
+  } catch (error) {
+    console.error("MERCY ARENA admin GET failed:", error);
+    return json({ error: { code: "ADMIN_READ_FAILED", message: "Не удалось загрузить данные. Проверьте схему базы и журнал Functions." } }, 500);
+  }
 }
 
 export async function onRequestPost({ request, env }) {
+  try {
   if (!request.headers.get("origin") || !sameOrigin(request, env)) return json({ error: { code: "ORIGIN_REJECTED", message: "Запрос отклонён." } }, 403);
   const auth = await authorize(request, env);
   if (auth.response) return auth.response;
@@ -168,6 +174,10 @@ export async function onRequestPost({ request, env }) {
   const after = await getById(env.DB, config.table, recordId);
   await audit(env.DB, auth.user.id, resource + "_updated", resource, recordId, before, after);
   return json({ data: after });
+  } catch (error) {
+    console.error("MERCY ARENA admin POST failed:", error);
+    return json({ error: { code: "ADMIN_WRITE_FAILED", message: "Не удалось сохранить запись. Проверьте обязательные поля, связи и журнал Functions." } }, 500);
+  }
 }
 export function onRequestPatch() { return methodNotAllowed("GET, POST"); }
 export function onRequestDelete() { return methodNotAllowed("GET, POST"); }
