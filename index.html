@@ -87,7 +87,7 @@ function tile(icon,title,desc,href){return '<a class="tile" href="'+href+'"><ico
 function section(kicker,title,sub,body){return '<section class="wrap section"><div class="section-head"><div><div class="kicker">'+kicker+'</div><h2>'+title+'</h2></div>'+(sub?'<p class="sub">'+sub+'</p>':'')+'</div>'+body+'</section>'}
 var pages={
 home:function(){return [
-'<section class="hero">
+`<section class="hero">
 <div class="hero-layout">
   <div class="hero-copy">
     <div class="eyebrow"><span class="live-mark"></span> MOBILE LEGENDS: BANG BANG <i>·</i> MERCY CIRCUIT</div>
@@ -124,7 +124,7 @@ home:function(){return [
     <div class="journey-step"><span class="journey-icon"><iconify-icon icon="mdi:crown-outline"></iconify-icon></span><b>PRO</b></div>
   </div>
 </div>
-</section>',
+</section>`,
 section('MERCY CIRCUIT','ТУРНИРЫ','Только актуальные соревнования и понятный статус регистрации.','<div class="grid two"><div class="panel"><div class="statusbar"><span class="dot off"></span>НЕТ ОПУБЛИКОВАННЫХ ТУРНИРОВ</div><h3 class="panel-title" style="margin-top:15px">Следующий турнир ещё не объявлен</h3><p class="muted">Когда организатор опубликует соревнование, здесь появятся формат, даты и условия участия.</p><a class="btn secondary" href="#/tournaments" style="margin-top:12px">Все турниры</a></div><div class="panel"><div class="kicker">КАК ЭТО РАБОТАЕТ</div><h3 class="panel-title" style="margin-top:15px">От регистрации до финала</h3><p class="muted">Выбирай турнир, изучай правила, следи за сеткой и результатами матчей.</p><a class="btn quiet" href="#/about" style="margin-top:12px">О платформе</a></div></div>'),
 section('MATCH CENTER','МАТЧИ И РЕЗУЛЬТАТЫ','Расписание и итоги без вымышленных данных.','<div class="grid two"><div class="panel"><div class="statusbar"><span class="dot off"></span>РАСПИСАНИЕ ПУСТО</div><h3 class="panel-title" style="margin-top:15px">Ближайшие матчи</h3><p class="muted">Матчи появятся после публикации турнирной сетки.</p></div><div class="panel"><div class="statusbar"><span class="dot off"></span>НЕТ ПОДТВЕРЖДЁННЫХ ИТОГОВ</div><h3 class="panel-title" style="margin-top:15px">Последние результаты</h3><p class="muted">В ленту попадают только результаты, прошедшие проверку.</p></div></div><div style="margin-top:12px"><a class="btn secondary" href="#/brackets">Открыть центр матчей</a></div>'),
 section('COMPETITIVE LADDER','РЕЙТИНГИ','Позиции формируются только на основе сыгранных и подтверждённых матчей.','<div class="grid two"><div class="panel"><h3 class="panel-title">Командный рейтинг</h3><p class="muted">Таблица будет доступна после первых результатов.</p><a class="btn quiet" href="#/rankings" style="margin-top:10px">Открыть рейтинг</a></div><div class="panel"><h3 class="panel-title">Игроки</h3><p class="muted">Индивидуальная статистика и достижения участников.</p><a class="btn quiet" href="#/players" style="margin-top:10px">Каталог игроков</a></div></div>'),
