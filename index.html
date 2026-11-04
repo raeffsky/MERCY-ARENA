@@ -366,6 +366,40 @@ main{min-height:65vh}.wrap{width:min(1180px,100%);margin:auto;padding-left:clamp
   .journey-step b{font-size:7.3px!important}
 }
 
+
+/* Clean typography: text shadow only, no text panels */
+@media(max-width:600px){
+  .hero-copy p{
+    width:min(100%,340px)!important;max-width:340px!important;
+    margin:0!important;padding:0!important;
+    border:0!important;background:transparent!important;
+    box-shadow:none!important;
+    color:#f2f3ef!important;
+    font-size:12px!important;line-height:1.72!important;
+    text-shadow:0 2px 3px rgba(0,0,0,.98),0 4px 12px rgba(0,0,0,.95),0 0 24px rgba(0,0,0,.72)!important;
+  }
+  .hero-copy .eyebrow{
+    text-shadow:0 2px 5px #000,0 0 13px #000!important;
+  }
+  .hero-copy h1{
+    text-shadow:0 3px 5px rgba(0,0,0,.98),0 7px 22px rgba(0,0,0,.92),0 0 34px rgba(0,0,0,.65)!important;
+  }
+  .journey{
+    background:transparent!important;
+  }
+  .journey-heading span,
+  .journey-step b{
+    text-shadow:0 2px 4px rgba(0,0,0,.98),0 4px 12px rgba(0,0,0,.95),0 0 20px rgba(0,0,0,.75)!important;
+  }
+  .journey-step b{color:#fff!important}
+  .journey-icon iconify-icon{
+    filter:drop-shadow(0 2px 3px #000) drop-shadow(0 0 8px #d7ff5e55)!important;
+  }
+}
+@media(max-width:380px){
+  .hero-copy p{font-size:11.5px!important;line-height:1.68!important}
+}
+
 </style>
 </head>
 <body>
