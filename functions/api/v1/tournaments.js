@@ -7,7 +7,9 @@ export async function onRequestGet({ request, env }) {
   const tournamentId = url.searchParams.get("id");
   if (tournamentId && /^\d+$/.test(tournamentId)) {
     const item = await env.DB.prepare("SELECT t.id,t.title,t.description,t.game,t.region,t.format,t.status,t.max_teams,t.registration_open_at,t.registration_close_at,t.starts_at,t.ends_at,t.rules_url,t.season_id,t.published_at,(SELECT COUNT(*) FROM tournament_registrations r WHERE r.tournament_id=t.id AND r.status='approved') AS registered_teams FROM tournaments t WHERE t.id=? AND t.published_at IS NOT NULL AND t.status!='draft' LIMIT 1").bind(Number(tournamentId)).first();
-    return json({data:item?[item]:[],limit:1});
+    if (!item) return json({data:[],limit:1});
+    const { results: registeredTeams } = await env.DB.prepare("SELECT tm.id,tm.name,tm.tag,tm.logo_url,tm.region FROM tournament_registrations r JOIN teams tm ON tm.id=r.team_id WHERE r.tournament_id=? AND r.status='approved' ORDER BY tm.name COLLATE NOCASE").bind(Number(tournamentId)).all();
+    return json({data:[{...item,registered_teams_list:registeredTeams||[]}],limit:1});
   }
   const status = url.searchParams.get("status");
   const format = url.searchParams.get("format");
