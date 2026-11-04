@@ -1,4 +1,4 @@
-import { json, databaseUnavailable, parseLimit, publicList, methodNotAllowed } from "./_lib/http.js";
+import { json, databaseUnavailable, parseLimit, publicList } from "./_lib/http.js";
 
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return databaseUnavailable();
@@ -14,4 +14,3 @@ export async function onRequestGet({ request, env }) {
   const { results } = await stmt.all();
   return json(publicList(results || [], limit));
 }
-export function onRequest({ request }) { return request.method === "GET" ? null : methodNotAllowed(); }
