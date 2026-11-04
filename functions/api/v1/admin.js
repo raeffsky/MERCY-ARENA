@@ -127,6 +127,7 @@ export async function onRequestPost({ request, env }) {
   if (resource === "tournaments" && payload.format && !FORMATS.has(payload.format)) return bad("Недопустимый формат турнира.");
   if (payload.status && STATUSES[resource] && !STATUSES[resource].has(payload.status)) return bad("Недопустимый статус.");
   if (resource === "players" && payload.role && !["EXP","JUNGLE","MID","GOLD","ROAM","FLEX"].includes(payload.role)) return bad("Недопустимая игровая роль.");
+  if (resource === "players" && payload.profile_status && !["pending","approved","rejected"].includes(payload.profile_status)) return bad("Недопустимый статус проверки профиля.");
   if (resource === "matches" && payload.bracket && !["main","upper","lower","group","final"].includes(payload.bracket)) return bad("Недопустимая сетка.");
   if (resource === "tournaments" && action === "create") {
     payload.game = payload.game || "Mobile Legends: Bang Bang";
