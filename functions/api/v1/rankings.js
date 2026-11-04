@@ -6,7 +6,7 @@ export async function onRequestGet({ request, env }) {
   const limit = parseLimit(url);
   const scope = url.searchParams.get("scope") || "teams";
   if (scope === "teams") {
-    const { results } = await env.DB.prepare(`SELECT t.id,t.name,t.tag,COUNT(m.id) AS matches_played,SUM(CASE WHEN m.winner_team_id = t.id THEN 1 ELSE 0 END) AS wins FROM teams t LEFT JOIN matches m ON (m.team_a_id = t.id OR m.team_b_id = t.id) AND m.status = 'confirmed' GROUP BY t.id ORDER BY wins DESC,matches_played DESC,t.name COLLATE NOCASE LIMIT ?`).bind(limit).all();
+    const { results } = await env.DB.prepare(`SELECT t.id,t.name,t.tag,COUNT(m.id) AS matches_played,SUM(CASE WHEN m.winner_team_id = t.id THEN 1 ELSE 0 END) AS wins FROM teams t LEFT JOIN matches m ON (m.team_a_id = t.id OR m.team_b_id = t.id) AND m.status = 'completed' AND m.result_verified_at IS NOT NULL GROUP BY t.id ORDER BY wins DESC,matches_played DESC,t.name COLLATE NOCASE LIMIT ?`).bind(limit).all();
     return json({ data: results || [], meta: { scope, limit } });
   }
   if (scope === "players") {
