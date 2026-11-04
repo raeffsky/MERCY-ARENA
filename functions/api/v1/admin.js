@@ -2,7 +2,7 @@ import { json, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
 
 const TABLES = {
-  tournaments: { table: "tournaments", fields: ["title","description","game","region","format","status","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id"] },
+  tournaments: { table: "tournaments", fields: ["title","description","game","region","format","status","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","prize_pool","poster_url"] },
   teams: { table: "teams", fields: ["name","tag","logo_url","captain_id","region","status"] },
   players: { table: "players", fields: ["user_id","game_id","nickname","role","team_id","region","profile_status"] },
   matches: { table: "matches", fields: ["tournament_id","round_number","bracket","match_number","scheduled_at","status","team_a_id","team_b_id","score_a","score_b","winner_team_id"] },
@@ -32,7 +32,7 @@ function bad(message, status = 400) {
 }
 function cleanValue(field, value) {
   const integerFields = new Set(["max_teams","season_id","captain_id","user_id","team_id","tournament_id","round_number","match_number","team_a_id","team_b_id","score_a","score_b","winner_team_id"]);
-  const nullableFields = new Set(["description","region","logo_url","captain_id","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","role","team_id","scheduled_at","team_a_id","team_b_id","score_a","score_b","winner_team_id"]);
+  const nullableFields = new Set(["description","region","logo_url","poster_url","prize_pool","captain_id","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","role","team_id","scheduled_at","team_a_id","team_b_id","score_a","score_b","winner_team_id"]);
   if (value === "" && nullableFields.has(field)) return null;
   if (integerFields.has(field)) {
     if (value === null && nullableFields.has(field)) return null;
