@@ -43,9 +43,13 @@ export async function onRequestPost({ request, env }) {
     };
     const missing=[];
     for(const [table,names] of Object.entries(requiredColumns)) for(const name of names) if(!columns[table].has(name)) missing.push(table+"."+name);
+    const sessionUserId = (tableChecks[4].results||[]).find(col=>col.name==="user_id");
     if(missing.length) {
       console.error("Registration schema is incomplete:",missing.join(", "));
-      return json({error:{code:"REGISTRATION_MIGRATION_REQUIRED",message:"База данных не обновлена (отсутствуют: "+missing.join(", ")+"). Проверь миграции MERCY ARENA."}},503);
+      return json({error:{code:"REGISTRATION_MIGRATION_REQUIRED",message:"База данных не обновлена (отсутствуют: "+missing.join(", ")+"). Примени миграции MERCY ARENA."}},503);
+    }
+    if(sessionUserId && String(sessionUserId.type||"").toUpperCase()!=="TEXT") {
+      return json({error:{code:"AUTH_SESSION_SCHEMA_MISMATCH",message:"Требуется миграция 0006_fix_auth_session_user_id_type.sql для исправления типа auth_sessions.user_id."}},503);
     }
 
     emailHash=await sha256(email);
