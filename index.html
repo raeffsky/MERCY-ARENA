@@ -301,6 +301,71 @@ main{min-height:65vh}.wrap{width:min(1180px,100%);margin:auto;padding-left:clamp
  .journey-step b{font-size:6px!important}
 }
 
+
+/* Final mobile readability pass: improve every label, not only the headline */
+@media(max-width:600px){
+  .arena-visual .arena-hero-image{
+    opacity:.38!important;
+    object-position:78% center!important;
+    filter:saturate(.78) contrast(1.05)!important;
+  }
+  .hero:after{
+    background:
+      linear-gradient(90deg,rgba(3,5,4,.985) 0%,rgba(3,5,4,.94) 58%,rgba(3,5,4,.78) 100%),
+      linear-gradient(0deg,rgba(3,5,4,.98) 0%,rgba(3,5,4,.28) 60%,rgba(3,5,4,.62) 100%)!important;
+  }
+  .hero-copy .eyebrow{
+    font-size:8px!important;letter-spacing:1px!important;
+    line-height:1.6!important;color:#d7ff5e!important;
+    text-shadow:0 2px 10px #000!important;
+  }
+  .hero-copy h1{
+    text-shadow:0 3px 20px #000!important;
+    -webkit-text-stroke:.15px rgba(255,255,255,.2);
+  }
+  .hero-copy p{
+    width:min(100%,330px)!important;max-width:330px!important;
+    margin:0!important;padding:11px 13px!important;
+    border-left:2px solid #d7ff5e!important;
+    background:rgba(2,5,4,.68)!important;
+    color:#f0f2ed!important;font-size:12px!important;
+    line-height:1.65!important;letter-spacing:.05px!important;
+    text-shadow:0 1px 5px #000!important;
+    box-shadow:0 7px 22px #0003!important;
+  }
+  .hero-copy .hero-cta{
+    font-size:14px!important;font-weight:900!important;
+    text-shadow:none!important;
+  }
+  .journey{
+    background:linear-gradient(180deg,rgba(2,5,4,.50),rgba(2,5,4,.74))!important;
+    border-top-color:#ffffff55!important;
+  }
+  .journey-heading{
+    font-size:8px!important;letter-spacing:.8px!important;
+    color:#e9eee5!important;line-height:1.55!important;
+  }
+  .journey-heading span:first-child{color:#d7ff5e!important}
+  .journey-heading span:last-child{color:#d1d6ce!important}
+  .journey-step{padding:5px 2px!important}
+  .journey-icon iconify-icon{
+    font-size:25px!important;filter:drop-shadow(0 0 7px #d7ff5e55)!important;
+  }
+  .journey-step b{
+    display:block!important;color:#fff!important;
+    font-size:8px!important;line-height:1.35!important;
+    font-weight:800!important;letter-spacing:.15px!important;
+    text-shadow:0 2px 7px #000!important;
+    overflow-wrap:normal!important;word-break:normal!important;
+  }
+}
+@media(max-width:380px){
+  .hero-copy .eyebrow{font-size:7.5px!important;letter-spacing:.75px!important}
+  .hero-copy p{font-size:11.5px!important;padding:10px 11px!important}
+  .journey-heading{font-size:7.5px!important}
+  .journey-step b{font-size:7.3px!important}
+}
+
 </style>
 </head>
 <body>
