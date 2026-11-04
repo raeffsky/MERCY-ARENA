@@ -48,8 +48,27 @@ export async function onRequestPost({ request, env }) {
       console.error("Registration schema is incomplete:",missing.join(", "));
       return json({error:{code:"REGISTRATION_MIGRATION_REQUIRED",message:"База данных не обновлена (отсутствуют: "+missing.join(", ")+"). Примени миграции MERCY ARENA."}},503);
     }
-    if(sessionUserId && String(sessionUserId.type||"").toUpperCase()!=="TEXT") {
-      return json({error:{code:"AUTH_SESSION_SCHEMA_MISMATCH",message:"Требуется миграция 0006_fix_auth_session_user_id_type.sql для исправления типа auth_sessions.user_id."}},503);
+    // Production D1 may have tables created from an older schema. Check
+    // the declared types for every value written by this registration flow.
+    const expectedTypes = {
+      users:{id:"TEXT",email:"TEXT",display_name:"TEXT",password_hash:"TEXT"},
+      players:{id:"TEXT",user_id:"TEXT",game_id:"TEXT",nickname:"TEXT",role:"TEXT",region:"TEXT",profile_status:"TEXT"},
+      user_roles:{user_id:"TEXT",role:"TEXT"},
+      audit_events:{id:"TEXT",actor_id:"TEXT",action:"TEXT",entity_type:"TEXT",entity_id:"TEXT",after_json:"TEXT"},
+      auth_sessions:{id:"TEXT",user_id:"TEXT",token_hash:"TEXT",expires_at:"INTEGER"},
+      auth_login_attempts:{id:"TEXT",email_hash:"TEXT",ip_hash:"TEXT",attempted_at:"INTEGER"}
+    };
+    const typeMismatches=[];
+    for(let i=0;i<requiredTables.length;i++){
+      const table=requiredTables[i], actual=new Map((tableChecks[i].results||[]).map(col=>[col.name,String(col.type||"").toUpperCase()]));
+      for(const [column,expected] of Object.entries(expectedTypes[table])){
+        const found=actual.get(column);
+        if(found!==expected) typeMismatches.push(table+"."+column+": "+(found||"без типа")+" (нужно "+expected+")");
+      }
+    }
+    if(typeMismatches.length){
+      console.error("Registration schema type mismatch:",typeMismatches.join("; "));
+      return json({error:{code:"REGISTRATION_SCHEMA_TYPE_MISMATCH",message:"Структура D1 не совпадает со схемой регистрации: "+typeMismatches.join("; ")+". Нужна миграция для исправления указанных колонок."}},503);
     }
 
     emailHash=await sha256(email);
