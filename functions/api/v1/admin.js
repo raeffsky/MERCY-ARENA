@@ -181,7 +181,8 @@ export async function onRequestPost({ request, env }) {
   return json({ data: after });
   } catch (error) {
     console.error("MERCY ARENA admin POST failed:", error);
-    return json({ error: { code: "ADMIN_WRITE_FAILED", message: "Не удалось сохранить запись. Проверьте обязательные поля, связи и журнал Functions." } }, 500);
+    const detail = String(error && error.message || "Неизвестная ошибка").slice(0, 300);
+    return json({ error: { code: "ADMIN_WRITE_FAILED", message: "Не удалось сохранить запись: " + detail } }, 500);
   }
 }
 export function onRequestPatch() { return methodNotAllowed("GET, POST"); }
