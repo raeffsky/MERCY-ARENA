@@ -17,10 +17,6 @@ MERCY ARENA — турнирная платформа для Mobile Legends: Ban
 
 Скрипт сборки копирует статический сайт и все файлы `public/` в `dist/`. Никакие зависимости или npm-сборка не требуются. Файл `_headers` задаёт базовые HTTP-заголовки и кеширование.
 
-GitHub Pages пока оставлен как резерв до подтверждения успешной публикации на Cloudflare Pages:
-
-- https://raeffsky.github.io/MERCY-ARENA/
-
 ## Разделы
 
 - Главная панель
@@ -40,14 +36,13 @@ GitHub Pages пока оставлен как резерв до подтверж
 
 Демо-турниры, команды, игроки, расписания, результаты и рейтинги не добавляются. Пустые состояния остаются пустыми до подключения доверенного backend.
 
-Auto Result Engine пока не активирован. Frontend не заявляет о получении live-результатов MLBB. См. [контракт интеграции backend](docs/BACKEND-INTEGRATION.md): API, проверка результатов, требования безопасности и модель данных.
+Auto Result Engine пока не активирован. Frontend не заявляет о получении live-результатов MLBB. Backend foundation: Cloudflare Pages Functions + Cloudflare D1. Схема БД и публичные API-маршруты находятся в `migrations/` и `functions/api/v1/`. См. [контракт интеграции backend](docs/BACKEND-INTEGRATION.md).
 
 ## Бренд
 
 - Фон: `#08090D`
 - Основной акцент: `#D7FF5E`
 - Текст: `#F5F6FA`
-- Вторичный акцент: `#6D78FF`
 - Логотип: `public/assets/brand/mercy-mark.png`
 - Векторный логотип: `public/assets/brand/mercy-mark.svg`
 
