@@ -45,8 +45,9 @@ export async function onRequestPost({ request, env }) {
   const emailHash=await sha256(email), ip=request.headers.get("CF-Connecting-IP")||"unknown";
   const ipHash=await sha256(ip+String(env.AUTH_RATE_LIMIT_SALT||env.APP_BASE_URL||"mercy-arena"));
   const now=Math.floor(Date.now()/1000);
+  await env.DB.prepare("DELETE FROM auth_login_attempts WHERE attempted_at<=?").bind(now-3600).run();
   const attempts=await env.DB.prepare("SELECT COUNT(*) AS total FROM auth_login_attempts WHERE (email_hash=? OR ip_hash=?) AND attempted_at>?").bind(emailHash,ipHash,now-3600).first();
-  if((attempts?.total||0)>=5) return json({error:{code:"REGISTER_RATE_LIMITED",message:"Слишком много попыток регистрации. Попробуй позже."}},429);
+  if((attempts?.total||0)>=20) return json({error:{code:"REGISTER_RATE_LIMITED",message:"Слишком много попыток регистрации. Подожди немного и попробуй снова."}},429);
   await env.DB.prepare("INSERT INTO auth_login_attempts (id,email_hash,ip_hash,attempted_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),emailHash,ipHash,now).run();
   const existing=await env.DB.prepare("SELECT id FROM users WHERE email=?").bind(email).first();
   if(existing) return json({error:{code:"EMAIL_EXISTS",message:"Аккаунт с таким email уже существует. Войди в него."}},409);
@@ -72,9 +73,10 @@ export async function onRequestPost({ request, env }) {
     if (/FOREIGN KEY constraint failed/i.test(detail)) {
       return json({error:{code:"REGISTRATION_RELATION_ERROR",message:"Не удалось связать аккаунт с игровым профилем. Обратись к администратору."}},409);
     }
-    return json({error:{code:"REGISTRATION_FAILED",message:"Не удалось создать аккаунт. Проверь обновление базы данных и попробуй снова."}},500);
+    const safeDetail = detail.replace(/[\r\n\t]+/g," ").slice(0,180);
+    return json({error:{code:"REGISTRATION_FAILED",message:"Ошибка базы данных при создании профиля: "+(safeDetail||"неизвестная ошибка")}},500);
   }
-  await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=?").bind(emailHash).run();
+  await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash,ipHash).run();
   const token=b64url(crypto.getRandomValues(new Uint8Array(32)));
   const tokenHash=await sha256(token);
   await env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),userId,tokenHash,now+SESSION_TTL).run();
