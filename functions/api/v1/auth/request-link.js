@@ -4,7 +4,7 @@ import { normalizedEmail, validEmail, randomToken, sha256, sameOrigin } from "..
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ error: { code: "DATABASE_NOT_CONFIGURED", message: "База данных не подключена." } }, 503);
   if (!sameOrigin(request, env)) return json({ error: { code: "ORIGIN_REJECTED", message: "Запрос отклонён." } }, 403);
-  if (!env.RESEND_API_KEY || !env.AUTH_FROM_EMAIL || !env.APP_BASE_URL || !env.BOOTSTRAP_ADMIN_EMAIL) {
+  if (!env.BREVO_API_KEY || !env.AUTH_FROM_EMAIL || !env.APP_BASE_URL || !env.BOOTSTRAP_ADMIN_EMAIL) {
     return json({ error: { code: "AUTH_NOT_CONFIGURED", message: "Вход по почте ещё не настроен на сервере." } }, 503);
   }
   let body;
@@ -27,13 +27,15 @@ export async function onRequestPost({ request, env }) {
       .bind(crypto.randomUUID(), email, tokenHash, emailHash, ipHash, Math.floor(Date.now() / 1000) + 900).run();
     const link = String(env.APP_BASE_URL).replace(/\/$/, "") + "/api/v1/auth/verify?token=" + encodeURIComponent(token);
     const safeLink = link.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-    const sent = await fetch("https://api.resend.com/emails", {
+    const sent = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
-      headers: { Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
+      headers: { "api-key": env.BREVO_API_KEY, "accept": "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: env.AUTH_FROM_EMAIL, to: [email], subject: "Вход в MERCY ARENA",
-        text: "Ссылка для входа (действует 15 минут): " + link + "\nЕсли вы не запрашивали вход, проигнорируйте это письмо.",
-        html: '<div style="background:#08090d;color:#f5f6fa;padding:32px;font-family:Arial,sans-serif"><h1 style="color:#d7ff5e">MERCY ARENA</h1><p>Вы запросили вход в кабинет.</p><p><a href="' + safeLink + '" style="display:inline-block;background:#d7ff5e;color:#08090d;padding:14px 20px;text-decoration:none;font-weight:bold">ВОЙТИ В MERCY ARENA</a></p><p>Ссылка действует 15 минут и используется один раз.</p><p style="color:#9ba2af;font-size:12px">Если вы не запрашивали вход, проигнорируйте это письмо.</p></div>'
+        sender: { name: "MERCY ARENA", email: env.AUTH_FROM_EMAIL },
+        to: [{ email }],
+        subject: "Вход в MERCY ARENA",
+        textContent: "Ссылка для входа (действует 15 минут): " + link + "\nЕсли вы не запрашивали вход, проигнорируйте это письмо.",
+        htmlContent: '<div style="background:#08090d;color:#f5f6fa;padding:32px;font-family:Arial,sans-serif"><h1 style="color:#d7ff5e">MERCY ARENA</h1><p>Вы запросили вход в кабинет.</p><p><a href="' + safeLink + '" style="display:inline-block;background:#d7ff5e;color:#08090d;padding:14px 20px;text-decoration:none;font-weight:bold">ВОЙТИ В MERCY ARENA</a></p><p>Ссылка действует 15 минут и используется один раз.</p><p style="color:#9ba2af;font-size:12px">Если вы не запрашивали вход, проигнорируйте это письмо.</p></div>'
       })
     });
     if (!sent.ok) {
