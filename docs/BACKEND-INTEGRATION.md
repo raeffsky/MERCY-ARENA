@@ -16,9 +16,13 @@ The frontend is deployed through Cloudflare Pages. The first backend layer uses 
 - Trusted match-result provider for MLBB. No official provider credentials or documented public endpoint are configured in this repository.
 - Background worker for polling/webhooks, validation, idempotency, and retry handling.
 
-## Suggested API surface
+## API surface
 
-All responses are JSON. All timestamps are ISO-8601 UTC. Every list endpoint supports cursor pagination.
+Implemented public GET routes: `/api/v1/health`, `/api/v1/tournaments`, `/api/v1/teams`, `/api/v1/players`, `/api/v1/matches`, `/api/v1/seasons`, and `/api/v1/rankings?scope=teams|players`. Public list routes currently return real database records only.
+
+## Planned API surface
+
+All responses are JSON. All timestamps are ISO-8601 UTC. Public list endpoints currently support a bounded `limit` parameter (default 20, maximum 50). Cursor pagination is reserved for a later API revision.
 
 - GET /api/v1/tournaments?status=&format=&cursor=
 - GET /api/v1/tournaments/{id}
