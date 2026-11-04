@@ -58,10 +58,13 @@ export async function onRequestPost({ request, env }) {
       env.DB.prepare("INSERT INTO users (id,email,display_name,password_hash) VALUES (?,?,?,?)").bind(userId,email,displayName||nickname,storedHash),
       env.DB.prepare("INSERT INTO user_roles (user_id,role) VALUES (?,'player')").bind(userId),
       env.DB.prepare("INSERT INTO players (id,user_id,game_id,nickname,role,region,profile_status) VALUES (?,?,?,?,?,?, 'pending')").bind(playerId,userId,gameId,nickname,role,region||null),
-      env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'player_profile_submitted','player',?,?)").bind(userId,playerId,JSON.stringify({nickname,role,region,profile_status:"pending"}))
+      env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (? ,?,'player_profile_submitted','player',?,?)").bind(crypto.randomUUID(),userId,playerId,JSON.stringify({nickname,role,region,profile_status:"pending"}))
     ]);
   } catch(error) {
     console.error("Player registration failed",error);
+    // Do not lock a player out because the server/database rejected a registration
+    // for an infrastructure or schema error.
+    await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash,ipHash).run().catch(() => {});
     const detail = String(error?.message || "");
     if (/UNIQUE constraint failed/i.test(detail)) {
       return json({error:{code:"REGISTRATION_CONFLICT",message:"Этот email или игровой профиль уже зарегистрирован."}},409);
