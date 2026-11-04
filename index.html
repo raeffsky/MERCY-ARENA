@@ -487,6 +487,9 @@ th{background:var(--panel)!important}
 
 /* Hide explanatory one-line subtitles below page and section headings */
 .section-head .sub,.pagehead .lead{display:none!important}
+
+/* Organizer admin workspace */
+.admin-shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px;align-items:start}.admin-nav{display:grid;gap:7px;position:sticky;top:100px}.admin-nav button{background:#101319;border:1px solid #292e38;color:#c8ccd5;text-align:left;padding:13px 14px;font-weight:800;font-size:12px;letter-spacing:.4px;cursor:pointer}.admin-nav button.active,.admin-nav button:hover{border-color:#d7ff5e66;color:#d7ff5e;background:#d7ff5e0b}.admin-main{min-width:0}.admin-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}.admin-top h2{font:800 30px 'Barlow Condensed';margin:0}.admin-user{font-size:12px;color:#aeb4c0}.admin-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.admin-stat{background:#101319;border:1px solid #292e38;padding:16px}.admin-stat span{display:block;color:#9ba2af;font-size:11px;font-weight:800;letter-spacing:1px}.admin-stat b{display:block;font:800 32px 'Barlow Condensed';margin-top:6px;color:#d7ff5e}.admin-panel{background:#101319;border:1px solid #292e38;padding:18px;margin-bottom:12px}.admin-panel h3{font:800 22px 'Barlow Condensed';margin:0 0 12px}.admin-table-wrap{overflow:auto}.admin-table{width:100%;border-collapse:collapse;min-width:480px;font-size:12px}.admin-table th,.admin-table td{padding:12px 10px;border-bottom:1px solid #292e38;text-align:left}.admin-table th{color:#aeb4c0;font-size:10px;letter-spacing:1px}.admin-empty{padding:22px;border:1px dashed #343b47;color:#9ba2af;font-size:13px}.admin-note{border-left:3px solid #d7ff5e;padding:12px 14px;background:#d7ff5e0b;color:#c5cad3;font-size:12px;line-height:1.6;margin-bottom:14px}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-actions .btn{cursor:pointer}@media(max-width:760px){.admin-shell{grid-template-columns:1fr}.admin-nav{position:static;display:flex;overflow:auto;padding-bottom:5px}.admin-nav button{white-space:nowrap}.admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -582,8 +585,9 @@ seasons:function(){return pageHead('SEASON SYSTEM','СЕЗОНЫ','Соревн�
 '<section class="wrap section"><div id="seasonResults"><div class="grid two"><div class="panel"><div class="statusbar"><span class="dot off"></span>НЕ АКТИВЕН</div><h3 class="panel-title" style="margin-top:14px">Текущий сезон</h3><p class="muted">Сезон будет объявлен вместе с календарём соревнований.</p></div><div class="panel"><div class="kicker">SEASON ARCHIVE</div><h3 class="panel-title" style="margin-top:14px">Архив сезонов</h3><p class="muted">Здесь сохраняются итоговые таблицы и чемпионы завершённых сезонов.</p></div></div></div><div style="margin-top:14px">'+empty('mdi:calendar-star-outline','Сезоны ещё не запущены','После объявления первого сезона здесь появятся этапы и календарь.')+'</div></section>'},
 engine:function(){return pageHead('AUTOMATION / VERIFIED DATA','AUTO RESULT ENGINE','Система получения и проверки результатов матчей. Автоматическая публикация требует официального или надёжного источника игровых данных.')+
 '<section class="wrap section"><div class="panel"><div class="statusbar"><span class="dot off"></span>ОЖИДАЕТ ПОДКЛЮЧЕНИЯ ИСТОЧНИКА</div><h3 class="panel-title" style="font-size:26px;margin-top:15px">Автоматическая обработка результатов отключена</h3><p class="muted">На данный момент MERCY ARENA не подключён к игровому API или поставщику турнирных данных. Поэтому сайт не может самостоятельно определить завершение матча или достоверно получить счёт.</p></div><div class="steps" style="margin-top:14px"><div class="step"><div class="step-num">01</div><h3>Получение</h3><p>Приём результата от подключённого источника с идентификатором матча и временем завершения.</p></div><div class="step"><div class="step-num">02</div><h3>Валидация</h3><p>Сверка участников, турнира, счёта и целостности данных. Конфликты отправляются на ручную проверку.</p></div><div class="step"><div class="step-num">03</div><h3>Публикация</h3><p>После подтверждения обновляются матч, сетка и рейтинг. Повторные события не должны дублировать результат.</p></div></div><div style="margin-top:14px">'+empty('mdi:shield-alert-outline','Публикация заблокирована до интеграции','Это намеренно: система не будет создавать фиктивные результаты или показывать неподтверждённые данные.')+'</div></section>'},
-organizer:function(){return pageHead('ORGANIZER HUB','КАБИНЕТ ОРГАНИЗАТОРА','Инструменты управления турнирами, заявками, сетками, матчами и судейскими решениями.')+
-'<section class="wrap section"><div class="grid two"><div class="panel"><div class="kicker">TOURNAMENT CONTROL</div><h3 class="panel-title" style="margin-top:10px">Управление турнирами</h3><p class="muted">Создание соревнований, выбор формата, расписания и правил.</p></div><div class="panel"><div class="kicker">TEAM APPLICATIONS</div><h3 class="panel-title" style="margin-top:10px">Заявки команд</h3><p class="muted">Проверка составов, допуск участников и управление слотами.</p></div><div class="panel"><div class="kicker">MATCH OPERATIONS</div><h3 class="panel-title" style="margin-top:10px">Матчи и сетки</h3><p class="muted">Назначение встреч, переносы и контроль статусов.</p></div><div class="panel"><div class="kicker">REFEREE DESK</div><h3 class="panel-title" style="margin-top:10px">Судейская</h3><p class="muted">Проверка спорных результатов и история решений.</p></div></div><div class="panel" id="organizerAuth" style="margin-top:14px"><div class="kicker">ADMIN ACCESS</div><h3 class="panel-title" style="font-size:26px">Вход администратора</h3><p class="muted">Войдите с администраторским email и паролем.</p><form id="adminLoginForm" class="toolbar" style="display:grid;max-width:420px"><input class="field" id="adminLoginEmail" type="email" autocomplete="username" placeholder="Email администратора" required><input class="field" id="adminLoginPassword" type="password" autocomplete="current-password" placeholder="Пароль" required><button class="btn primary" type="submit">Войти</button></form><p class="muted" id="authMessage" role="status">Введите email администратора и пароль.</p><div id="authAccount"></div></div></section>'},
+organizer:function(){return pageHead('ORGANIZER HUB','ПАНЕЛЬ УПРАВЛЕНИЯ','Управление соревновательной системой MERCY ARENA.')+
+'<section class="wrap section"><div class="panel" id="organizerAuth"><div class="kicker">ADMIN ACCESS</div><h3 class="panel-title" style="font-size:26px">Вход администратора</h3><p class="muted">Войдите с администраторским email и паролем.</p><form id="adminLoginForm" class="toolbar" style="display:grid;max-width:420px"><input class="field" id="adminLoginEmail" type="email" autocomplete="username" placeholder="Email администратора" required><input class="field" id="adminLoginPassword" type="password" autocomplete="current-password" placeholder="Пароль" required><button class="btn primary" type="submit">Войти</button></form><p class="muted" id="authMessage" role="status">Проверяем авторизацию…</p><div id="authAccount"></div></div><div id="adminDashboard" hidden></div></section>'},
+
 about:function(){return pageHead('THE PLATFORM','О MERCY ARENA','Турнирная платформа для сообщества Mobile Legends: Bang Bang, где соревнования и результаты должны быть прозрачными и проверяемыми.')+
 '<section class="wrap section"><div class="grid"><div class="tile"><iconify-icon icon="mdi:trophy-outline"></iconify-icon><h3>Соревнования</h3><p>Турниры, правила, регистрация и сетки.</p></div><div class="tile"><iconify-icon icon="mdi:account-group-outline"></iconify-icon><h3>Сообщество</h3><p>Команды, игроки и история достижений.</p></div><div class="tile"><iconify-icon icon="mdi:shield-check-outline"></iconify-icon><h3>Достоверность</h3><p>Только проверенные результаты и прозрачные статусы.</p></div></div></section>'}
 };
@@ -600,6 +604,46 @@ function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,funct
 function dateLabel(value){if(!value)return 'Дата уточняется';var d=new Date(value);return Number.isNaN(d.getTime())?'Дата уточняется':new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short'}).format(d)}
 async function apiList(path){var response=await fetch('/api/v1/'+path,{headers:{accept:'application/json'},cache:'no-store'});if(!response.ok)throw new Error('API '+response.status);var payload=await response.json();return Array.isArray(payload.data)?payload.data:[]}
 function cardList(items,kind){if(!items.length)return '';return '<div class="grid two">'+items.map(function(item){if(kind==='tournaments')return '<article class="tile"><div class="statusbar"><span class="dot"></span>'+esc(item.status)+'</div><h3>'+esc(item.title)+'</h3><p>'+esc(item.description||item.format||'Турнир MERCY ARENA')+'</p><p class="muted" style="margin-top:10px">'+esc(dateLabel(item.starts_at))+'</p></article>';if(kind==='teams')return '<article class="tile"><div class="kicker">'+esc(item.tag)+'</div><h3>'+esc(item.name)+'</h3><p>'+esc(item.region||'Регион не указан')+'</p></article>';return '<article class="tile"><h3>'+esc(item.nickname)+'</h3><p>'+esc(item.role||'Роль не указана')+' · '+esc(item.game_id||'Игровой ID не указан')+'</p></article>'}).join('')+'</div>'}
+function adminDashboardMarkup(email){return '<div class="admin-shell"><nav class="admin-nav" aria-label="Разделы панели"><button class="active" data-admin-tab="overview">Обзор</button><button data-admin-tab="tournaments">Турниры</button><button data-admin-tab="teams">Команды</button><button data-admin-tab="players">Игроки</button><button data-admin-tab="matches">Матчи</button><button data-admin-tab="seasons">Сезоны</button><button data-admin-tab="applications">Заявки</button><button data-admin-tab="account">Аккаунт</button></nav><div class="admin-main"><div class="admin-top"><div><div class="kicker">MERCY CONTROL / ADMINISTRATOR</div><h2 id="adminSectionTitle">Обзор системы</h2></div><div class="admin-actions"><span class="admin-user">'+esc(email)+'</span><button class="btn secondary" id="logoutButton" type="button">Выйти</button></div></div><div id="adminContent"><div class="admin-empty">Загружаем данные MERCY ARENA…</div></div></div></div>'}
+async function initAdminDashboard(){
+var content=document.getElementById('adminContent'),title=document.getElementById('adminSectionTitle');
+var cache={};
+async function load(key,path){if(!cache[key])cache[key]=await apiList(path);return cache[key]}
+function table(headers,rows){if(!rows.length)return '<div class="admin-empty">Пока нет записей.</div>';return '<div class="admin-panel admin-table-wrap"><table class="admin-table"><thead><tr>'+headers.map(function(h){return '<th>'+h+'</th>'}).join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table></div>'}
+function stat(label,value){return '<div class="admin-stat"><span>'+label+'</span><b>'+value+'</b></div>'}
+async function render(tab){
+document.querySelectorAll('[data-admin-tab]').forEach(function(b){b.classList.toggle('active',b.dataset.adminTab===tab)});
+var names={overview:'Обзор системы',tournaments:'Турниры',teams:'Команды',players:'Игроки',matches:'Матчи',seasons:'Сезоны',applications:'Заявки',account:'Аккаунт'};
+title.textContent=names[tab]||names.overview;
+content.innerHTML='<div class="admin-empty">Загружаем данные…</div>';
+try{
+if(tab==='overview'){
+var all=await Promise.all([load('tournaments','tournaments?limit=100'),load('teams','teams?limit=100'),load('players','players?limit=100'),load('matches','matches?limit=100'),load('seasons','seasons?limit=100')]);
+content.innerHTML='<div class="admin-note">Подключены реальные данные API. Публичные списки показывают опубликованные записи; черновики и заявки будут подключены к защищённым операциям управления отдельным этапом.</div><div class="admin-stats">'+stat('ТУРНИРЫ',all[0].length)+stat('КОМАНДЫ',all[1].length)+stat('ИГРОКИ',all[2].length)+stat('МАТЧИ',all[3].length)+'</div><div class="admin-stats">'+stat('СЕЗОНЫ',all[4].length)+stat('МАТЧИ ЗАВЕРШЕНЫ',all[3].filter(function(x){return x.status==='completed'}).length)+stat('В ПРОЦЕССЕ',all[3].filter(function(x){return x.status==='in_progress'}).length)+stat('ОЖИДАЮТ ИГРЫ',all[3].filter(function(x){return x.status==='scheduled'}).length)+'</div><div class="admin-panel"><h3>Последние турниры</h3>'+ (all[0].length?table(['НАЗВАНИЕ','СТАТУС','ФОРМАТ'],all[0].slice(0,5).map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.status)+'</td><td>'+esc(x.format)+'</td></tr>'})):'<div class="admin-empty">Опубликованных турниров пока нет.</div>')+'</div>';
+}else if(tab==='tournaments'){
+var items=await load('tournaments','tournaments?limit=100');content.innerHTML='<div class="admin-note">Список опубликованных турниров из API. Создание черновиков и публикация будут доступны после подключения защищённых административных endpoint.</div>'+table(['ТУРНИР','СТАТУС','ФОРМАТ','НАЧАЛО'],items.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.status)+'</td><td>'+esc(x.format)+'</td><td>'+esc(dateLabel(x.starts_at))+'</td></tr>'}));
+}else if(tab==='teams'){
+var items=await load('teams','teams?limit=100');content.innerHTML=table(['КОМАНДА','ТЕГ','РЕГИОН','СТАТУС'],items.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.tag)+'</td><td>'+esc(x.region||'—')+'</td><td>'+esc(x.status)+'</td></tr>'}));
+}else if(tab==='players'){
+var items=await load('players','players?limit=100');content.innerHTML=table(['ИГРОК','ID В ИГРЕ','РОЛЬ','РЕГИОН'],items.map(function(x){return '<tr><td>'+esc(x.nickname)+'</td><td>'+esc(x.game_id||'—')+'</td><td>'+esc(x.role||'—')+'</td><td>'+esc(x.region||'—')+'</td></tr>'}));
+}else if(tab==='matches'){
+var items=await load('matches','matches?limit=100');content.innerHTML=table(['ТУРНИР','РАУНД','МАТЧ','СТАТУС','СЧЁТ'],items.map(function(x){return '<tr><td>#'+esc(x.tournament_id)+'</td><td>'+esc(x.round_number)+'</td><td>'+esc(x.match_number)+'</td><td>'+esc(x.status)+'</td><td>'+esc(x.score_a==null?'—':x.score_a)+' : '+esc(x.score_b==null?'—':x.score_b)+'</td></tr>'}));
+}else if(tab==='seasons'){
+var items=await load('seasons','seasons?limit=100');content.innerHTML=table(['СЕЗОН','СТАТУС','НАЧАЛО','ОКОНЧАНИЕ'],items.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.status)+'</td><td>'+esc(dateLabel(x.starts_at))+'</td><td>'+esc(dateLabel(x.ends_at))+'</td></tr>'}));
+}else if(tab==='applications'){
+content.innerHTML='<div class="admin-empty">Заявки команд пока не выведены в интерфейс: для них нужен отдельный защищённый API с проверкой роли и аудитом решений. Непроверенные изменения в регистрациях не допускаются.</div>';
+}else if(tab==='account'){
+content.innerHTML='<div class="admin-panel"><h3>Администратор</h3><p class="muted">'+esc(window.__mercyAdminEmail||'')+'</p><p class="muted">Сессия хранится в защищённой HttpOnly cookie. Выход завершит текущую сессию на этом устройстве.</p><button class="btn secondary" id="logoutButtonInline" type="button">Выйти из аккаунта</button></div>';
+var inline=document.getElementById('logoutButtonInline');if(inline)inline.addEventListener('click',logout);
+}
+}catch(error){content.innerHTML='<div class="admin-empty">Не удалось загрузить раздел: '+esc(error.message)+'. Проверь доступность API.</div>'}
+}
+async function logout(){await fetch('/api/v1/auth/logout',{method:'POST',credentials:'same-origin'});location.reload()}
+window.__mercyAdminEmail=window.__mercyAdminEmail||'';
+document.querySelectorAll('[data-admin-tab]').forEach(function(b){b.addEventListener('click',function(){render(b.dataset.adminTab)})});
+var out=document.getElementById('logoutButton');if(out)out.addEventListener('click',logout);
+await render('overview');
+}
 async function wireAuth(key){
 if(key!=='organizer')return;
 var form=document.getElementById('adminLoginForm'),email=document.getElementById('adminLoginEmail'),password=document.getElementById('adminLoginPassword'),message=document.getElementById('authMessage'),account=document.getElementById('authAccount');
@@ -608,13 +652,13 @@ function showStatus(text){if(message)message.textContent=text}
 async function loadSession(){
 var response=await fetch('/api/v1/me',{cache:'no-store',credentials:'same-origin'});
 var me=await response.json();
-if(me.authenticated){
-showStatus('Вы вошли в систему. Роль: '+(me.roles||[]).join(', '));
-if(account)account.innerHTML='<p class="muted">'+esc(me.account.email)+'</p><button class="btn secondary" id="logoutButton" type="button">Выйти</button>';
+if(me.authenticated && (me.roles||[]).includes('administrator')){
+showStatus('Доступ подтверждён. Роль: administrator');
 form.hidden=true;
-var logout=document.getElementById('logoutButton');
-if(logout)logout.addEventListener('click',async function(){await fetch('/api/v1/auth/logout',{method:'POST',credentials:'same-origin'});location.reload()});
-}else{showStatus('Введите email администратора и пароль.')}
+var dashboard=document.getElementById('adminDashboard');
+if(dashboard){dashboard.hidden=false;dashboard.innerHTML=adminDashboardMarkup(me.account.email);initAdminDashboard();}
+}else if(me.authenticated){showStatus('У аккаунта нет прав администратора.');}
+else{showStatus('Введите email администратора и пароль.')}
 }
 try{await loadSession()}catch(e){showStatus('Не удалось проверить сессию. Попробуйте обновить страницу.')}
 form.addEventListener('submit',async function(event){
