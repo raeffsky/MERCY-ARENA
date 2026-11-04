@@ -492,6 +492,93 @@ th{background:var(--panel)!important}
 .admin-shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px;align-items:start}.admin-nav{display:grid;gap:7px;position:sticky;top:100px}.admin-nav button{background:#101319;border:1px solid #292e38;color:#c8ccd5;text-align:left;padding:13px 14px;font-weight:800;font-size:12px;letter-spacing:.4px;cursor:pointer}.admin-nav button.active,.admin-nav button:hover{border-color:#d7ff5e66;color:#d7ff5e;background:#d7ff5e0b}.admin-main{min-width:0}.admin-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}.admin-top h2{font:800 30px 'Barlow Condensed';margin:0}.admin-user{font-size:12px;color:#aeb4c0}.admin-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.admin-stat{background:#101319;border:1px solid #292e38;padding:16px}.admin-stat span{display:block;color:#9ba2af;font-size:11px;font-weight:800;letter-spacing:1px}.admin-stat b{display:block;font:800 32px 'Barlow Condensed';margin-top:6px;color:#d7ff5e}.admin-panel{background:#101319;border:1px solid #292e38;padding:18px;margin-bottom:12px}.admin-panel h3{font:800 22px 'Barlow Condensed';margin:0 0 12px}.admin-table-wrap{overflow:auto}.admin-table{width:100%;border-collapse:collapse;min-width:480px;font-size:12px}.admin-table th,.admin-table td{padding:12px 10px;border-bottom:1px solid #292e38;text-align:left}.admin-table th{color:#aeb4c0;font-size:10px;letter-spacing:1px}.admin-empty{padding:22px;border:1px dashed #343b47;color:#9ba2af;font-size:13px}.admin-note{border-left:3px solid #d7ff5e;padding:12px 14px;background:#d7ff5e0b;color:#c5cad3;font-size:12px;line-height:1.6;margin-bottom:14px}.admin-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-actions .btn{cursor:pointer}@media(max-width:760px){.admin-shell{grid-template-columns:1fr}.admin-nav{position:static;display:flex;overflow:auto;padding-bottom:5px}.admin-nav button{white-space:nowrap}.admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .admin-editor{display:grid;gap:14px}.admin-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.admin-field{display:grid;gap:6px;color:#aeb4c0;font-size:12px;font-weight:700}.admin-field .field{width:100%;min-width:0;box-sizing:border-box}.admin-field textarea.field{min-height:92px;resize:vertical}.admin-row-actions{white-space:nowrap}.admin-row-actions .btn{padding:8px 10px;font-size:11px}.admin-form-grid .admin-field:has(textarea){grid-column:1/-1}@media(max-width:600px){.admin-form-grid{grid-template-columns:1fr}.admin-panel{padding:14px}.admin-row-actions .btn{margin:2px 0}}
 .admin-record-id{display:inline-block;margin-right:7px;color:#d7ff5e}.admin-copy-id{display:inline-block;border:1px solid #39404c;background:#171c25;color:#aeb4c0;padding:5px 7px;font-size:10px;cursor:pointer}.admin-copy-id:hover{border-color:#d7ff5e;color:#d7ff5e}
+
+/* About platform page */
+.about-hero{position:relative;overflow:hidden;border-bottom:1px solid #d7ff5e2b;background:radial-gradient(ellipse at 77% 34%,#d7ff5e16,transparent 35%),linear-gradient(120deg,#08090d,#0d1110 62%,#10170b)}
+.about-hero-inner{max-width:1420px;margin:auto;padding:clamp(42px,6vw,78px) clamp(20px,5.2vw,82px) 28px}
+.about-kicker,.about-section-label{display:flex;justify-content:space-between;gap:18px;color:var(--lime);font-size:9px;font-weight:900;letter-spacing:2px}
+.about-kicker{justify-content:flex-start;align-items:center}
+.about-hero-grid{display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:clamp(24px,5vw,75px);padding:48px 0 44px}
+.about-overline{font-size:9px;font-weight:900;letter-spacing:2.4px;color:var(--lime)}
+.about-hero-copy h1{font:900 clamp(58px,8.4vw,112px)/.79 'Barlow Condensed';letter-spacing:-1px;margin:22px 0 24px}
+.about-hero-copy h1 span,.about-intro h2 em,.about-flow-heading h2 em,.about-trust h2 em,.about-faq h2 em{color:var(--lime);font-style:normal}
+.about-hero-copy p{max-width:620px;color:#c0c5c4;font-size:13px;line-height:1.95}
+.about-hero-actions{display:flex;gap:11px;flex-wrap:wrap;margin-top:25px}
+.about-emblem-panel{min-height:390px;position:relative;display:grid;place-items:center;overflow:hidden;border:1px solid #d7ff5e45;background:linear-gradient(145deg,#151d10,#080a09 65%);clip-path:polygon(8% 0,100% 0,100% 90%,91% 100%,0 100%,0 10%)}
+.about-emblem-panel:before,.about-emblem-panel:after{content:"";position:absolute;inset:12%;border:1px solid #d7ff5e25;transform:rotate(45deg)}
+.about-emblem-panel:after{inset:23%;border-color:#d7ff5e20;transform:rotate(45deg)}
+.about-emblem-glow{position:absolute;width:65%;aspect-ratio:1;border-radius:50%;background:#d7ff5e18;filter:blur(65px)}
+.about-emblem-panel>img{position:relative;z-index:1;width:min(48%,220px);filter:drop-shadow(0 0 35px #d7ff5e45)}
+.about-emblem-caption{position:absolute;z-index:2;bottom:25px;left:28px;display:grid;gap:5px}
+.about-emblem-caption b{font:800 22px 'Barlow Condensed';letter-spacing:2px}
+.about-emblem-caption span,.about-corner{font-size:8px;letter-spacing:2px;color:#929b8a}
+.about-corner{position:absolute;right:25px;top:24px}.about-corner-b{top:auto;right:25px;bottom:31px}
+.about-manifesto{display:grid;grid-template-columns:180px 1fr;gap:25px;align-items:start;border-top:1px solid #ffffff20;padding:23px 0 0}
+.about-manifesto>span{font-size:9px;letter-spacing:2px;color:var(--lime);font-weight:900}
+.about-manifesto p{margin:0;max-width:900px;font:700 clamp(18px,2.2vw,27px)/1.35 'Barlow Condensed';text-transform:uppercase}
+.about-intro{padding-top:75px;padding-bottom:75px}
+.about-section-label{padding-bottom:20px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.about-section-label span:last-child{color:#707887}
+.about-intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:start}
+.about-intro h2,.about-flow-heading h2,.about-trust h2,.about-faq h2{font:900 clamp(40px,6vw,70px)/.91 'Barlow Condensed';margin:0}
+.about-lead{font:700 clamp(20px,2.5vw,29px)/1.4 'Barlow Condensed';margin:0 0 15px}
+.about-intro-grid .muted{font-size:12px;line-height:2}
+.about-dark-band{background:#0d1015;border-top:1px solid #ffffff12;border-bottom:1px solid #ffffff12;padding:66px 0}
+.about-pillar-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.about-pillar{min-height:270px;padding:23px 19px;background:#11151c;border:1px solid #292f39;display:flex;flex-direction:column}
+.about-pillar-icon{color:var(--lime);font-size:27px;margin-bottom:22px}
+.about-pillar>span{font-size:8px;letter-spacing:1.6px;color:#7e8793}
+.about-pillar h3{font:800 25px 'Barlow Condensed';margin:10px 0}
+.about-pillar p{font-size:10px;line-height:1.9;color:#a2a9b5;margin:0 0 20px}
+.about-pillar a{margin-top:auto;color:var(--lime);text-decoration:none;font-size:9px;font-weight:900;letter-spacing:.5px}
+.about-pillar a iconify-icon{vertical-align:middle;font-size:14px}
+.about-flow{padding-top:75px;padding-bottom:78px}
+.about-flow-heading{display:grid;grid-template-columns:1fr .7fr;gap:40px;align-items:end;margin-bottom:30px}
+.about-flow-heading .muted{max-width:390px}
+.about-flow-list{border-top:1px solid var(--line)}
+.about-flow-item{display:grid;grid-template-columns:75px 1fr 35px;gap:20px;align-items:center;padding:21px 8px;border-bottom:1px solid var(--line)}
+.about-flow-item>b{font:800 32px 'Barlow Condensed';color:var(--lime)}
+.about-flow-item h3{font:700 22px 'Barlow Condensed';margin:0 0 5px}
+.about-flow-item p{font-size:10px;line-height:1.8;color:var(--muted);margin:0}
+.about-flow-item>iconify-icon{font-size:25px;color:#9ca58c}
+.about-trust{background:linear-gradient(110deg,#11170d,#0b0e0c 65%);border-block:1px solid #d7ff5e30;padding:70px 0}
+.about-trust-grid{display:grid;grid-template-columns:1fr 1fr;gap:55px;align-items:start}
+.about-trust h2{font-size:clamp(40px,5.4vw,65px);margin-top:18px}
+.about-trust-copy>p{font:700 21px/1.45 'Barlow Condensed';margin:0 0 23px}
+.about-trust-copy ul{list-style:none;padding:0;margin:0;display:grid;gap:16px}
+.about-trust-copy li{display:grid;grid-template-columns:20px 1fr;gap:12px;font-size:10px;line-height:1.85;color:#b2b8b5}
+.about-trust-copy li iconify-icon{color:var(--lime);font-size:18px}
+.about-trust-copy li b{color:#f5f6fa}
+.about-circuit{padding-top:72px;padding-bottom:72px}
+.about-circuit-card{display:grid;grid-template-columns:1fr 250px;gap:30px;align-items:center;padding:clamp(25px,5vw,55px);background:radial-gradient(circle at 83% 50%,#d7ff5e18,transparent 25%),#10141a;border:1px solid #343b42}
+.about-circuit-card h2{font:900 clamp(43px,7vw,82px)/.9 'Barlow Condensed';margin:14px 0}
+.about-circuit-card p{max-width:670px;color:#aab1bc;font-size:12px;line-height:1.9}
+.about-circuit-mark{display:grid;place-items:center;min-height:170px}
+.about-circuit-mark img{width:145px;filter:drop-shadow(0 0 24px #d7ff5e35)}
+.about-faq{padding-top:10px;padding-bottom:75px}
+.about-faq h2{margin:0 0 27px}
+.about-faq-list{border-top:1px solid var(--line)}
+.about-faq details{border-bottom:1px solid var(--line);padding:0 4px}
+.about-faq summary{position:relative;cursor:pointer;list-style:none;padding:19px 40px 19px 0;font:700 21px 'Barlow Condensed'}
+.about-faq summary::-webkit-details-marker{display:none}
+.about-faq summary:after{content:"+";position:absolute;right:5px;top:14px;color:var(--lime);font:400 27px Manrope}
+.about-faq details[open] summary:after{content:"−"}
+.about-faq details p{max-width:850px;color:#aab1bc;font-size:11px;line-height:1.9;margin:0;padding:0 35px 20px 0}
+.about-contact{background:#d7ff5e;color:#10130b;padding:47px 0}
+.about-contact-inner{display:grid;grid-template-columns:1fr auto;gap:35px;align-items:center}
+.about-contact .about-overline{color:#344019}
+.about-contact h2{font:900 clamp(38px,5.2vw,61px)/.88 'Barlow Condensed';margin:14px 0}
+.about-contact p{max-width:570px;font-size:11px;line-height:1.8;color:#344019}
+.about-contact-actions{display:grid;justify-items:start;gap:12px;min-width:230px}
+.about-contact-actions .btn{background:#10130b;color:#d7ff5e}
+.about-contact-link{font-size:10px;font-weight:900;text-decoration:none}
+.about-contact-actions>span{font-size:8px;color:#53612e}
+.about-disclaimer{display:flex;gap:12px;align-items:flex-start;padding-top:22px;padding-bottom:22px;color:#858b96}
+.about-disclaimer iconify-icon{font-size:17px;flex:none;color:var(--lime)}
+.about-disclaimer p{font-size:9px;line-height:1.8;margin:0}
+@media(max-width:850px){.about-hero-grid{grid-template-columns:1fr}.about-emblem-panel{min-height:300px}.about-pillar-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.about-trust-grid{grid-template-columns:1fr;gap:30px}.about-contact-inner{grid-template-columns:1fr}.about-contact-actions{grid-template-columns:auto auto;align-items:center}.about-contact-actions>span{grid-column:1/-1}}
+@media(max-width:560px){.about-hero-inner{padding:38px 18px 22px}.about-hero-grid{padding:35px 0 30px;gap:24px}.about-hero-copy h1{font-size:clamp(54px,15vw,76px)}.about-hero-copy p{font-size:12px}.about-hero-actions{display:grid}.about-hero-actions .btn{width:100%}.about-emblem-panel{min-height:250px}.about-manifesto{grid-template-columns:1fr;gap:9px}.about-intro{padding-top:50px;padding-bottom:52px}.about-intro-grid,.about-flow-heading{grid-template-columns:1fr;gap:18px}.about-pillar-grid{grid-template-columns:1fr}.about-pillar{min-height:0}.about-dark-band{padding:48px 0}.about-flow{padding-top:52px;padding-bottom:55px}.about-flow-item{grid-template-columns:42px 1fr 24px;gap:10px;padding:17px 0}.about-flow-item>b{font-size:26px}.about-flow-item h3{font-size:20px}.about-trust{padding:50px 0}.about-circuit{padding-top:50px;padding-bottom:50px}.about-circuit-card{grid-template-columns:1fr}.about-circuit-mark{min-height:100px}.about-circuit-mark img{width:100px}.about-faq{padding-bottom:52px}.about-faq summary{font-size:19px}.about-contact{padding:38px 0}.about-contact-actions{grid-template-columns:1fr}.about-contact-actions>span{grid-column:auto}.about-disclaimer{padding-top:17px;padding-bottom:17px}}
+
 </style>
 </head>
 <body>
@@ -590,8 +677,73 @@ engine:function(){return pageHead('AUTOMATION / VERIFIED DATA','AUTO RESULT ENGI
 organizer:function(){return pageHead('ORGANIZER HUB','ПАНЕЛЬ УПРАВЛЕНИЯ','Управление соревновательной системой MERCY ARENA.')+
 '<section class="wrap section"><div class="panel" id="organizerAuth"><div class="kicker">ADMIN ACCESS</div><h3 class="panel-title" style="font-size:26px">Вход администратора</h3><p class="muted">Войдите с администраторским email и паролем.</p><form id="adminLoginForm" class="toolbar" style="display:grid;max-width:420px"><input class="field" id="adminLoginEmail" type="email" autocomplete="username" placeholder="Email администратора" required><input class="field" id="adminLoginPassword" type="password" autocomplete="current-password" placeholder="Пароль" required><button class="btn primary" type="submit">Войти</button></form><p class="muted" id="authMessage" role="status">Проверяем авторизацию…</p><div id="authAccount"></div></div><div id="adminDashboard" hidden></div></section>'},
 
-about:function(){return pageHead('THE PLATFORM','О MERCY ARENA','Турнирная платформа для сообщества Mobile Legends: Bang Bang, где соревнования и результаты должны быть прозрачными и проверяемыми.')+
-'<section class="wrap section"><div class="grid"><div class="tile"><iconify-icon icon="mdi:trophy-outline"></iconify-icon><h3>Соревнования</h3><p>Турниры, правила, регистрация и сетки.</p></div><div class="tile"><iconify-icon icon="mdi:account-group-outline"></iconify-icon><h3>Сообщество</h3><p>Команды, игроки и история достижений.</p></div><div class="tile"><iconify-icon icon="mdi:shield-check-outline"></iconify-icon><h3>Достоверность</h3><p>Только проверенные результаты и прозрачные статусы.</p></div></div></section>'}
+about:function(){return `
+<section class="about-hero">
+  <div class="about-hero-inner">
+    <div class="about-kicker"><span class="live-mark"></span> THE PLATFORM / MERCY CIRCUIT</div>
+    <div class="about-hero-grid">
+      <div class="about-hero-copy">
+        <div class="about-overline">НЕ ПРОСТО ТУРНИРНАЯ СЕТКА</div>
+        <h1>АРЕНА,<br><span>ГДЕ ИГРА</span><br>СТАНОВИТСЯ<br>ИСТОРИЕЙ.</h1>
+        <p>MERCY ARENA — независимая соревновательная платформа для сообщества Mobile Legends: Bang Bang. Здесь игроки и команды могут находить турниры, проходить соревнования, следить за матчами и сохранять результаты своих выступлений.</p>
+        <div class="about-hero-actions"><a class="btn primary" href="#/tournaments">Смотреть турниры <iconify-icon icon="mdi:arrow-right"></iconify-icon></a><a class="btn secondary" href="#/teams">Изучить сообщество</a></div>
+      </div>
+      <div class="about-emblem-panel">
+        <div class="about-emblem-glow"></div><img src="public/assets/brand/mercy-mark.svg" alt="Эмблема MERCY ARENA">
+        <div class="about-emblem-caption"><b>MERCY ARENA</b><span>PLAY FAIR. WIN CLEAR.</span></div>
+        <div class="about-corner about-corner-a">MA / 001</div><div class="about-corner about-corner-b">MERCY CIRCUIT</div>
+      </div>
+    </div>
+    <div class="about-manifesto"><span>НАША ИДЕЯ</span><p>Сделать соревновательную сцену понятнее: чтобы у каждого турнира были правила, у каждого матча — статус, а у каждого результата — понятное происхождение.</p></div>
+  </div>
+</section>
+<section class="wrap section about-intro">
+  <div class="about-section-label"><span>01 / ЧТО ЭТО</span><span>ABOUT THE PLATFORM</span></div>
+  <div class="about-intro-grid"><h2>ОДНА ПЛАТФОРМА.<br><em>ВЕСЬ ПУТЬ</em><br>КОМАНДЫ.</h2><div><p class="about-lead">MERCY ARENA объединяет турнирную информацию, участников и историю матчей в одном пространстве.</p><p class="muted">Это место, где можно узнать о предстоящих соревнованиях, изучить формат и условия участия, посмотреть составы команд, следить за сеткой и проверенными итогами. Платформа развивается вокруг MERCY CIRCUIT — соревновательного направления, которое связывает отдельные турниры в общую историю выступлений.</p></div></div>
+</section>
+<section class="about-dark-band"><div class="wrap about-pillars">
+  <div class="about-section-label"><span>02 / ЧТО ВНУТРИ</span><span>PLATFORM SYSTEM</span></div>
+  <div class="about-pillar-grid">
+    <article class="about-pillar"><div class="about-pillar-icon"><iconify-icon icon="mdi:trophy-outline"></iconify-icon></div><span>01 / COMPETE</span><h3>ТУРНИРЫ</h3><p>Информация о соревнованиях, формате, сроках регистрации, правилах и статусе турнира. Условия участия должны быть доступны до начала игры.</p><a href="#/tournaments">Перейти к турнирам <iconify-icon icon="mdi:arrow-up-right"></iconify-icon></a></article>
+    <article class="about-pillar"><div class="about-pillar-icon"><iconify-icon icon="mdi:account-group-outline"></iconify-icon></div><span>02 / COMMUNITY</span><h3>КОМАНДЫ И ИГРОКИ</h3><p>Профили участников, игровые роли, составы и история выступлений. Сообщество строится вокруг реальных участников, а не вымышленных карточек.</p><a href="#/teams">Открыть команды <iconify-icon icon="mdi:arrow-up-right"></iconify-icon></a></article>
+    <article class="about-pillar"><div class="about-pillar-icon"><iconify-icon icon="mdi:tournament"></iconify-icon></div><span>03 / MATCH CENTER</span><h3>СЕТКИ И МАТЧИ</h3><p>Расписание, этапы турниров и ход соревнований. Статус матча показывает, назначен ли он, идёт ли игра или она завершена.</p><a href="#/brackets">Открыть матчи <iconify-icon icon="mdi:arrow-up-right"></iconify-icon></a></article>
+    <article class="about-pillar"><div class="about-pillar-icon"><iconify-icon icon="mdi:chart-line"></iconify-icon></div><span>04 / PROGRESS</span><h3>РЕЙТИНГИ И СЕЗОНЫ</h3><p>Сезоны помогают объединять соревнования, а рейтинги — отслеживать результаты. Позиции должны опираться на подтверждённую статистику.</p><a href="#/rankings">Смотреть рейтинги <iconify-icon icon="mdi:arrow-up-right"></iconify-icon></a></article>
+  </div>
+</div></section>
+<section class="wrap section about-flow">
+  <div class="about-section-label"><span>03 / КАК ЭТО РАБОТАЕТ</span><span>FROM SIGN-UP TO FINAL</span></div>
+  <div class="about-flow-heading"><h2>ПОНЯТНЫЙ ПУТЬ<br><em>ОТ ЗАЯВКИ ДО ФИНАЛА.</em></h2><p class="muted">Каждый этап должен быть прозрачен для участника. Конкретные сроки и требования определяются правилами выбранного турнира.</p></div>
+  <div class="about-flow-list">
+    <div class="about-flow-item"><b>01</b><div><h3>Выбери соревнование</h3><p>Открой список турниров, изучи формат, даты, ограничения и правила.</p></div><iconify-icon icon="mdi:compass-outline"></iconify-icon></div>
+    <div class="about-flow-item"><b>02</b><div><h3>Подай заявку</h3><p>Подготовь команду и отправь регистрацию способом, указанным организатором турнира.</p></div><iconify-icon icon="mdi:clipboard-check-outline"></iconify-icon></div>
+    <div class="about-flow-item"><b>03</b><div><h3>Следи за сеткой</h3><p>Проверяй расписание, соперников, раунды и актуальный статус матчей.</p></div><iconify-icon icon="mdi:vector-polyline"></iconify-icon></div>
+    <div class="about-flow-item"><b>04</b><div><h3>Подтверди результат</h3><p>Итог матча фиксируется организатором или проверяется по доступному источнику. Спорные данные не должны автоматически становиться официальными.</p></div><iconify-icon icon="mdi:shield-check-outline"></iconify-icon></div>
+  </div>
+</section>
+<section class="about-trust"><div class="wrap about-trust-grid">
+  <div><div class="about-section-label"><span>04 / ЧЕСТНАЯ ИГРА</span><span>INTEGRITY FIRST</span></div><h2>ДОВЕРИЕ<br><em>НЕ НАСТРАИВАЕТСЯ.</em><br>ОНО ЗАСЛУЖИВАЕТСЯ.</h2></div>
+  <div class="about-trust-copy"><p>Для MERCY ARENA важны не красивые цифры, а понятные и проверяемые данные.</p><ul><li><iconify-icon icon="mdi:check-circle-outline"></iconify-icon><span><b>Прозрачные статусы.</b> Турнир и матч не должны выглядеть завершёнными, если это не подтверждено.</span></li><li><iconify-icon icon="mdi:check-circle-outline"></iconify-icon><span><b>Проверка результатов.</b> Ручное подтверждение и автоматическое получение данных должны иметь понятный источник.</span></li><li><iconify-icon icon="mdi:check-circle-outline"></iconify-icon><span><b>История изменений.</b> Административные действия фиксируются, чтобы спорные ситуации можно было разбирать по фактам.</span></li><li><iconify-icon icon="mdi:check-circle-outline"></iconify-icon><span><b>Никакой выдуманной статистики.</b> Если данных нет, мы так и показываем.</span></li></ul></div>
+</div></section>
+<section class="wrap section about-circuit">
+  <div class="about-section-label"><span>05 / MERCY CIRCUIT</span><span>THE BIGGER PICTURE</span></div>
+  <div class="about-circuit-card"><div><div class="about-overline">BEYOND A SINGLE TOURNAMENT</div><h2>MERCY CIRCUIT</h2><p>Это соревновательная экосистема MERCY ARENA. Её задача — связывать турниры и сезоны в последовательную историю: от первых матчей до значимых достижений команд и игроков.</p></div><div class="about-circuit-mark"><img src="public/assets/brand/mercy-mark.svg" alt=""></div></div>
+</section>
+<section class="wrap section about-faq">
+  <div class="about-section-label"><span>06 / FAQ</span><span>ЧАСТЫЕ ВОПРОСЫ</span></div><h2>КОРОТКО <em>О ГЛАВНОМ.</em></h2>
+  <div class="about-faq-list">
+    <details><summary>Что такое MERCY ARENA?</summary><p>Это турнирная платформа для сообщества Mobile Legends: Bang Bang. Она объединяет информацию о соревнованиях, командах, игроках, матчах, сезонах и рейтингах.</p></details>
+    <details><summary>Платформа сама организует все турниры?</summary><p>Не обязательно. Турниры могут проводиться организаторами, которые используют MERCY ARENA для публикации информации и управления соревнованием. Ответственность за конкретные правила и проведение несёт организатор соответствующего турнира.</p></details>
+    <details><summary>Все результаты матчей автоматические?</summary><p>Нет. Автоматический сбор результатов зависит от наличия надёжного источника данных. Пока такой источник не подключён и не проверен, результат должен подтверждаться вручную. Непроверенные сведения не считаются официальными.</p></details>
+    <details><summary>Как попасть в команду или добавить свой состав?</summary><p>Следи за опубликованными турнирами и информацией сообщества. Публичная регистрация команд и игроков будет доступна в тех разделах, где соответствующая функция включена.</p></details>
+    <details><summary>Как сообщить об ошибке или обратиться к модерации?</summary><p>Используй официальный репозиторий проекта: создай обращение в GitHub Issues. Укажи ссылку на турнир или матч, опиши ситуацию и приложи доказательства, если они есть. Не публикуй пароли, личные данные и приватные переписки.</p></details>
+  </div>
+</section>
+<section class="about-contact"><div class="wrap about-contact-inner">
+  <div><div class="about-overline">NEED HELP? / CONTACT THE TEAM</div><h2>ЕСТЬ ВОПРОС<br>ИЛИ ПРОБЛЕМА?</h2><p>Сообщи об ошибке, спорном результате или проблеме с информацией турнира. Чем точнее описание и доказательства, тем проще разобраться.</p></div>
+  <div class="about-contact-actions"><a class="btn primary" href="https://github.com/raeffsky/MERCY-ARENA/issues" target="_blank" rel="noopener noreferrer"><iconify-icon icon="mdi:github"></iconify-icon> Написать модерации</a><a class="about-contact-link" href="https://github.com/raeffsky/MERCY-ARENA" target="_blank" rel="noopener noreferrer">Репозиторий MERCY ARENA <iconify-icon icon="mdi:arrow-up-right"></iconify-icon></a><span>Публичный канал обращений проекта</span></div>
+</div></section>
+<section class="wrap about-disclaimer"><iconify-icon icon="mdi:information-outline"></iconify-icon><p>MERCY ARENA — независимый проект сообщества и не является официальным продуктом Moonton. Mobile Legends: Bang Bang и связанные с игрой обозначения принадлежат их правообладателям.</p></section>
+`}
 };
 function route(){
 var key=(location.hash.indexOf('#/')===0?location.hash.slice(2):location.hash.replace('#','')).split('/')[0]||'home';
