@@ -998,10 +998,11 @@ createDialog.addEventListener('click',function(event){if(event.target===createDi
 createForm.addEventListener('submit',async function(event){
 event.preventDefault();var submit=createForm.querySelector('[type="submit"]');submit.disabled=true;createMessage.textContent='Создаём аккаунт и отправляем профиль на проверку…';
 var values=Object.fromEntries(new FormData(createForm).entries());
-try{var response=await fetch('/api/v1/auth/register',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',accept:'application/json'},body:JSON.stringify(values)});var result=await response.json();
-if(!response.ok){createMessage.textContent=result.error?.message||'Не удалось создать профиль.';return}
+try{var response=await fetch('/api/v1/auth/register',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',accept:'application/json'},body:JSON.stringify(values)});var raw=await response.text();var result={};try{result=raw?JSON.parse(raw):{}}catch(parseError){result={raw:raw}}
+if(!response.ok){var serverMessage=result.error?.message||result.message||('Сервер вернул HTTP '+response.status+(raw?' — '+String(raw).replace(/\\s+/g,' ').slice(0,180):''));createMessage.textContent=serverMessage;return}
+if(!result.authenticated){createMessage.textContent='Сервер ответил без подтверждения регистрации. HTTP '+response.status;return}
 createMessage.textContent='Аккаунт создан. Профиль отправлен модерации и появится в каталоге после подтверждения.';createForm.reset();setTimeout(function(){createDialog.close()},2200);
-}catch(error){createMessage.textContent='Ошибка соединения. Попробуй ещё раз.'}
+}catch(error){createMessage.textContent='Ошибка запроса: '+String(error?.message||error).slice(0,180)}
 finally{submit.disabled=false}
 });
 var playerSearch=document.getElementById('playerSearch'),playerRole=document.getElementById('playerRole'),playerTeam=document.getElementById('playerTeam');
