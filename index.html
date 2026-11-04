@@ -227,6 +227,80 @@ main{min-height:65vh}.wrap{width:min(1180px,100%);margin:auto;padding-left:clamp
   .journey{margin-top:8px!important;padding-top:14px!important}
 }
 
+
+/* Mobile hero composition: dark text-safe area, artwork remains a background */
+@media(max-width:600px){
+  .hero{
+    min-height:0!important;display:block!important;position:relative!important;
+    padding:26px 20px 22px!important;overflow:hidden!important;
+    background:#050807!important;
+  }
+  .hero-layout{display:block!important;position:static!important;min-height:0!important}
+  .arena-visual{
+    position:absolute!important;inset:0!important;z-index:0!important;
+    width:100%!important;height:100%!important;max-height:none!important;
+    margin:0!important;clip-path:none!important;pointer-events:none!important;
+  }
+  .arena-visual .arena-hero-image{
+    object-fit:cover!important;object-position:76% center!important;
+    opacity:.48!important;filter:saturate(.82) contrast(1.08)!important;
+  }
+  .hero:after{
+    z-index:1!important;
+    background:
+      linear-gradient(90deg,rgba(4,7,6,.97) 0%,rgba(4,7,6,.91) 45%,rgba(4,7,6,.58) 100%),
+      linear-gradient(0deg,rgba(4,7,6,.98) 0%,rgba(4,7,6,.12) 58%,rgba(4,7,6,.48) 100%)!important;
+  }
+  .hero-copy{
+    position:relative!important;z-index:3!important;
+    width:100%!important;max-width:100%!important;padding:16px 0 22px!important;
+  }
+  .hero-copy .eyebrow{font-size:7px!important;letter-spacing:1.25px!important}
+  .hero-copy h1{
+    max-width:100%!important;font-size:clamp(39px,10.4vw,48px)!important;
+    line-height:.96!important;letter-spacing:-.6px!important;
+    margin:18px 0 15px!important;text-shadow:0 3px 18px #000!important;
+  }
+  .hero-copy p{
+    max-width:330px!important;font-size:11px!important;line-height:1.65!important;
+    color:#e0e3df!important;text-shadow:0 2px 12px #000!important;
+  }
+  .hero-copy .actions{margin-top:18px!important;width:auto!important}
+  .hero-copy .hero-cta{
+    width:auto!important;min-width:210px!important;min-height:48px!important;
+    padding:13px 20px!important;font-size:13px!important;
+  }
+  .journey{
+    position:relative!important;z-index:4!important;
+    margin:10px 0 0!important;padding:14px 0 8px!important;
+    border-top:1px solid #ffffff35!important;
+  }
+  .journey-heading{font-size:6px!important;letter-spacing:.75px!important;margin-bottom:12px!important}
+  .journey-track{
+    display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;
+    gap:5px!important;padding:0!important;align-items:start!important;
+  }
+  .journey-step{
+    grid-column:span 2!important;display:flex!important;flex-direction:column!important;
+    justify-content:flex-start!important;align-items:center!important;text-align:center!important;
+    gap:4px!important;min-height:0!important;padding:4px 1px!important;
+    border:0!important;background:transparent!important;
+  }
+  .journey-step:nth-of-type(4){grid-column:2/span 2!important}
+  .journey-step:nth-of-type(5){grid-column:4/span 2!important}
+  .journey-icon{width:27px!important;height:27px!important}
+  .journey-icon iconify-icon{font-size:23px!important}
+  .journey-step b{font-size:6.5px!important;line-height:1.3!important;min-height:0!important}
+  .journey-arrow{display:none!important}
+  .journey-track:before{display:none!important}
+}
+@media(max-width:380px){
+ .hero{padding-left:16px!important;padding-right:16px!important}
+ .hero-copy h1{font-size:39px!important}
+ .hero-copy p{font-size:10.5px!important}
+ .journey-step b{font-size:6px!important}
+}
+
 </style>
 </head>
 <body>
