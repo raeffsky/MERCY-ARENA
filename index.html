@@ -400,6 +400,56 @@ main{min-height:65vh}.wrap{width:min(1180px,100%);margin:auto;padding-left:clamp
   .hero-copy p{font-size:11.5px!important;line-height:1.68!important}
 }
 
+
+/* Desktop hero readability: preserve the artwork, add cinematic shadow and left-side contrast */
+@media(min-width:601px){
+  .hero:after{
+    z-index:1!important;
+    background:
+      linear-gradient(90deg,
+        rgba(3,5,5,.97) 0%,
+        rgba(3,5,5,.91) 27%,
+        rgba(3,5,5,.72) 43%,
+        rgba(3,5,5,.28) 61%,
+        rgba(3,5,5,.04) 78%,
+        transparent 100%),
+      linear-gradient(0deg,
+        rgba(3,5,5,.82) 0%,
+        rgba(3,5,5,.28) 19%,
+        transparent 43%,
+        rgba(3,5,5,.18) 100%)!important;
+  }
+  .hero-copy .eyebrow{
+    color:#d7ff5e!important;
+    text-shadow:0 2px 5px rgba(0,0,0,.98),0 0 16px rgba(0,0,0,.85)!important;
+  }
+  .hero-copy h1{
+    color:#fff!important;
+    text-shadow:0 3px 5px rgba(0,0,0,.98),0 8px 24px rgba(0,0,0,.9),0 0 38px rgba(0,0,0,.7)!important;
+  }
+  .hero-copy h1 span{
+    color:#d7ff5e!important;
+    text-shadow:0 3px 5px rgba(0,0,0,.98),0 8px 24px rgba(0,0,0,.92),0 0 30px rgba(0,0,0,.7)!important;
+  }
+  .hero-copy p{
+    color:#f0f2ed!important;
+    text-shadow:0 2px 4px rgba(0,0,0,.98),0 5px 14px rgba(0,0,0,.95),0 0 28px rgba(0,0,0,.72)!important;
+  }
+  .hero-copy .hero-cta{text-shadow:none!important}
+  .journey{
+    background:linear-gradient(0deg,rgba(2,5,4,.42),transparent 100%)!important;
+  }
+  .journey-heading span,
+  .journey-step b{
+    color:#fff!important;
+    text-shadow:0 2px 4px rgba(0,0,0,.98),0 5px 14px rgba(0,0,0,.95),0 0 24px rgba(0,0,0,.8)!important;
+  }
+  .journey-heading span:first-child{color:#d7ff5e!important}
+  .journey-icon iconify-icon{
+    filter:drop-shadow(0 2px 4px #000) drop-shadow(0 0 9px #d7ff5e66)!important;
+  }
+}
+
 </style>
 </head>
 <body>
