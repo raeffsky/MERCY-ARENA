@@ -1,35 +1,46 @@
-# MERCY ARENA: вход по email-ссылке
+# MERCY ARENA: вход администратора по email и паролю
 
-Вход работает без Cloudflare Access. Одноразовая ссылка отправляется через Brevo. Её токен хранится в D1 только в виде SHA-256-хеша, действует 15 минут и используется один раз. После входа сервер выдаёт 14-дневную сессию в Secure, HttpOnly, SameSite=Lax cookie.
+Вход в кабинет организатора использует серверную проверку пары email/пароль. Единственный bootstrap-администратор задаётся переменной `BOOTSTRAP_ADMIN_EMAIL`. При первом успешном входе сервер создаёт пользователя в D1 и выдаёт роль `administrator`. Сессия хранится в Secure, HttpOnly, SameSite=Lax cookie сроком 14 дней.
 
-## 1. Применить миграцию D1
+Brevo и отправка писем для входа больше не используются.
 
-Cloudflare Dashboard → Workers & Pages → D1 → mercy-arena-db → Console. Выполните SQL из migrations/0002_email_auth.sql.
+## 1. Применить миграции D1
 
-## 2. Настроить отправителя
+Cloudflare Dashboard → Workers & Pages → D1 → mercy-arena-db → Console.
 
-В Brevo откройте Settings → Senders, Domains, IPs → Senders → Add a sender. Укажите адрес почты, к которому у вас есть доступ. Если домен не аутентифицирован, Brevo отправит на этот адрес шестизначный код подтверждения. Подтвердите отправителя этим кодом. Затем создайте API key в SMTP & API → API Keys.
+Выполните SQL по порядку:
+1. `migrations/0002_email_auth.sql` — создаёт таблицу сессий.
+2. `migrations/0003_admin_login_rate_limit.sql` — создаёт хранилище ограничений попыток входа.
 
-Документация: https://help.brevo.com/hc/en-us/articles/208836149-Create-a-new-sender-From-name-and-From-email
+Миграцию 0002 нужно выполнить, даже если таблица `auth_magic_links` больше не используется: она также создаёт `auth_sessions`.
 
-## 3. Production Variables and Secrets
+## 2. Настроить Cloudflare Pages
 
-Cloudflare Pages → mercy-arena → Settings → Variables and Secrets → Production:
+Cloudflare Pages → mercy-arena → Settings → Variables and Secrets → Production.
 
-- APP_BASE_URL = https://mercy-arena.pages.dev
-- BOOTSTRAP_ADMIN_EMAIL = maloraeff@yandex.ru
-- AUTH_FROM_EMAIL = подтверждённый адрес отправителя, который вы добавили в Brevo
-- BREVO_API_KEY = API key Brevo как Secret
-- AUTH_RATE_LIMIT_SALT = длинная случайная строка как Secret
+Обычная переменная:
+- `BOOTSTRAP_ADMIN_EMAIL` = `maloraeff@yandex.ru`
 
-Не отправляйте API key или секреты в чат и не помещайте их в GitHub.
+Secrets:
+- `ADMIN_LOGIN_PASSWORD` = придуманный тобой длинный уникальный пароль, минимум 12 символов.
+- `APP_BASE_URL` = `https://mercy-arena.pages.dev` (можно добавить как переменную).
+- `AUTH_RATE_LIMIT_SALT` = длинная случайная строка.
+
+Не отправляй пароль или секреты в чат и не помещай их в GitHub. Не используй пароль от почты или других сервисов.
+
+## 3. Вход
+
+Открой `https://mercy-arena.pages.dev/#/organizer` и введи:
+- Email: `maloraeff@yandex.ru`
+- Пароль: значение `ADMIN_LOGIN_PASSWORD`, которое ты сам установил в Cloudflare.
+
+Сервер выдаёт роль администратора только для адреса из `BOOTSTRAP_ADMIN_EMAIL`. Остальные email не могут получить административный доступ.
 
 ## 4. Проверка
 
-- GET /api/v1/me без cookie возвращает authenticated:false.
-- POST /api/v1/auth/request-link с JSON {"email":"maloraeff@yandex.ru"} отправляет письмо.
-- Ссылка действует 15 минут и может быть открыта один раз.
-- Первый подтверждённый вход на BOOTSTRAP_ADMIN_EMAIL создаёт пользователя и роль administrator.
-- POST /api/v1/auth/logout отзывает сессию.
+- `GET /api/v1/me` без cookie возвращает `authenticated:false`.
+- `POST /api/v1/auth/login` проверяет email и пароль.
+- После успешного входа `GET /api/v1/me` возвращает роль `administrator`.
+- `POST /api/v1/auth/logout` отзывает текущую сессию.
 
-Не доверяем email из формы как доказательству личности. Доказательство — доступ к почтовому ящику и одноразовая ссылка. Не раскрываем, существует ли аккаунт. API key Brevo используется только на сервере.
+После 10 неудачных попыток вход блокируется на 15 минут для соответствующего email/IP.
