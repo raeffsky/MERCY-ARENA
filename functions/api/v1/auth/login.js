@@ -15,10 +15,6 @@ export async function onRequestPost({ request, env }) {
 
   const adminEmail = normalizedEmail(env.BOOTSTRAP_ADMIN_EMAIL);
   const configuredPassword = String(env.ADMIN_LOGIN_PASSWORD || "");
-  if (!validEmail(adminEmail) || configuredPassword.length < 12) {
-    return json({ error: { code: "AUTH_NOT_CONFIGURED", message: "Администраторский вход ещё не настроен. Проверьте секреты Cloudflare." } }, 503);
-  }
-
   let body;
   try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Проверьте формат запроса." } }, 400); }
   const email = normalizedEmail(body.email);
@@ -41,25 +37,41 @@ export async function onRequestPost({ request, env }) {
     "INSERT INTO auth_login_attempts (id,email_hash,ip_hash,attempted_at) VALUES (?,?,?,?)"
   ).bind(crypto.randomUUID(), emailHash, ipHash, now).run();
 
-  const suppliedHash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password)));
-  const expectedHash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(configuredPassword)));
-  const passwordMatches = equalBytes(suppliedHash, expectedHash);
-  if (email !== adminEmail || !passwordMatches) {
-    return json({ error: { code: "INVALID_CREDENTIALS", message: "Неверный email или пароль." } }, 401);
+  let user = await env.DB.prepare("SELECT id,email,display_name,password_hash FROM users WHERE email=?").bind(email).first();
+  let roles = [];
+  let passwordMatches = false;
+  if (user && user.password_hash && user.password_hash.startsWith("pbkdf2-sha256$")) {
+    try {
+      const parts = user.password_hash.split("$");
+      const iterations = Number(parts[1]);
+      const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
+      const expected = Uint8Array.from(atob(parts[3]), c => c.charCodeAt(0));
+      const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+      const actual = new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations},material,256));
+      passwordMatches = equalBytes(actual,expected);
+    } catch { passwordMatches = false; }
   }
-
-  let user = await env.DB.prepare("SELECT id,email,display_name FROM users WHERE email=?").bind(adminEmail).first();
-  if (!user) {
-    await env.DB.prepare("INSERT OR IGNORE INTO users (email,display_name) VALUES (?,?)").bind(adminEmail, adminEmail).run();
-    user = await env.DB.prepare("SELECT id,email,display_name FROM users WHERE email=?").bind(adminEmail).first();
+  if (!passwordMatches && validEmail(adminEmail) && configuredPassword.length >= 12 && email === adminEmail) {
+    const suppliedHash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password)));
+    const expectedHash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(configuredPassword)));
+    passwordMatches = equalBytes(suppliedHash, expectedHash);
+    if (passwordMatches) {
+      if (!user) {
+        await env.DB.prepare("INSERT OR IGNORE INTO users (email,display_name) VALUES (?,?)").bind(adminEmail, adminEmail).run();
+        user = await env.DB.prepare("SELECT id,email,display_name,password_hash FROM users WHERE email=?").bind(adminEmail).first();
+      }
+      if (user) {
+        const granted = await env.DB.prepare("INSERT OR IGNORE INTO user_roles (user_id,role) VALUES (?,'administrator')").bind(user.id).run();
+        if (granted.meta && granted.meta.changes === 1) {
+          await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'bootstrap_admin_created','user',?,?)")
+            .bind(user.id, user.id, JSON.stringify({ email: adminEmail, role: "administrator", method: "password" })).run();
+        }
+      }
+    }
   }
-  if (!user) return json({ error: { code: "ACCOUNT_SETUP_FAILED", message: "Не удалось создать учётную запись администратора." } }, 500);
-
-  const granted = await env.DB.prepare("INSERT OR IGNORE INTO user_roles (user_id,role) VALUES (?,'administrator')").bind(user.id).run();
-  if (granted.meta && granted.meta.changes === 1) {
-    await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'bootstrap_admin_created','user',?,?)")
-      .bind(user.id, user.id, JSON.stringify({ email: adminEmail, role: "administrator", method: "password" })).run();
-  }
+  if (!user || !passwordMatches) return json({ error: { code: "INVALID_CREDENTIALS", message: "Неверный email или пароль." } }, 401);
+  const roleRows = await env.DB.prepare("SELECT role FROM user_roles WHERE user_id=?").bind(user.id).all();
+  roles = (roleRows.results || []).map(row => row.role);
 
   await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash, ipHash).run();
   const sessionToken = crypto.getRandomValues(new Uint8Array(32));
@@ -70,7 +82,7 @@ export async function onRequestPost({ request, env }) {
   await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'login','user',?,?)")
     .bind(user.id, user.id, JSON.stringify({ method: "password" })).run();
 
-  return json({ authenticated: true, account: { email: user.email, name: user.display_name }, roles: ["administrator"] }, 200, { "set-cookie": sessionCookie(token) });
+  return json({ authenticated: true, account: { email: user.email, name: user.display_name }, roles }, 200, { "set-cookie": sessionCookie(token) });
 }
 
 export function onRequestGet() { return methodNotAllowed("POST"); }
