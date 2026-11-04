@@ -485,8 +485,6 @@ th{background:var(--panel)!important}
 .links a:hover,.links a.active{border-color:#d7ff5e55!important;color:#d7ff5e!important}
 
 
-/* Remove decorative eyebrow/kicker captions across all pages */
-.kicker,.eyebrow{display:none!important}
 </style>
 </head>
 <body>
@@ -520,7 +518,7 @@ function menu(open){drawer.classList.toggle('open',open);shade.classList.toggle(
 document.getElementById('open').addEventListener('click',function(){menu(true)});
 document.getElementById('close').addEventListener('click',function(){menu(false)});
 shade.addEventListener('click',function(){menu(false)});
-function pageHead(kicker,title,lead){return '<section class="wrap pagehead"><div class="kicker">'+kicker+'</div><h1 class="page-title">'+title+'</h1><p class="lead">'+lead+'</p></section>'}
+function pageHead(kicker,title,lead){return '<section class="wrap pagehead"><div class="kicker">'+kicker+'</div><h1 class="page-title">'+title+'</h1></section>'}
 function empty(icon,title,desc,link,label){return '<div class="empty"><div class="empty-row"><iconify-icon icon="'+icon+'"></iconify-icon><div><b>'+title+'</b><p>'+desc+'</p>'+(link?'<a class="btn secondary" style="margin-top:14px" href="'+link+'">'+label+'</a>':'')+'</div></div></div>'}
 function tile(icon,title,desc,href){return '<a class="tile" href="'+href+'"><iconify-icon icon="'+icon+'"></iconify-icon><h3>'+title+'</h3><p>'+desc+'</p></a>'}
 function section(kicker,title,sub,body){return '<section class="wrap section"><div class="section-head"><div><div class="kicker">'+kicker+'</div><h2>'+title+'</h2></div>'+(sub?'<p class="sub">'+sub+'</p>':'')+'</div>'+body+'</section>'}
