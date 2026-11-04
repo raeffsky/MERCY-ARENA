@@ -4,7 +4,7 @@ import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
 const TABLES = {
   tournaments: { table: "tournaments", fields: ["title","description","game","region","format","status","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id"] },
   teams: { table: "teams", fields: ["name","tag","logo_url","captain_id","region","status"] },
-  players: { table: "players", fields: ["user_id","game_id","nickname","role","team_id","region"] },
+  players: { table: "players", fields: ["user_id","game_id","nickname","role","team_id","region","profile_status"] },
   matches: { table: "matches", fields: ["tournament_id","round_number","bracket","match_number","scheduled_at","status","team_a_id","team_b_id","score_a","score_b","winner_team_id"] },
   seasons: { table: "seasons", fields: ["title","starts_at","ends_at","status"] }
 };
@@ -12,7 +12,7 @@ const FORMATS = new Set(["single_elimination","double_elimination","round_robin"
 const STATUSES = {
   tournaments: new Set(["draft","published","active","completed","cancelled"]),
   teams: new Set(["active","inactive","dissolved"]),
-  players: null,
+  players: new Set(["pending","approved","rejected"]),
   matches: new Set(["scheduled","in_progress","completed","cancelled","postponed"]),
   seasons: new Set(["planning","active","completed","cancelled"])
 };
