@@ -4,7 +4,7 @@ export async function onRequestGet({ request, env }) {
   if (!env.DB) return databaseUnavailable();
   const url = new URL(request.url);
   const limit = parseLimit(url);
-  const query = (url.searchParams.get("query") || "").trim().slice(0, 80);
+  const playerId = url.searchParams.get("id");\n  if (playerId && /^\\d+$/.test(playerId)) {\n    const profile = await env.DB.prepare("SELECT p.id,p.nickname,p.game_id,p.role,p.team_id,p.region,p.created_at,t.name AS team_name,t.tag AS team_tag,t.logo_url AS team_logo,t.region AS team_region FROM players p LEFT JOIN teams t ON t.id=p.team_id AND t.status='active' WHERE p.id=? AND p.profile_status='approved' LIMIT 1").bind(Number(playerId)).first();\n    return json({data:profile?[profile]:[],limit:1});\n  }\n  const query = (url.searchParams.get("query") || "").trim().slice(0, 80);
   const role = url.searchParams.get("role");
   const clauses = ["profile_status = 'approved'"];
   const values = [];
