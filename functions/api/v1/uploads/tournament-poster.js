@@ -19,8 +19,8 @@ function hex(buffer) {
   return Array.from(new Uint8Array(buffer), byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function cloudinarySignature(timestamp, preset, secret) {
-  const source = "timestamp=" + timestamp + "&upload_preset=" + preset + secret;
+async function cloudinarySignature(timestamp, folder, secret) {
+  const source = "folder=" + folder + "&timestamp=" + timestamp + secret;
   const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(source));
   return hex(digest);
 }
@@ -39,13 +39,13 @@ export async function onRequestPost({ request, env }) {
   if (!file.size || file.size > MAX_BYTES) return json({ error: { code: "FILE_TOO_LARGE", message: "Размер изображения должен быть не больше 8 МБ." } }, 413);
 
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const preset = "mercy_arena_posters";
-  const signature = await cloudinarySignature(timestamp, preset, env.CLOUDINARY_API_SECRET);
+  const folder = "mercy-arena/posters";
+  const signature = await cloudinarySignature(timestamp, folder, env.CLOUDINARY_API_SECRET);
   const upload = new FormData();
   upload.set("file", file, "tournament-poster.jpg");
   upload.set("api_key", env.CLOUDINARY_API_KEY);
   upload.set("timestamp", timestamp);
-  upload.set("upload_preset", preset);
+  upload.set("folder", folder);
   upload.set("signature", signature);
 
   let result;
