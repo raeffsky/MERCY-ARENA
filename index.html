@@ -608,38 +608,74 @@ function adminDashboardMarkup(email){return '<div class="admin-shell"><nav class
 async function initAdminDashboard(){
 var content=document.getElementById('adminContent'),title=document.getElementById('adminSectionTitle');
 var cache={};
-async function load(key,path){if(!cache[key])cache[key]=await apiList(path);return cache[key]}
-function table(headers,rows){if(!rows.length)return '<div class="admin-empty">Записей пока нет. После создания они появятся здесь.</div>';return '<div class="admin-panel admin-table-wrap"><table class="admin-table"><thead><tr>'+headers.map(function(h){return '<th>'+h+'</th>'}).join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table></div>'}
+var fields={
+seasons:[['title','Название','text',true],['starts_at','Начало','datetime-local',true],['ends_at','Окончание','datetime-local',true],['status','Статус','select',true,['planning','active','completed','cancelled']]],
+tournaments:[['title','Название','text',true],['description','Описание','textarea'],['region','Регион','text'],['format','Формат','select',true,['single_elimination','double_elimination','round_robin','swiss','group_playoff']],['status','Статус','select',true,['draft','published','active','completed','cancelled']],['max_teams','Лимит команд','number'],['registration_open_at','Открытие регистрации','datetime-local'],['registration_close_at','Закрытие регистрации','datetime-local'],['starts_at','Начало турнира','datetime-local'],['ends_at','Окончание турнира','datetime-local'],['rules_url','Ссылка на правила','url'],['season_id','ID сезона','number']],
+teams:[['name','Название команды','text',true],['tag','Тег','text',true],['logo_url','URL логотипа','url'],['captain_id','ID капитана (пользователь)','number'],['region','Регион','text'],['status','Статус','select',true,['active','inactive','dissolved']]],
+players:[['user_id','Аккаунт пользователя','select',true,'users'],['game_id','Игровой ID','text',true],['nickname','Игровой ник','text',true],['role','Роль','select',false,['','EXP','JUNGLE','MID','GOLD','ROAM','FLEX']],['team_id','ID команды','number'],['region','Регион','text']],
+matches:[['tournament_id','ID турнира','number',true],['round_number','Раунд','number',true],['bracket','Сетка','select',true,['main','upper','lower','group','final']],['match_number','Номер матча','number',true],['scheduled_at','Дата матча','datetime-local'],['status','Статус','select',true,['scheduled','in_progress','completed','cancelled','postponed']],['team_a_id','ID команды A','number'],['team_b_id','ID команды B','number'],['score_a','Счёт A','number'],['score_b','Счёт B','number'],['winner_team_id','ID победителя','number']]
+};
+var labels={seasons:'Сезоны',tournaments:'Турниры',teams:'Команды',players:'Игроки',matches:'Матчи',applications:'Заявки',overview:'Обзор системы',account:'Аккаунт'};
+function val(v){return v==null?'':String(v)}
+function dt(v){if(!v)return '';var d=new Date(v);if(Number.isNaN(d.getTime()))return String(v).slice(0,16);var p=function(n){return String(n).padStart(2,'0')};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}
+async function request(resource,body){
+var response=await fetch('/api/v1/admin'+(body?'':'?resource='+encodeURIComponent(resource)),body?{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store',credentials:'same-origin'});
+var result=await response.json();if(!response.ok)throw new Error(result.error&&result.error.message||'Ошибка API '+response.status);return result.data;
+}
+function fieldMarkup(f,users){
+var key=f[0],label=f[1],type=f[2],required=f[3],opts=f[4],value='';
+if(type==='textarea')return '<label class="admin-field">'+esc(label)+'<textarea class="field" name="'+key+'" '+(required?'required':'')+'></textarea></label>';
+if(type==='select'){
+var options=opts==='users'?users.map(function(u){return [String(u.id),u.email+' · '+u.display_name]}):opts.map(function(o){return [o,o||'Не указано']});
+return '<label class="admin-field">'+esc(label)+'<select class="field" name="'+key+'" '+(required?'required':'')+'>'+options.map(function(o){return '<option value="'+esc(o[0])+'">'+esc(o[1])+'</option>'}).join('')+'</select></label>';
+}
+return '<label class="admin-field">'+esc(label)+'<input class="field" name="'+key+'" type="'+type+'" '+(required?'required':'')+' '+(type==='number'?'min="0" step="1"':'')+'></label>';
+}
+function formMarkup(resource,users){
+return '<form id="adminRecordForm" class="admin-editor"><div class="admin-form-grid">'+fields[resource].map(function(f){return fieldMarkup(f,users)}).join('')+'</div><div class="admin-actions"><button class="btn primary" type="submit" id="adminSaveButton">Создать запись</button><button class="btn secondary" type="button" id="adminCancelEdit" hidden>Отмена</button><span class="muted" id="adminFormMessage" role="status"></span></div></form>';
+}
+function table(headers,rows){return '<div class="admin-panel admin-table-wrap"><table class="admin-table"><thead><tr>'+headers.map(function(h){return '<th>'+h+'</th>'}).join('')+'</tr></thead><tbody>'+(rows.length?rows.join(''):'<tr><td colspan="'+headers.length+'" class="muted">Записей пока нет.</td></tr>')+'</tbody></table></div>'}
 function stat(label,value){return '<div class="admin-stat"><span>'+label+'</span><b>'+value+'</b></div>'}
+function actions(id,resource,publish){return '<td class="admin-row-actions"><button class="btn secondary" type="button" data-edit="'+esc(id)+'">Изменить</button> '+(publish?'<button class="btn secondary" type="button" data-publish="'+esc(id)+'">Опубликовать</button> ':'')+'<button class="btn secondary" type="button" data-delete="'+esc(id)+'">Удалить</button></td>'}
 async function render(tab){
 document.querySelectorAll('[data-admin-tab]').forEach(function(b){b.classList.toggle('active',b.dataset.adminTab===tab)});
-var names={overview:'Обзор системы',tournaments:'Турниры',teams:'Команды',players:'Игроки',matches:'Матчи',seasons:'Сезоны',applications:'Заявки',account:'Аккаунт'};
-title.textContent=names[tab]||names.overview;
-content.innerHTML='<div class="admin-empty">Загружаем данные…</div>';
+title.textContent=labels[tab]||labels.overview;content.innerHTML='<div class="admin-empty">Загружаем данные…</div>';
 try{
 if(tab==='overview'){
-var all=await Promise.all([load('tournaments','tournaments?limit=100'),load('teams','teams?limit=100'),load('players','players?limit=100'),load('matches','matches?limit=100'),load('seasons','seasons?limit=100')]);
-content.innerHTML='<div class="admin-stats">'+stat('ТУРНИРЫ',all[0].length)+stat('КОМАНДЫ',all[1].length)+stat('ИГРОКИ',all[2].length)+stat('МАТЧИ',all[3].length)+'</div><div class="admin-stats">'+stat('СЕЗОНЫ',all[4].length)+stat('МАТЧИ ЗАВЕРШЕНЫ',all[3].filter(function(x){return x.status==='completed'}).length)+stat('В ПРОЦЕССЕ',all[3].filter(function(x){return x.status==='in_progress'}).length)+stat('ОЖИДАЮТ ИГРЫ',all[3].filter(function(x){return x.status==='scheduled'}).length)+'</div><div class="admin-panel"><h3>Последние турниры</h3>'+ (all[0].length?table(['НАЗВАНИЕ','СТАТУС','ФОРМАТ'],all[0].slice(0,5).map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.status)+'</td><td>'+esc(x.format)+'</td></tr>'})):'<div class="admin-empty">Турниров пока нет. Создайте первый турнир, чтобы начать работу.</div>')+'</div>';
-}else if(tab==='tournaments'){
-var items=await load('tournaments','tournaments?limit=100');content.innerHTML='<div class="admin-note">Список опубликованных турниров из API. Создание черновиков и публикация будут доступны после подключения защищённых административных endpoint.</div>'+table(['ТУРНИР','СТАТУС','ФОРМАТ','НАЧАЛО'],items.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.status)+'</td><td>'+esc(x.format)+'</td><td>'+esc(dateLabel(x.starts_at))+'</td></tr>'}));
-}else if(tab==='teams'){
-var items=await load('teams','teams?limit=100');content.innerHTML=table(['КОМАНДА','ТЕГ','РЕГИОН','СТАТУС'],items.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.tag)+'</td><td>'+esc(x.region||'—')+'</td><td>'+esc(x.status)+'</td></tr>'}));
-}else if(tab==='players'){
-var items=await load('players','players?limit=100');content.innerHTML=table(['ИГРОК','ID В ИГРЕ','РОЛЬ','РЕГИОН'],items.map(function(x){return '<tr><td>'+esc(x.nickname)+'</td><td>'+esc(x.game_id||'—')+'</td><td>'+esc(x.role||'—')+'</td><td>'+esc(x.region||'—')+'</td></tr>'}));
-}else if(tab==='matches'){
-var items=await load('matches','matches?limit=100');content.innerHTML=table(['ТУРНИР','РАУНД','МАТЧ','СТАТУС','СЧЁТ'],items.map(function(x){return '<tr><td>#'+esc(x.tournament_id)+'</td><td>'+esc(x.round_number)+'</td><td>'+esc(x.match_number)+'</td><td>'+esc(x.status)+'</td><td>'+esc(x.score_a==null?'—':x.score_a)+' : '+esc(x.score_b==null?'—':x.score_b)+'</td></tr>'}));
-}else if(tab==='seasons'){
-var items=await load('seasons','seasons?limit=100');content.innerHTML=table(['СЕЗОН','СТАТУС','НАЧАЛО','ОКОНЧАНИЕ'],items.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.status)+'</td><td>'+esc(dateLabel(x.starts_at))+'</td><td>'+esc(dateLabel(x.ends_at))+'</td></tr>'}));
+var keys=['tournaments','teams','players','matches','seasons'];
+var all=await Promise.all(keys.map(function(k){return request(k)}));
+var pending=await request('applications');
+content.innerHTML='<div class="admin-stats">'+stat('ТУРНИРЫ',all[0].length)+stat('КОМАНДЫ',all[1].length)+stat('ИГРОКИ',all[2].length)+stat('МАТЧИ',all[3].length)+'</div><div class="admin-stats">'+stat('СЕЗОНЫ',all[4].length)+stat('ЗАВЕРШЕНО',all[3].filter(function(x){return x.status==='completed'}).length)+stat('В ПРОЦЕССЕ',all[3].filter(function(x){return x.status==='in_progress'}).length)+stat('ОЖИДАЮТ',pending.filter(function(x){return x.status==='pending'}).length)+'</div><div class="admin-panel"><h3>Последние турниры</h3>'+table(['НАЗВАНИЕ','СТАТУС','ФОРМАТ'],all[0].slice(0,5).map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.status)+'</td><td>'+esc(x.format)+'</td></tr>'}))+'</div>';
+}else if(fields[tab]){
+var items=await request(tab),users=tab==='players'?await request('users'):[];
+var cols={seasons:['Название','Статус','Начало','Окончание'],tournaments:['Турнир','Статус','Формат','Начало'],teams:['Команда','Тег','Регион','Статус'],players:['Игрок','Игровой ID','Роль','Команда'],matches:['Турнир','Раунд','Матч','Статус','Счёт']}[tab];
+var rows=items.map(function(x){
+var cells=tab==='seasons'?[x.title,x.status,x.starts_at,x.ends_at]:tab==='tournaments'?[x.title,x.status,x.format,x.starts_at]:tab==='teams'?[x.name,x.tag,x.region,x.status]:tab==='players'?[x.nickname,x.game_id,x.role,x.team_id]:[x.tournament_id,x.round_number,x.match_number,x.status,(x.score_a==null?'—':x.score_a)+' : '+(x.score_b==null?'—':x.score_b)];
+return '<tr>'+cells.map(function(v){return '<td>'+esc(v==null?'—':v)+'</td>'}).join('')+actions(x.id,tab,tab==='tournaments'&&x.status==='draft')+'</tr>';
+});
+content.innerHTML='<div class="admin-panel"><h3>'+(tab==='tournaments'?'Создать турнир':tab==='teams'?'Добавить команду':tab==='players'?'Добавить игрока':tab==='matches'?'Создать матч':'Создать сезон')+'</h3>'+formMarkup(tab,users)+'</div><div class="admin-panel"><h3>Все записи</h3>'+table(cols.concat(['ДЕЙСТВИЯ']),rows)+'</div>';
+wireRecordForm(tab,users,items);
 }else if(tab==='applications'){
-content.innerHTML='<div class="admin-empty">Заявки команд пока не выведены в интерфейс: для них нужен отдельный защищённый API с проверкой роли и аудитом решений. Непроверенные изменения в регистрациях не допускаются.</div>';
+var apps=await request('applications');
+content.innerHTML=table(['ТУРНИР','КОМАНДА','ТЕГ','СТАТУС','ОТПРАВЛЕНО','РЕШЕНИЕ'],apps.map(function(x){return '<tr><td>'+esc(x.tournament_title)+'</td><td>'+esc(x.team_name)+'</td><td>'+esc(x.team_tag)+'</td><td>'+esc(x.status)+'</td><td>'+esc(dateLabel(x.submitted_at))+'</td><td>'+(x.status==='pending'?'<button class="btn primary" data-review="'+x.id+'" data-status="approved">Принять</button> <button class="btn secondary" data-review="'+x.id+'" data-status="rejected">Отклонить</button>':'—')+'</td></tr>'}));
+content.querySelectorAll('[data-review]').forEach(function(b){b.addEventListener('click',async function(){if(!confirm(b.dataset.status==='approved'?'Принять заявку команды?':'Отклонить заявку команды?'))return;try{await request('applications',{resource:'applications',action:'review',id:Number(b.dataset.review),data:{status:b.dataset.status}});cache={};await render('applications')}catch(e){alert(e.message)}})});
 }else if(tab==='account'){
-content.innerHTML='<div class="admin-panel"><h3>Администратор</h3><p class="muted">'+esc(window.__mercyAdminEmail||'')+'</p><p class="muted">Сессия хранится в защищённой HttpOnly cookie. Выход завершит текущую сессию на этом устройстве.</p><button class="btn secondary" id="logoutButtonInline" type="button">Выйти из аккаунта</button></div>';
+content.innerHTML='<div class="admin-panel"><h3>Администратор</h3><p class="muted">'+esc(window.__mercyAdminEmail||'')+'</p><p class="muted">Сессия защищена HttpOnly cookie. Все административные изменения записываются в журнал аудита.</p><button class="btn secondary" id="logoutButtonInline" type="button">Выйти из аккаунта</button></div>';
 var inline=document.getElementById('logoutButtonInline');if(inline)inline.addEventListener('click',logout);
 }
-}catch(error){content.innerHTML='<div class="admin-empty">Не удалось загрузить раздел: '+esc(error.message)+'. Проверь доступность API.</div>'}
+content.querySelectorAll('[data-edit]').forEach(function(b){b.addEventListener('click',function(){var record=items.find(function(x){return String(x.id)===b.dataset.edit});if(!record)return;var form=document.getElementById('adminRecordForm');form.dataset.editId=record.id;fields[tab].forEach(function(f){var input=form.elements[f[0]];if(input)input.value=f[2]==='datetime-local'?dt(record[f[0]]):val(record[f[0]])});document.getElementById('adminSaveButton').textContent='Сохранить изменения';document.getElementById('adminCancelEdit').hidden=false;form.scrollIntoView({behavior:'smooth',block:'center'})})});
+content.querySelectorAll('[data-delete]').forEach(function(b){b.addEventListener('click',async function(){if(!confirm('Удалить запись #'+b.dataset.delete+'? Связанные данные могут быть затронуты ограничениями базы.'))return;try{await request(tab,{resource:tab,action:'delete',id:Number(b.dataset.delete)});cache={};await render(tab)}catch(e){alert(e.message)}})});
+content.querySelectorAll('[data-publish]').forEach(function(b){b.addEventListener('click',async function(){if(!confirm('Опубликовать турнир? Он станет виден в публичном списке.'))return;try{await request(tab,{resource:tab,action:'publish',id:Number(b.dataset.publish),data:{}});cache={};await render(tab)}catch(e){alert(e.message)}})});
+}catch(error){content.innerHTML='<div class="admin-empty">Не удалось загрузить раздел: '+esc(error.message)+'</div>'}
+}
+function wireRecordForm(resource,users,items){
+var form=document.getElementById('adminRecordForm');if(!form)return;
+form.addEventListener('submit',async function(event){event.preventDefault();var payload={};fields[resource].forEach(function(f){var el=form.elements[f[0]];if(!el)return;var v=el.value;payload[f[0]]=f[2]==='number'?(v===''?null:Number(v)):v});
+var button=document.getElementById('adminSaveButton'),msg=document.getElementById('adminFormMessage');button.disabled=true;msg.textContent='Сохраняем…';
+try{await request(resource,{resource:resource,action:form.dataset.editId?'update':'create',id:form.dataset.editId?Number(form.dataset.editId):undefined,data:payload});cache={};await render(resource)}catch(e){msg.textContent=e.message}finally{button.disabled=false}});
+document.getElementById('adminCancelEdit').addEventListener('click',function(){form.reset();delete form.dataset.editId;document.getElementById('adminSaveButton').textContent='Создать запись';this.hidden=true});
 }
 async function logout(){await fetch('/api/v1/auth/logout',{method:'POST',credentials:'same-origin'});location.reload()}
-window.__mercyAdminEmail=window.__mercyAdminEmail||'';
 document.querySelectorAll('[data-admin-tab]').forEach(function(b){b.addEventListener('click',function(){render(b.dataset.adminTab)})});
 var out=document.getElementById('logoutButton');if(out)out.addEventListener('click',logout);
 await render('overview');
