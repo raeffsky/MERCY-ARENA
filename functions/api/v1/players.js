@@ -10,8 +10,10 @@ export async function onRequestGet({ request, env }) {
     if (!profile) return json({ data: [], limit: 1 });
     let stats = null;
     let recentMatches = [];
+    let stats = null;
+    let recentMatches = [];
     try {
-      const stats = await env.DB.prepare(`
+      stats = await env.DB.prepare(`
         SELECT COUNT(*) AS matches_played,
           COALESCE(SUM(CASE WHEN winner_team_id=team_id THEN 1 ELSE 0 END),0) AS wins,
           COALESCE(SUM(CASE WHEN winner_team_id IS NOT NULL AND winner_team_id!=team_id THEN 1 ELSE 0 END),0) AS losses,
@@ -27,7 +29,7 @@ export async function onRequestGet({ request, env }) {
             AND m.status='completed' AND m.result_verified_at IS NOT NULL
         )
       `).bind(playerId).first();
-      const { results: recentMatches } = await env.DB.prepare(`
+      const recentResult = await env.DB.prepare(`
         SELECT DISTINCT m.id,m.scheduled_at,m.updated_at,m.score_a,m.score_b,
           CASE WHEN m.winner_team_id=r.team_id THEN 'win' ELSE 'loss' END AS outcome,
           CASE WHEN m.team_a_id=r.team_id THEN m.score_a ELSE m.score_b END AS player_score,
@@ -46,7 +48,7 @@ export async function onRequestGet({ request, env }) {
         ORDER BY COALESCE(m.scheduled_at,m.updated_at) DESC,m.id DESC
         LIMIT 10
       `).bind(playerId).all();
-      recentMatches = recentMatches || [];
+      recentMatches = recentResult.results || [];
     } catch (error) {
       if (!/no such table:\s*tournament_registration_roster/i.test(String(error?.message || error))) throw error;
       console.warn("Player match history is unavailable until migration 0013 is applied.");
