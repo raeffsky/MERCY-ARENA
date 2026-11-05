@@ -9,7 +9,7 @@ const TABLES = {
   matches: { table: "matches", fields: ["tournament_id","round_number","bracket","match_number","scheduled_at","status","team_a_id","team_b_id","score_a","score_b","winner_team_id"] },
   seasons: { table: "seasons", fields: ["id","title","season_number","starts_at","ends_at","status","image_url"] }
 };
-const FORMATS = new Set(["single_elimination","double_elimination","round_robin","swiss","group_playoff"]);
+const FORMATS = new Set(["single_elimination","double_elimination","round_robin"]);
 const STATUSES = {
   tournaments: new Set(["draft","published","active","completed","cancelled"]),
   teams: new Set(["active","inactive","dissolved"]),
