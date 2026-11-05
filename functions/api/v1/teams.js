@@ -1,3 +1,4 @@
+import { createAuditEventId } from "./_lib/audit.js";
 import { json, databaseUnavailable, parseLimit, publicList, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
 
@@ -44,7 +45,7 @@ export async function onRequestPost({ request, env }) {
     const membership = await env.DB.batch([
       env.DB.prepare("UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL").bind(teamId, now, player.id),
       env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at) SELECT ?,id,'captain',? FROM players WHERE id=? AND team_id=?").bind(teamId, now, player.id, teamId),
-      env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) SELECT ?,'team_created','team',?,? FROM players WHERE id=? AND team_id=?").bind(auth.user.id, teamId, JSON.stringify({ name, tag, region, captain_player_id: player.id }), player.id, teamId)
+      env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,'team_created','team',?,? FROM players WHERE id=? AND team_id=?").bind(await createAuditEventId(env.DB), auth.user.id, teamId, JSON.stringify({ name, tag, region, captain_player_id: player.id }), player.id, teamId)
     ]);
     if (!membership[0]?.meta?.changes) {
       await env.DB.prepare("DELETE FROM teams WHERE id=? AND captain_id=?").bind(teamId, auth.user.id).run();
