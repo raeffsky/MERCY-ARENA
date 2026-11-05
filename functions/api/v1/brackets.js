@@ -21,18 +21,27 @@ export async function onRequestPost({ request, env }) {
   const { results: registrations } = await env.DB.prepare("SELECT tm.id,tm.name,tm.tag FROM tournament_registrations r JOIN teams tm ON tm.id=r.team_id WHERE r.tournament_id=? AND r.status='approved' AND tm.status='active' ORDER BY r.submitted_at ASC,tm.id ASC").bind(tournamentId).all();
   const teams = registrations || [];
   if (teams.length < 2) return json({ error: { code: "NOT_ENOUGH_TEAMS", message: "Для сетки нужны минимум две одобренные команды." } }, 409);
+  if (teams.length > 32) return json({ error: { code: "BRACKET_TEAM_LIMIT", message: "Автогенерация сетки поддерживает максимум 32 команды." } }, 409);
   const now = new Date().toISOString();
   const created = [];
   try {
     if (tournament.format === "round_robin") {
       let matchNo = 1;
+      const statements = [];
       for (let i = 0; i < teams.length; i++) for (let j = i + 1; j < teams.length; j++) {
-        const row = await env.DB.prepare("INSERT INTO matches (tournament_id,round_number,bracket,match_number,status,team_a_id,team_b_id,created_at,updated_at) VALUES (?,1,'group',?,'scheduled',?,?,?,?)").bind(tournamentId, matchNo++, teams[i].id, teams[j].id, now, now).run();
-        created.push(Number(row.meta?.last_row_id));
+        statements.push(env.DB.prepare("INSERT INTO matches (tournament_id,round_number,bracket,match_number,status,team_a_id,team_b_id,created_at,updated_at) VALUES (?,1,'group',?,'scheduled',?,?,?,?)").bind(tournamentId, matchNo++, teams[i].id, teams[j].id, now, now));
+      }
+      for (let offset = 0; offset < statements.length; offset += 50) {
+        const inserted = await env.DB.batch(statements.slice(offset, offset + 50));
+        for (const row of inserted) {
+          const id = Number(row.meta?.last_row_id);
+          if (!Number.isSafeInteger(id) || id < 1) throw new Error("Round Robin match ID was not returned");
+          created.push(id);
+        }
       }
     } else if (tournament.format === "single_elimination") {
       const size = 2 ** Math.ceil(Math.log2(teams.length));
-      if (size !== teams.length) return json({ error: { code: "BRACKET_TEAM_COUNT", message: "Для сетки Single Elimination сейчас нужно 2, 4, 8, 16 или 32 команды. Добавь команды или выбери Round Robin." } }, 409);
+      if (size > 32 || size !== teams.length) return json({ error: { code: "BRACKET_TEAM_COUNT", message: "Для сетки Single Elimination сейчас нужно 2, 4, 8, 16 или 32 команды. Добавь команды или выбери Round Robin." } }, 409);
       const rounds = Math.log2(size);
       const roundMatches = [];
       for (let round = 1; round <= rounds; round++) {
