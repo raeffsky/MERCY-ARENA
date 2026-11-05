@@ -8,41 +8,49 @@ export async function onRequestGet({ request, env }) {
   if (playerId) {
     const profile = await env.DB.prepare("SELECT p.id,p.nickname,p.game_id,p.role,p.team_id,p.region,p.avatar_url,p.created_at,t.name AS team_name,t.tag AS team_tag,t.logo_url AS team_logo,t.region AS team_region FROM players p LEFT JOIN teams t ON t.id=p.team_id AND t.status='active' WHERE p.id=? AND p.profile_status='approved' LIMIT 1").bind(playerId).first();
     if (!profile) return json({ data: [], limit: 1 });
-    const stats = await env.DB.prepare(`
-      SELECT COUNT(*) AS matches_played,
-        COALESCE(SUM(CASE WHEN winner_team_id=team_id THEN 1 ELSE 0 END),0) AS wins,
-        COALESCE(SUM(CASE WHEN winner_team_id IS NOT NULL AND winner_team_id!=team_id THEN 1 ELSE 0 END),0) AS losses,
-        COALESCE(SUM(CASE WHEN winner_team_id=team_id THEN 3 ELSE 0 END),0) AS points,
-        ROUND(100.0*SUM(CASE WHEN winner_team_id=team_id THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0),1) AS win_rate
-      FROM (
-        SELECT DISTINCT m.id,m.winner_team_id,r.team_id
+    let stats = null;
+    let recentMatches = [];
+    try {
+      const stats = await env.DB.prepare(`
+        SELECT COUNT(*) AS matches_played,
+          COALESCE(SUM(CASE WHEN winner_team_id=team_id THEN 1 ELSE 0 END),0) AS wins,
+          COALESCE(SUM(CASE WHEN winner_team_id IS NOT NULL AND winner_team_id!=team_id THEN 1 ELSE 0 END),0) AS losses,
+          COALESCE(SUM(CASE WHEN winner_team_id=team_id THEN 3 ELSE 0 END),0) AS points,
+          ROUND(100.0*SUM(CASE WHEN winner_team_id=team_id THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0),1) AS win_rate
+        FROM (
+          SELECT DISTINCT m.id,m.winner_team_id,r.team_id
+          FROM tournament_registration_roster rr
+          JOIN tournament_registrations r ON r.id=rr.registration_id AND r.status='approved'
+          JOIN matches m ON m.tournament_id=r.tournament_id
+            AND (m.team_a_id=r.team_id OR m.team_b_id=r.team_id)
+          WHERE rr.player_id=? AND rr.roster_role='starter'
+            AND m.status='completed' AND m.result_verified_at IS NOT NULL
+        )
+      `).bind(playerId).first();
+      const { results: recentMatches } = await env.DB.prepare(`
+        SELECT DISTINCT m.id,m.scheduled_at,m.updated_at,m.score_a,m.score_b,
+          CASE WHEN m.winner_team_id=r.team_id THEN 'win' ELSE 'loss' END AS outcome,
+          CASE WHEN m.team_a_id=r.team_id THEN m.score_a ELSE m.score_b END AS player_score,
+          CASE WHEN m.team_a_id=r.team_id THEN m.score_b ELSE m.score_a END AS opponent_score,
+          CASE WHEN m.team_a_id=r.team_id THEN tb.name ELSE ta.name END AS opponent_name,
+          t.title AS tournament_title
         FROM tournament_registration_roster rr
         JOIN tournament_registrations r ON r.id=rr.registration_id AND r.status='approved'
         JOIN matches m ON m.tournament_id=r.tournament_id
           AND (m.team_a_id=r.team_id OR m.team_b_id=r.team_id)
+        JOIN tournaments t ON t.id=m.tournament_id
+        LEFT JOIN teams ta ON ta.id=m.team_a_id
+        LEFT JOIN teams tb ON tb.id=m.team_b_id
         WHERE rr.player_id=? AND rr.roster_role='starter'
           AND m.status='completed' AND m.result_verified_at IS NOT NULL
-      )
-    `).bind(playerId).first();
-    const { results: recentMatches } = await env.DB.prepare(`
-      SELECT DISTINCT m.id,m.scheduled_at,m.updated_at,m.score_a,m.score_b,
-        CASE WHEN m.winner_team_id=r.team_id THEN 'win' ELSE 'loss' END AS outcome,
-        CASE WHEN m.team_a_id=r.team_id THEN m.score_a ELSE m.score_b END AS player_score,
-        CASE WHEN m.team_a_id=r.team_id THEN m.score_b ELSE m.score_a END AS opponent_score,
-        CASE WHEN m.team_a_id=r.team_id THEN tb.name ELSE ta.name END AS opponent_name,
-        t.title AS tournament_title
-      FROM tournament_registration_roster rr
-      JOIN tournament_registrations r ON r.id=rr.registration_id AND r.status='approved'
-      JOIN matches m ON m.tournament_id=r.tournament_id
-        AND (m.team_a_id=r.team_id OR m.team_b_id=r.team_id)
-      JOIN tournaments t ON t.id=m.tournament_id
-      LEFT JOIN teams ta ON ta.id=m.team_a_id
-      LEFT JOIN teams tb ON tb.id=m.team_b_id
-      WHERE rr.player_id=? AND rr.roster_role='starter'
-        AND m.status='completed' AND m.result_verified_at IS NOT NULL
-      ORDER BY COALESCE(m.scheduled_at,m.updated_at) DESC,m.id DESC
-      LIMIT 10
-    `).bind(playerId).all();
+        ORDER BY COALESCE(m.scheduled_at,m.updated_at) DESC,m.id DESC
+        LIMIT 10
+      `).bind(playerId).all();
+      recentMatches = recentMatches || [];
+    } catch (error) {
+      if (!/no such table:\s*tournament_registration_roster/i.test(String(error?.message || error))) throw error;
+      console.warn("Player match history is unavailable until migration 0013 is applied.");
+    }
     return json({ data: [{ ...profile, stats: {
       matches_played: stats?.matches_played || 0,
       wins: stats?.wins || 0,
