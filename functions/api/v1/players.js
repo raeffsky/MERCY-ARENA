@@ -29,9 +29,15 @@ export async function onRequestPut({ request, env }) {
   let body;try{body=await request.json()}catch{return json({error:{code:"INVALID_JSON",message:"Некорректные данные."}},400)}
   const nickname=String(body.nickname||"").trim().slice(0,32),gameId=String(body.game_id||"").trim().slice(0,40),role=String(body.role||""),region=String(body.region||"").trim().slice(0,80);
   if(nickname.length<2||!gameId||!/^[0-9-]{5,40}$/.test(gameId)||!["EXP","JUNGLE","MID","GOLD","ROAM","FLEX"].includes(role))return json({error:{code:"INVALID_PROFILE",message:"Проверь ник, игровой ID и роль."}},400);
-  const profile=await env.DB.prepare("SELECT id,profile_status FROM players WHERE user_id=?").bind(session.user.id).first();
-  if(!profile)return json({error:{code:"PROFILE_NOT_FOUND",message:"Профиль игрока не найден."}},404);
-  await env.DB.prepare("UPDATE players SET nickname=?,game_id=?,role=?,region=?,profile_status='pending',updated_at=? WHERE user_id=?").bind(nickname,gameId,role,region||null,new Date().toISOString(),session.user.id).run();
-  await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'player_profile_updated','player',?,?)").bind(session.user.id,profile.id,JSON.stringify({nickname,role,region,profile_status:"pending"})).run();
-  return json({data:{id:profile.id,nickname,profile_status:"pending"}});
+  const profile=await env.DB.prepare("SELECT id FROM players WHERE user_id=?").bind(session.user.id).first();
+  let playerId=profile?.id;
+  if(profile){
+    await env.DB.prepare("UPDATE players SET nickname=?,game_id=?,role=?,region=?,profile_status='pending',updated_at=? WHERE user_id=?").bind(nickname,gameId,role,region||null,new Date().toISOString(),session.user.id).run();
+  }else{
+    const inserted=await env.DB.prepare("INSERT INTO players (user_id,nickname,game_id,role,region,profile_status) VALUES (?,?,?,?,?,'pending')").bind(session.user.id,nickname,gameId,role,region||null).run();
+    playerId=Number(inserted.meta?.last_row_id);
+    if(!Number.isSafeInteger(playerId)||playerId<=0)return json({error:{code:"PROFILE_CREATE_FAILED",message:"Не удалось создать игровой профиль. Попробуй ещё раз."}},500);
+  }
+  await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'player',?,?)").bind(session.user.id,profile?'player_profile_updated':'player_profile_created',playerId,JSON.stringify({nickname,role,region,profile_status:"pending"})).run();
+  return json({data:{id:playerId,nickname,profile_status:"pending"}});
 }
