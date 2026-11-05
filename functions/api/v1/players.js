@@ -83,17 +83,21 @@ export async function onRequestPut({ request, env }) {
   const serverId = String(body.server_id || "").trim();
   const role = String(body.role || "");
   const region = String(body.region || "").trim().slice(0, 80);
+  const manualReview = body.manual_review === true;
+  const manualNickname = String(body.nickname || "").trim().replace(/\s+/g, " ").slice(0, 32);
   if (!/^\d{5,15}$/.test(gameId) || !/^\d{1,6}$/.test(serverId) || !["EXP", "JUNGLE", "MID", "GOLD", "ROAM", "FLEX"].includes(role)) return json({ error: { code: "INVALID_PROFILE", message: "Проверь MLBB ID, Server ID и игровую роль." } }, 400);
-  const mlbb = await lookupMlbbPlayer(env, gameId, serverId);
+  if (manualReview && (manualNickname.length < 2 || manualNickname.length > 32)) return json({ error: { code: "INVALID_NICKNAME", message: "Укажи игровой ник длиной от 2 до 32 символов." } }, 400);
+  const mlbb = manualReview ? { ok: true, nickname: manualNickname } : await lookupMlbbPlayer(env, gameId, serverId);
   if (!mlbb.ok) return json({ error: { code: mlbb.code, message: mlbb.message } }, mlbb.status);
+  const profileStatus = manualReview ? "pending" : "approved";
   const profile = await env.DB.prepare("SELECT id FROM players WHERE user_id=? LIMIT 1").bind(session.user.id).first();
   const verifiedAt = new Date().toISOString();
   let playerId = profile?.id;
   try {
     if (profile) {
-      await env.DB.prepare("UPDATE players SET nickname=?,game_id=?,server_id=?,mlbb_verified_at=?,role=?,region=?,profile_status='approved',updated_at=? WHERE user_id=?").bind(mlbb.nickname, gameId, serverId, verifiedAt, role, region || null, verifiedAt, session.user.id).run();
+      await env.DB.prepare("UPDATE players SET nickname=?,game_id=?,server_id=?,mlbb_verified_at=?,role=?,region=?,profile_status=?,updated_at=? WHERE user_id=?").bind(mlbb.nickname, gameId, serverId, manualReview ? null : verifiedAt, role, region || null, profileStatus, verifiedAt, session.user.id).run();
     } else {
-      const inserted = await env.DB.prepare("INSERT INTO players (user_id,nickname,game_id,server_id,mlbb_verified_at,role,region,profile_status) VALUES (?,?,?,?,?,?,?,'approved')").bind(session.user.id, mlbb.nickname, gameId, serverId, verifiedAt, role, region || null).run();
+      const inserted = await env.DB.prepare("INSERT INTO players (user_id,nickname,game_id,server_id,mlbb_verified_at,role,region,profile_status) VALUES (?,?,?,?,?,?,?,?)").bind(session.user.id, mlbb.nickname, gameId, serverId, manualReview ? null : verifiedAt, role, region || null, profileStatus).run();
       playerId = Number(inserted.meta?.last_row_id);
       if (!Number.isSafeInteger(playerId) || playerId <= 0) return json({ error: { code: "PROFILE_CREATE_FAILED", message: "Не удалось создать игровой профиль. Попробуй ещё раз." } }, 500);
     }
@@ -104,6 +108,6 @@ export async function onRequestPut({ request, env }) {
     console.error("Player profile save failed:", error);
     return json({ error: { code: "PROFILE_SAVE_FAILED", message: "Не удалось сохранить игровой профиль. Попробуй позже." } }, 500);
   }
-  await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?, ?, 'player', ?, ?)").bind(session.user.id, profile ? "player_profile_reverified" : "player_profile_created", playerId, JSON.stringify({ nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: "approved", mlbb_verified: true })).run();
-  return json({ data: { id: playerId, nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: "approved", mlbb_verified_at: verifiedAt } });
+  await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?, ?, 'player', ?, ?)").bind(session.user.id, manualReview ? "player_profile_manual_review" : (profile ? "player_profile_reverified" : "player_profile_created"), playerId, JSON.stringify({ nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: profileStatus, mlbb_verified: !manualReview, manual_review: manualReview })).run();
+  return json({ data: { id: playerId, nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: profileStatus, mlbb_verified_at: manualReview ? null : verifiedAt } });
 }
