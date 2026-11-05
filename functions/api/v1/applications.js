@@ -28,11 +28,18 @@ export async function onRequestGet({ request, env }) {
   ).bind(tournamentId, auth.user.id).all();
   const rows = results || [];
   for (const row of rows) {
+    const available = await env.DB.prepare(
+      `SELECT p.id,p.nickname,p.role,p.game_id,p.server_id,
+        CASE WHEN p.user_id=t.captain_id THEN 'captain' ELSE COALESCE(tr.roster_role,'player') END AS team_role
+       FROM team_roster tr JOIN players p ON p.id=tr.player_id
+       WHERE tr.team_id=t.id AND tr.left_at IS NULL AND p.profile_status='approved'
+       ORDER BY CASE WHEN p.user_id=t.captain_id THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
+    ).all();
+    row.available_players = available.results || [];
     if (!row.registration_id) { row.roster = []; continue; }
     const roster = await env.DB.prepare(
       `SELECT p.id,p.nickname,p.role,p.game_id,p.server_id,rr.roster_role
-       FROM tournament_registration_roster rr
-       JOIN players p ON p.id=rr.player_id
+       FROM tournament_registration_roster rr JOIN players p ON p.id=rr.player_id
        WHERE rr.registration_id=?
        ORDER BY CASE rr.roster_role WHEN 'starter' THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
     ).bind(row.registration_id).all();
