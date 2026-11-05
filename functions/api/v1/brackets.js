@@ -61,7 +61,17 @@ export async function onRequestPost({ request, env }) {
     return json({ data: { tournament_id: tournamentId, format: tournament.format, teams: teams.length, matches_created: created.length, match_ids: created } }, 201);
   } catch (error) {
     console.error("Bracket generation failed:", error);
-    return json({ error: { code: "BRACKET_GENERATION_FAILED", message: "Не удалось создать сетку. Проверь состав участников и повтори попытку." } }, 500);
+    // Never leave a half-generated bracket behind. Only remove match IDs created
+    // by this request; an existing or concurrently generated bracket is untouched.
+    for (let offset = 0; offset < created.length; offset += 50) {
+      const chunk = created.slice(offset, offset + 50);
+      const placeholders = chunk.map(() => "?").join(",");
+      await env.DB.prepare("DELETE FROM matches WHERE tournament_id=? AND id IN (" + placeholders + ")")
+        .bind(tournamentId, ...chunk).run().catch((cleanupError) => {
+          console.error("Bracket rollback cleanup failed:", cleanupError);
+        });
+    }
+    return json({ error: { code: "BRACKET_GENERATION_FAILED", message: "Не удалось создать сетку. Частично созданные матчи удалены. Проверь состав участников и повтори попытку." } }, 500);
   }
 }
 export function onRequestGet() { return methodNotAllowed("POST"); }
