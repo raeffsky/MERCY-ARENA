@@ -103,6 +103,31 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#seasonTournaments')).toContainText('Season Cup');
   });
 
+  test('tournament application loads captain teams and available roster', async ({ page }) => {
+    await page.route('**/api/v1/tournaments?id=778', route => route.fulfill({ json: { data: [{
+      id: 778, title: 'Application Test Cup', format: 'single_elimination', status: 'published',
+      registered_teams_list: [], max_teams: 8, registration_slots: null
+    }] } }));
+    await page.route('**/api/v1/matches?tournament_id=778', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/applications?tournament_id=778', route => route.fulfill({ json: { data: [{
+      id: 19, name: 'HAFORS', tag: 'HS', application_status: null, available_slots: [],
+      available_players: [
+        { id: 1, nickname: 'PlayerOne', role: 'GOLD' },
+        { id: 2, nickname: 'PlayerTwo', role: 'MID' },
+        { id: 3, nickname: 'PlayerThree', role: 'JUNGLE' },
+        { id: 4, nickname: 'PlayerFour', role: 'EXP' },
+        { id: 5, nickname: 'PlayerFive', role: 'ROAM' }
+      ]
+    }] } }));
+    await page.goto('/#/tournament/778');
+    await page.getByRole('button', { name: 'Подать заявку' }).click();
+    await expect(page.locator('#applicationTeam')).toContainText('HAFORS [HS]');
+    await page.locator('#applicationTeam').selectOption('19');
+    await expect(page.locator('#applicationRoster option')).toHaveCount(5);
+    await expect(page.locator('#applicationRosterHint')).toContainText('Выбрано: 5');
+    await expect(page.locator('#applicationMessage')).toBeEmpty();
+  });
+
   test('double elimination bracket distinguishes upper, lower and grand final matches', async ({ page }) => {
     await page.route('**/api/v1/tournaments?id=777', route => route.fulfill({ json: { data: [{
       id: 777, title: 'Double Elimination Cup', format: 'double_elimination', status: 'active',
