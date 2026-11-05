@@ -32,7 +32,7 @@ function bad(message, status = 400) {
   return json({ error: { code: "INVALID_REQUEST", message } }, status);
 }
 function cleanValue(field, value) {
-  const integerFields = new Set(["max_teams","season_id","user_id","team_id","tournament_id","round_number","match_number","team_a_id","team_b_id","score_a","score_b","winner_team_id"]);
+  const integerFields = new Set(["max_teams","round_number","match_number","score_a","score_b"]);
   const nullableFields = new Set(["description","region","logo_url","poster_url","image_url","prize_pool","captain_id","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","role","team_id","scheduled_at","team_a_id","team_b_id","score_a","score_b","winner_team_id"]);
   if (value === "" && nullableFields.has(field)) return null;
   if (integerFields.has(field)) {
@@ -49,7 +49,7 @@ function cleanValue(field, value) {
 }
 async function audit(db, actor, action, entity, id, before, after) {
   await db.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,?,?,?,?)")
-    .bind(actor, action, entity, Number(id), before ? JSON.stringify(before) : null, after ? JSON.stringify(after) : null).run();
+    .bind(actor, action, entity, String(id), before ? JSON.stringify(before) : null, after ? JSON.stringify(after) : null).run();
 }
 async function getById(db, table, id) {
   return db.prepare("SELECT * FROM " + table + " WHERE id=?").bind(id).first();
@@ -91,9 +91,9 @@ export async function onRequestPost({ request, env }) {
   try { body = await request.json(); } catch { return bad("Некорректный JSON."); }
   const { resource, action = "create", id, data = {} } = body || {};
   if (resource === "applications" && action === "review") {
-    const registrationId = Number(id);
+    const registrationId = String(id || "").trim();
     const status = data.status;
-    if (!Number.isSafeInteger(registrationId) || registrationId < 1 || !["approved","rejected"].includes(status)) return bad("Укажите заявку и решение: approved или rejected.");
+    if (!registrationId || !["approved","rejected"].includes(status)) return bad("Укажите заявку и решение: approved или rejected.");
     const before = await env.DB.prepare("SELECT * FROM tournament_registrations WHERE id=?").bind(registrationId).first();
     if (!before) return bad("Заявка не найдена.", 404);
     if (before.status !== "pending") return bad("Эта заявка уже рассмотрена.", 409);
@@ -114,8 +114,8 @@ export async function onRequestPost({ request, env }) {
   if (!config) return bad("Неизвестный раздел.");
   if (!["create","update","delete","publish"].includes(action)) return bad("Неизвестное действие.");
   if (action === "delete") {
-    const recordId = Number(id);
-    if (!Number.isSafeInteger(recordId) || recordId < 1) return bad("Некорректный ID.");
+    const recordId = String(id || "").trim();
+    if (!recordId) return bad("Некорректный ID.");
     const before = await getById(env.DB, config.table, recordId);
     if (!before) return bad("Запись не найдена.", 404);
     await env.DB.prepare("DELETE FROM " + config.table + " WHERE id=?").bind(recordId).run();
@@ -169,8 +169,8 @@ export async function onRequestPost({ request, env }) {
     await audit(env.DB, auth.user.id, resource + "_created", resource, recordId, null, after);
     return json({ data: after }, 201);
   }
-  const recordId = Number(id);
-  if (!Number.isSafeInteger(recordId) || recordId < 1 || !Object.keys(payload).length) return bad("Укажите ID и поля для изменения.");
+  const recordId = String(id || "").trim();
+  if (!recordId || !Object.keys(payload).length) return bad("Укажите ID и поля для изменения.");
   const before = await getById(env.DB, config.table, recordId);
   if (!before) return bad("Запись не найдена.", 404);
   if (resource === "tournaments" && (payload.status === "published" || payload.status === "active") && !before.published_at) payload.published_at = now();
