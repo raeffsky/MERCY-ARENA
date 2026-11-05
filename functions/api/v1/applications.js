@@ -39,8 +39,8 @@ export async function onRequestGet({ request, env }) {
   stage = "tournament_config";
   const tournamentId = new URL(request.url).searchParams.get("tournament_id") || "";
   const tournamentConfigRow = await tournamentConfig(env.DB, tournamentId);
-  const tournamentConfig = tournamentConfigRow && { registration_slots: tournamentConfigRow.registration_slots };
-  const availableSlots = String(tournamentConfig?.registration_slots || "").split(/\r?\n/).map((slot) => slot.trim()).filter(Boolean).slice(0, 20);
+  const tournamentSettings = tournamentConfigRow && { registration_slots: tournamentConfigRow.registration_slots };
+  const availableSlots = String(tournamentSettings?.registration_slots || "").split(/\r?\n/).map((slot) => slot.trim()).filter(Boolean).slice(0, 20);
   let results = [];
   stage = "team_lookup";
   try {
