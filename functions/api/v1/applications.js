@@ -38,16 +38,45 @@ export async function onRequestGet({ request, env }) {
   const tournamentConfigRow = await tournamentConfig(env.DB, tournamentId);
   const tournamentConfig = tournamentConfigRow && { registration_slots: tournamentConfigRow.registration_slots };
   const availableSlots = String(tournamentConfig?.registration_slots || "").split(/\r?\n/).map((slot) => slot.trim()).filter(Boolean).slice(0, 20);
-  const { results } = await env.DB.prepare(
-    `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
-      r.selected_slot,r.captain_note,r.submitted_at,r.reviewed_at,
-      (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
-     FROM teams t
-     LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
-     WHERE t.captain_id=? AND t.status='active'
-     ORDER BY t.name COLLATE NOCASE`
-  ).bind(tournamentId, auth.user.id).all();
-  const rows = results || [];
+  let results = [];
+  try {
+    const response = await env.DB.prepare(
+      `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
+        r.selected_slot,r.captain_note,r.submitted_at,r.reviewed_at,
+        (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
+       FROM teams t
+       LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
+       WHERE t.captain_id=? AND t.status='active'
+       ORDER BY t.name COLLATE NOCASE`
+    ).bind(tournamentId, auth.user.id).all();
+    results = response.results || [];
+  } catch (error) {
+    const message = String(error?.message || error);
+    if (/no such column:\\s*(?:r\\.)?(?:selected_slot|captain_note|updated_at)|no such table:\\s*tournament_registrations/i.test(message)) {
+      const response = await env.DB.prepare(
+        `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
+          NULL AS selected_slot,NULL AS captain_note,r.submitted_at,r.reviewed_at,
+          (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
+         FROM teams t
+         LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
+         WHERE t.captain_id=? AND t.status='active'
+         ORDER BY t.name COLLATE NOCASE`
+      ).bind(tournamentId, auth.user.id).all().catch(async (fallbackError) => {
+        if (!/no such table:\\s*tournament_registrations/i.test(String(fallbackError?.message || fallbackError))) throw fallbackError;
+        return env.DB.prepare(
+          `SELECT t.id,t.name,t.tag,t.region,NULL AS registration_id,NULL AS application_status,
+            NULL AS selected_slot,NULL AS captain_note,NULL AS submitted_at,NULL AS reviewed_at,
+            (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
+           FROM teams t WHERE t.captain_id=? AND t.status='active' ORDER BY t.name COLLATE NOCASE`
+        ).bind(auth.user.id).all();
+      });
+      results = response.results || [];
+    } else {
+      console.error("Tournament application team lookup failed:", error);
+      return json({ error: { code: "APPLICATION_TEAMS_UNAVAILABLE", message: "Не удалось загрузить команды. Проверь, что миграции платформы применены." } }, 503);
+    }
+  }
+  const rows = results;
   for (const row of rows) {
     const available = await env.DB.prepare(
       `SELECT p.id,p.nickname,p.role,p.game_id,p.server_id,
