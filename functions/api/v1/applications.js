@@ -13,11 +13,23 @@ function invalid(message, status = 400, code = "INVALID_APPLICATION") {
   return json({ error: { code, message } }, status);
 }
 
+async function hasColumn(db, table, column) {
+  const { results } = await db.prepare("PRAGMA table_info(" + table + ")").all();
+  return (results || []).some((item) => item.name === column);
+}
+
+async function hasTable(db, table) {
+  return Boolean(await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(table).first());
+}
+
 export async function onRequestGet({ request, env }) {
   const auth = await currentUser(request, env);
   if (auth.response) return auth.response;
   const tournamentId = new URL(request.url).searchParams.get("tournament_id") || "";
-  const tournamentConfig = await env.DB.prepare("SELECT registration_slots FROM tournaments WHERE id=?").bind(tournamentId).first();
+  const hasRegistrationSlots = await hasColumn(env.DB, "tournaments", "registration_slots");
+  const tournamentConfig = await env.DB.prepare(
+    "SELECT id" + (hasRegistrationSlots ? ",registration_slots" : ",NULL AS registration_slots") + " FROM tournaments WHERE id=?"
+  ).bind(tournamentId).first();
   const availableSlots = String(tournamentConfig?.registration_slots || "").split(/\r?\n/).map((slot) => slot.trim()).filter(Boolean).slice(0, 20);
   const { results } = await env.DB.prepare(
     `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
@@ -40,13 +52,19 @@ export async function onRequestGet({ request, env }) {
     row.available_players = available.results || [];
     row.available_slots = availableSlots;
     if (!row.registration_id) { row.roster = []; continue; }
-    const roster = await env.DB.prepare(
-      `SELECT p.id,p.nickname,p.role,p.game_id,p.server_id,rr.roster_role
-       FROM tournament_registration_roster rr JOIN players p ON p.id=rr.player_id
-       WHERE rr.registration_id=?
-       ORDER BY CASE rr.roster_role WHEN 'starter' THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
-    ).bind(row.registration_id).all();
-    row.roster = roster.results || [];
+    try {
+      const roster = await env.DB.prepare(
+        `SELECT p.id,p.nickname,p.role,p.game_id,p.server_id,rr.roster_role
+         FROM tournament_registration_roster rr JOIN players p ON p.id=rr.player_id
+         WHERE rr.registration_id=?
+         ORDER BY CASE rr.roster_role WHEN 'starter' THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
+      ).bind(row.registration_id).all();
+      row.roster = roster.results || [];
+    } catch (error) {
+      if (!/no such table:\s*tournament_registration_roster/i.test(String(error?.message || error))) throw error;
+      row.roster = [];
+      row.roster_unavailable = true;
+    }
   }
   return json({ data: rows });
 }
@@ -64,13 +82,20 @@ export async function onRequestPost({ request, env }) {
   const captainNote = String(body.captain_note || "").trim().slice(0, 1000);
   if (!tournamentId || !teamId) return invalid("Выбери команду для участия.", 400, "MISSING_FIELDS");
 
+  const hasRegistrationSlots = await hasColumn(env.DB, "tournaments", "registration_slots");
   const tournament = await env.DB.prepare(
-    "SELECT id,title,status,max_teams,registration_open_at,registration_close_at,registration_slots FROM tournaments WHERE id=? AND published_at IS NOT NULL"
+    "SELECT id,title,status,max_teams,registration_open_at,registration_close_at" +
+      (hasRegistrationSlots ? ",registration_slots" : ",NULL AS registration_slots") +
+      " FROM tournaments WHERE id=? AND published_at IS NOT NULL"
   ).bind(tournamentId).first();
   if (!tournament || tournament.status !== "published") return invalid("Регистрация на этот турнир сейчас закрыта.", 409, "REGISTRATION_CLOSED");
   const now = new Date().toISOString();
   if (tournament.registration_open_at && now < tournament.registration_open_at) return invalid("Регистрация ещё не началась.", 409, "REGISTRATION_NOT_STARTED");
   if (tournament.registration_close_at && now > tournament.registration_close_at) return invalid("Срок подачи заявок завершён.", 409, "REGISTRATION_CLOSED");
+
+  if (!await hasTable(env.DB, "tournament_registration_roster")) {
+    return invalid("Система состава турнира ещё не настроена. Организатору нужно применить миграцию 0013_platform_foundation.sql.", 503, "ROSTER_MIGRATION_REQUIRED");
+  }
 
   const team = await env.DB.prepare(
     "SELECT id,name,tag FROM teams WHERE id=? AND captain_id=? AND status='active'"
