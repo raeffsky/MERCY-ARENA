@@ -1,5 +1,6 @@
 import { json, methodNotAllowed } from "../_lib/http.js";
 import { normalizedEmail, validEmail, sha256, sessionCookie, SESSION_TTL, sameOrigin } from "../_lib/session-auth.js";
+import { lookupMlbbPlayer } from "../_lib/mlbb-lookup.js";
 
 const ITERATIONS = 100000;
 async function passwordHash(password, saltBytes) {
@@ -17,13 +18,15 @@ export async function onRequestPost({ request, env }) {
     let body;
     try { body=await request.json(); } catch { return json({error:{code:"INVALID_JSON",message:"Проверьте данные формы."}},400); }
     const email=normalizedEmail(body.email), password=String(body.password||"");
-    const nickname=String(body.nickname||"").trim().slice(0,32), gameId=String(body.game_id||"").trim().slice(0,40);
+    const gameId=String(body.game_id||"").trim(), serverId=String(body.server_id||"").trim();
     const role=String(body.role||""), region=String(body.region||"").trim().slice(0,80);
-    const displayName=String(body.display_name||nickname).trim().slice(0,80);
+    const displayName=String(body.display_name||"").trim().slice(0,80);
     if(!validEmail(email)) return json({error:{code:"INVALID_EMAIL",message:"Укажи корректный email."}},400);
     if(password.length<12||password.length>128) return json({error:{code:"WEAK_PASSWORD",message:"Пароль должен содержать от 12 до 128 символов."}},400);
-    if(nickname.length<2||!/^[\p{L}\p{N}_ .-]+$/u.test(nickname)) return json({error:{code:"INVALID_NICKNAME",message:"Ник должен содержать от 2 до 32 допустимых символов."}},400);
-    if(!gameId||!/^[0-9-]{5,40}$/.test(gameId)) return json({error:{code:"INVALID_GAME_ID",message:"Укажи корректный игровой ID MLBB."}},400);
+    if(!/^\d{5,15}$/.test(gameId)||!/^\d{1,6}$/.test(serverId)) return json({error:{code:"INVALID_GAME_ID",message:"Укажи корректные MLBB ID и Server ID."}},400);
+    const mlbb=await lookupMlbbPlayer(env,gameId,serverId);
+    if(!mlbb.ok)return json({error:{code:mlbb.code,message:mlbb.message}},mlbb.status);
+    const nickname=mlbb.nickname;
     if(!["EXP","JUNGLE","MID","GOLD","ROAM","FLEX"].includes(role)) return json({error:{code:"INVALID_ROLE",message:"Выбери игровую роль."}},400);
 
     const requiredTables=["users","players","user_roles","audit_events","auth_sessions","auth_login_attempts"];
@@ -31,7 +34,7 @@ export async function onRequestPost({ request, env }) {
     const columns=Object.fromEntries(requiredTables.map((name,i)=>[name,new Map((tableChecks[i].results||[]).map(col=>[col.name,{type:String(col.type||"").toUpperCase(),pk:Number(col.pk||0)}]))]));
     const requiredColumns={
       users:["id","email","display_name","password_hash"],
-      players:["id","user_id","game_id","nickname","role","region","profile_status"],
+      players:["id","user_id","game_id","server_id","mlbb_verified_at","nickname","role","region","profile_status"],
       user_roles:["user_id","role"],
       audit_events:["id","actor_id","action","entity_type","entity_id","after_json"],
       auth_sessions:["id","user_id","token_hash","expires_at"],
@@ -45,7 +48,7 @@ export async function onRequestPost({ request, env }) {
     // Keep the registration flow compatible with that schema.
     const expected={
       users:{id:"INTEGER",email:"TEXT",display_name:"TEXT",password_hash:"TEXT"},
-      players:{id:"INTEGER",user_id:"INTEGER",game_id:"TEXT",nickname:"TEXT",role:"TEXT",region:"TEXT",profile_status:"TEXT"},
+      players:{id:"INTEGER",user_id:"INTEGER",game_id:"TEXT",server_id:"TEXT",mlbb_verified_at:"TEXT",nickname:"TEXT",role:"TEXT",region:"TEXT",profile_status:"TEXT"},
       user_roles:{user_id:"INTEGER",role:"TEXT"},
       audit_events:{id:"INTEGER",actor_id:"INTEGER",action:"TEXT",entity_type:"TEXT",entity_id:"INTEGER",after_json:"TEXT"},
       auth_sessions:{id:"TEXT",user_id:"INTEGER",token_hash:"TEXT",expires_at:"INTEGER"},
@@ -81,15 +84,15 @@ export async function onRequestPost({ request, env }) {
     if(!Number.isSafeInteger(userId)||userId<=0) throw new Error("D1 did not return users.id after insert");
 
     await env.DB.prepare("INSERT INTO user_roles (user_id,role) VALUES (?,'player')").bind(userId).run();
-    const playerInsert=await env.DB.prepare("INSERT INTO players (user_id,game_id,nickname,role,region,profile_status) VALUES (?,?,?,?,?,'pending')").bind(userId,gameId,nickname,role,region||null).run();
+    const playerInsert=await env.DB.prepare("INSERT INTO players (user_id,game_id,server_id,mlbb_verified_at,nickname,role,region,profile_status) VALUES (?,?,?,?,?,?,?,'approved')").bind(userId,gameId,serverId,new Date().toISOString(),nickname,role,region||null).run();
     const playerId=Number(playerInsert.meta?.last_row_id);
     if(!Number.isSafeInteger(playerId)||playerId<=0) throw new Error("D1 did not return players.id after insert");
 
-    await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'player_profile_submitted','player',?,?)").bind(userId,playerId,JSON.stringify({nickname,role,region,profile_status:"pending"})).run();
+    await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'player_profile_submitted','player',?,?)").bind(userId,playerId,JSON.stringify({nickname,role,region,profile_status:"approved",game_id:gameId,server_id:serverId,mlbb_verified:true})).run();
     await env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),userId,tokenHash,now+SESSION_TTL).run();
     await env.DB.prepare("INSERT INTO auth_login_attempts (id,email_hash,ip_hash,attempted_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),emailHash,ipHash,now).run();
     await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash,ipHash).run();
-    return json({authenticated:true,account:{id:String(userId),email,name:displayName||nickname},profile:{id:String(playerId),status:"pending",nickname}},201,{"set-cookie":sessionCookie(token)});
+    return json({authenticated:true,account:{id:String(userId),email,name:displayName||nickname},profile:{id:String(playerId),status:"approved",nickname,game_id:gameId,server_id:serverId}},201,{"set-cookie":sessionCookie(token)});
   } catch(error) {
     console.error("Player registration request failed:",error);
     if(userId!==null) await env.DB.prepare("DELETE FROM users WHERE id=?").bind(userId).run().catch(()=>{});
