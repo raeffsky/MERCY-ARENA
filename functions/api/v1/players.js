@@ -22,22 +22,30 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPut({ request, env }) {
   if (!env.DB) return databaseUnavailable();
   const { getSessionUser, sameOrigin } = await import("./_lib/session-auth.js");
-  if (!request.headers.get("origin") || !sameOrigin(request,env)) return json({error:{code:"ORIGIN_REJECTED",message:"Запрос отклонён."}},403);
-  const session=await getSessionUser(request,env);
-  if(session.error)return session.error;
-  if(!session.user)return json({error:{code:"UNAUTHORIZED",message:"Войди в аккаунт, чтобы изменить профиль."}},401);
-  let body;try{body=await request.json()}catch{return json({error:{code:"INVALID_JSON",message:"Некорректные данные."}},400)}
-  const nickname=String(body.nickname||"").trim().slice(0,32),gameId=String(body.game_id||"").trim().slice(0,40),role=String(body.role||""),region=String(body.region||"").trim().slice(0,80);
-  if(nickname.length<2||!gameId||!/^[0-9-]{5,40}$/.test(gameId)||!["EXP","JUNGLE","MID","GOLD","ROAM","FLEX"].includes(role))return json({error:{code:"INVALID_PROFILE",message:"Проверь ник, игровой ID и роль."}},400);
-  const profile=await env.DB.prepare("SELECT id FROM players WHERE user_id=?").bind(session.user.id).first();
-  let playerId=profile?.id;
-  if(profile){
-    await env.DB.prepare("UPDATE players SET nickname=?,game_id=?,role=?,region=?,profile_status='pending',updated_at=? WHERE user_id=?").bind(nickname,gameId,role,region||null,new Date().toISOString(),session.user.id).run();
-  }else{
-    const inserted=await env.DB.prepare("INSERT INTO players (user_id,nickname,game_id,role,region,profile_status) VALUES (?,?,?,?,?,'pending')").bind(session.user.id,nickname,gameId,role,region||null).run();
-    playerId=Number(inserted.meta?.last_row_id);
-    if(!Number.isSafeInteger(playerId)||playerId<=0)return json({error:{code:"PROFILE_CREATE_FAILED",message:"Не удалось создать игровой профиль. Попробуй ещё раз."}},500);
+  const { lookupMlbbPlayer } = await import("./_lib/mlbb-lookup.js");
+  if (!request.headers.get("origin") || !sameOrigin(request, env)) return json({ error: { code: "ORIGIN_REJECTED", message: "Запрос отклонён." } }, 403);
+  const session = await getSessionUser(request, env);
+  if (session.error) return session.error;
+  if (!session.user) return json({ error: { code: "UNAUTHORIZED", message: "Войди в аккаунт, чтобы изменить профиль." } }, 401);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректные данные." } }, 400); }
+  const gameId = String(body.game_id || "").trim();
+  const serverId = String(body.server_id || "").trim();
+  const role = String(body.role || "");
+  const region = String(body.region || "").trim().slice(0, 80);
+  if (!/^\d{5,15}$/.test(gameId) || !/^\d{1,6}$/.test(serverId) || !["EXP", "JUNGLE", "MID", "GOLD", "ROAM", "FLEX"].includes(role)) return json({ error: { code: "INVALID_PROFILE", message: "Проверь MLBB ID, Server ID и игровую роль." } }, 400);
+  const mlbb = await lookupMlbbPlayer(env, gameId, serverId);
+  if (!mlbb.ok) return json({ error: { code: mlbb.code, message: mlbb.message } }, mlbb.status);
+  const profile = await env.DB.prepare("SELECT id FROM players WHERE user_id=? LIMIT 1").bind(session.user.id).first();
+  const verifiedAt = new Date().toISOString();
+  let playerId = profile?.id;
+  if (profile) {
+    await env.DB.prepare("UPDATE players SET nickname=?,game_id=?,server_id=?,mlbb_verified_at=?,role=?,region=?,profile_status='approved',updated_at=? WHERE user_id=?").bind(mlbb.nickname, gameId, serverId, verifiedAt, role, region || null, verifiedAt, session.user.id).run();
+  } else {
+    const inserted = await env.DB.prepare("INSERT INTO players (user_id,nickname,game_id,server_id,mlbb_verified_at,role,region,profile_status) VALUES (?,?,?,?,?,?,?,'approved')").bind(session.user.id, mlbb.nickname, gameId, serverId, verifiedAt, role, region || null).run();
+    playerId = Number(inserted.meta?.last_row_id);
+    if (!Number.isSafeInteger(playerId) || playerId <= 0) return json({ error: { code: "PROFILE_CREATE_FAILED", message: "Не удалось создать игровой профиль. Попробуй ещё раз." } }, 500);
   }
-  await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'player',?,?)").bind(session.user.id,profile?'player_profile_updated':'player_profile_created',playerId,JSON.stringify({nickname,role,region,profile_status:"pending"})).run();
-  return json({data:{id:playerId,nickname,profile_status:"pending"}});
+  await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?, ?, 'player', ?, ?)").bind(session.user.id, profile ? "player_profile_reverified" : "player_profile_created", playerId, JSON.stringify({ nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: "approved", mlbb_verified: true })).run();
+  return json({ data: { id: playerId, nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: "approved", mlbb_verified_at: verifiedAt } });
 }
