@@ -25,7 +25,7 @@ export async function onRequestPost({ request, env }) {
   const timestamp = String(request.headers.get("x-mercy-timestamp") || "");
   const signature = String(request.headers.get("x-mercy-signature") || "").toLowerCase();
   const seconds = Number(timestamp);
-  if (!/^\\d{10}$/.test(timestamp) || !Number.isSafeInteger(seconds) || Math.abs(Math.floor(Date.now() / 1000) - seconds) > 300) {
+  if (!/^\d{10}$/.test(timestamp) || !Number.isSafeInteger(seconds) || Math.abs(Math.floor(Date.now() / 1000) - seconds) > 300) {
     return json({ error: { code: "INVALID_WEBHOOK_TIMESTAMP", message: "Время webhook недействительно." } }, 401);
   }
   const raw = await request.text();
