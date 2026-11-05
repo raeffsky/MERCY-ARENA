@@ -85,13 +85,16 @@ export async function onRequestPost({ request, env }) {
     userId=Number(userInsert.meta?.last_row_id);
     if(!Number.isSafeInteger(userId)||userId<=0) throw new Error("D1 did not return users.id after insert");
 
-    await env.DB.prepare("INSERT INTO user_roles (user_id,role) VALUES (?,'player')").bind(userId).run();
-    const playerInsert=await env.DB.prepare("INSERT INTO players (user_id,game_id,server_id,mlbb_verified_at,nickname,role,region,profile_status) VALUES (?,?,?,?,?,?,?,'approved')").bind(userId,gameId,serverId,new Date().toISOString(),nickname,role,region||null).run();
-    const playerId=Number(playerInsert.meta?.last_row_id);
+    // Keep all dependent records in one D1 transaction. If any insert fails,
+    // no half-created profile, role, audit row or session is left behind.
+    const registrationWrites=await env.DB.batch([
+      env.DB.prepare("INSERT INTO user_roles (user_id,role) VALUES (?,'player')").bind(userId),
+      env.DB.prepare("INSERT INTO players (user_id,game_id,server_id,mlbb_verified_at,nickname,role,region,profile_status) VALUES (?,?,?,?,?,?,?,'approved')").bind(userId,gameId,serverId,new Date().toISOString(),nickname,role,region||null),
+      env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) SELECT ?,'player_profile_auto_verified','player',id,? FROM players WHERE user_id=?").bind(userId,JSON.stringify({nickname,role,region,profile_status:"approved",game_id:gameId,server_id:serverId,mlbb_verified:true}),userId),
+      env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),userId,tokenHash,now+SESSION_TTL)
+    ]);
+    const playerId=Number(registrationWrites[1]?.meta?.last_row_id);
     if(!Number.isSafeInteger(playerId)||playerId<=0) throw new Error("D1 did not return players.id after insert");
-
-    await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'player_profile_auto_verified','player',?,?)").bind(userId,playerId,JSON.stringify({nickname,role,region,profile_status:"approved",game_id:gameId,server_id:serverId,mlbb_verified:true})).run();
-    await env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),userId,tokenHash,now+SESSION_TTL).run();
     // Successful registration clears the temporary attempt counters, matching login behavior.
     await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash,ipHash).run();
     return json({authenticated:true,account:{id:String(userId),email,name:displayName||nickname},profile:{id:String(playerId),status:"approved",nickname,game_id:gameId,server_id:serverId}},201,{"set-cookie":sessionCookie(token)});
