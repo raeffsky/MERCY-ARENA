@@ -170,7 +170,7 @@ export async function onRequestPost({ request, env }) {
     payload.organizer_id = auth.user.id;
   }
   if (resource === "tournaments" && (payload.status === "published" || payload.status === "active") && action !== "update") payload.published_at = now();
-  if (resource === "matches" && (payload.status === "completed" || before.status === "completed")) {
+  if (resource === "matches" && payload.status === "completed") {
     if (payload.score_a == null || payload.score_b == null || payload.team_a_id == null || payload.team_b_id == null || payload.score_a === payload.score_b) return bad("Для завершённого матча нужны две команды и победный счёт.");
     if (payload.winner_team_id == null) payload.winner_team_id = payload.score_a > payload.score_b ? payload.team_a_id : payload.team_b_id;
     if (![payload.team_a_id,payload.team_b_id].includes(payload.winner_team_id)) return bad("Победитель должен быть одной из команд матча.");
@@ -198,7 +198,14 @@ export async function onRequestPost({ request, env }) {
   const before = await getById(env.DB, config.table, recordId);
   if (!before) return bad("Запись не найдена.", 404);
   if (resource === "tournaments" && (payload.status === "published" || payload.status === "active") && !before.published_at) payload.published_at = now();
-  if (resource === "matches" && payload.status === "completed") {
+  if (resource === "matches" && (payload.status === "completed" || before.status === "completed")) {
+    if (before.status === "completed") {
+      if (payload.status && payload.status !== "completed") return bad("Завершённый матч нельзя вернуть в активное расписание.", 409);
+      if ((payload.team_a_id != null && String(payload.team_a_id) !== String(before.team_a_id)) ||
+          (payload.team_b_id != null && String(payload.team_b_id) !== String(before.team_b_id))) {
+        return bad("Нельзя менять участников уже завершённого матча.", 409);
+      }
+    }
     const a = payload.score_a ?? before.score_a, b = payload.score_b ?? before.score_b;
     const ta = payload.team_a_id ?? before.team_a_id, tb = payload.team_b_id ?? before.team_b_id;
     if (a == null || b == null || ta == null || tb == null || a === b) return bad("Для завершённого матча нужны две команды и победный счёт.");
