@@ -108,6 +108,6 @@ export async function onRequestPut({ request, env }) {
     console.error("Player profile save failed:", error);
     return json({ error: { code: "PROFILE_SAVE_FAILED", message: "Не удалось сохранить игровой профиль. Попробуй позже." } }, 500);
   }
-  await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?, ?, 'player', ?, ?)").bind(session.user.id, manualReview ? "player_profile_manual_review" : (profile ? "player_profile_reverified" : "player_profile_created"), playerId, JSON.stringify({ nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: profileStatus, mlbb_verified: !manualReview, manual_review: manualReview })).run();
+  await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?, ?, ?, 'player', ?, ?)").bind(crypto.randomUUID(), session.user.id, manualReview ? "player_profile_manual_review" : (profile ? "player_profile_reverified" : "player_profile_created"), String(playerId), JSON.stringify({ nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: profileStatus, mlbb_verified: !manualReview, manual_review: manualReview })).run();
   return json({ data: { id: playerId, nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: profileStatus, mlbb_verified_at: manualReview ? null : verifiedAt } });
 }
