@@ -14,17 +14,17 @@ function invalid(message, status = 400, code = "INVALID_APPLICATION") {
 }
 
 async function tournamentConfig(db, tournamentId, includePublished = false) {
-  const suffix = includePublished ? " AND published_at IS NOT NULL" : "";
-  try {
-    return await db.prepare(
-      "SELECT id,title,status,max_teams,registration_open_at,registration_close_at,registration_slots FROM tournaments WHERE id=?" + suffix
-    ).bind(tournamentId).first();
-  } catch (error) {
-    if (!/no such column:\s*registration_slots/i.test(String(error?.message || error))) throw error;
-    return await db.prepare(
-      "SELECT id,title,status,max_teams,registration_open_at,registration_close_at,NULL AS registration_slots FROM tournaments WHERE id=?" + suffix
-    ).bind(tournamentId).first();
-  }
+  // Production D1 may lag behind the repository schema. Build the projection
+  // from the columns that actually exist instead of failing on an optional field.
+  const info = await db.prepare("PRAGMA table_info(tournaments)").all();
+  const columns = new Set((info.results || []).map((column) => column.name));
+  if (!columns.has("id")) throw new Error("tournaments table is missing its id column");
+  const fields = ["id", "title", "status", "max_teams", "registration_open_at", "registration_close_at", "registration_slots"];
+  const projection = fields.map((name) => columns.has(name) ? name : (name === "title" && columns.has("name") ? "name AS title" : "NULL AS " + name));
+  const publishedFilter = includePublished && columns.has("published_at") ? " AND published_at IS NOT NULL" : "";
+  return db.prepare(
+    "SELECT " + projection.join(",") + " FROM tournaments WHERE id=?" + publishedFilter
+  ).bind(tournamentId).first();
 }
 
 async function hasTable(db, table) {
