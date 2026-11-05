@@ -85,6 +85,24 @@ test.describe('MERCY ARENA public shell', () => {
   });
 
 
+  test('season hub displays season metrics and linked tournaments', async ({ page }) => {
+    await page.route('**/api/v1/seasons?id=season-2', route => route.fulfill({ json: { data: [{
+      id: 'season-2', title: 'MERCY Season Two', status: 'active',
+      starts_at: '2026-11-01T12:00:00Z', ends_at: '2026-11-30T12:00:00Z',
+      image_url: null, tournaments_count: 2, matches_count: 14, verified_matches_count: 9
+    }] } }));
+    await page.route('**/api/v1/tournaments?season_id=season-2&limit=100', route => route.fulfill({ json: { data: [{
+      id: 88, title: 'Season Cup', format: 'single_elimination', status: 'published',
+      region: 'EU', starts_at: '2026-11-10T12:00:00Z', max_teams: 8
+    }] } }));
+    await page.goto('/#/season/season-2');
+    await expect(page.locator('#seasonTournaments')).toContainText('MERCY Season Two');
+    await expect(page.locator('#seasonTournaments')).toContainText('ТУРНИРЫ');
+    await expect(page.locator('#seasonTournaments')).toContainText('14');
+    await expect(page.locator('#seasonTournaments')).toContainText('ПОДТВЕРЖДЕНО');
+    await expect(page.locator('#seasonTournaments')).toContainText('Season Cup');
+  });
+
   test('double elimination bracket distinguishes upper, lower and grand final matches', async ({ page }) => {
     await page.route('**/api/v1/tournaments?id=777', route => route.fulfill({ json: { data: [{
       id: 777, title: 'Double Elimination Cup', format: 'double_elimination', status: 'active',
