@@ -1,3 +1,4 @@
+import { createAuditEventId } from "./_lib/audit.js";
 import { json, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
 import { advanceWinner } from "./_lib/match-progression.js";
@@ -49,7 +50,7 @@ function cleanValue(field, value) {
 }
 async function audit(db, actor, action, entity, id, before, after) {
   await db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,?,?,?,?,?)")
-    .bind(crypto.randomUUID(), actor, action, entity, String(id), before ? JSON.stringify(before) : null, after ? JSON.stringify(after) : null).run();
+    .bind(await createAuditEventId(db), actor, action, entity, String(id), before ? JSON.stringify(before) : null, after ? JSON.stringify(after) : null).run();
 }
 async function getById(db, table, id) {
   return db.prepare("SELECT * FROM " + table + " WHERE id=?").bind(id).first();
@@ -114,7 +115,7 @@ export async function onRequestPost({ request, env }) {
       ).bind(status,reviewedAt,auth.user.id,registrationId,status,before.tournament_id),
       env.DB.prepare(
         "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,?, 'tournament_registration',?,? WHERE EXISTS (SELECT 1 FROM tournament_registrations WHERE id=? AND status=? AND reviewer_id=? AND reviewed_at=?)"
-      ).bind(crypto.randomUUID(),auth.user.id,"registration_"+status,String(registrationId),JSON.stringify({status,tournament_id:before.tournament_id,team_id:before.team_id}),registrationId,status,auth.user.id,reviewedAt)
+      ).bind(await createAuditEventId(env.DB),auth.user.id,"registration_"+status,String(registrationId),JSON.stringify({status,tournament_id:before.tournament_id,team_id:before.team_id}),registrationId,status,auth.user.id,reviewedAt)
     ];
     if (recipient?.captain_id) {
       statements.push(env.DB.prepare(
