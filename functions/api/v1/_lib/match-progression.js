@@ -1,3 +1,14 @@
+async function completeTournamentIfReady(db, tournamentId) {
+  const pending = await db.prepare(
+    "SELECT COUNT(*) AS total FROM matches WHERE tournament_id=? AND status NOT IN ('completed','cancelled')"
+  ).bind(tournamentId).first();
+  if (Number(pending?.total || 0) > 0) return false;
+  const updated = await db.prepare(
+    "UPDATE tournaments SET status='completed',updated_at=? WHERE id=? AND status IN ('published','active')"
+  ).bind(new Date().toISOString(), tournamentId).run();
+  return Boolean(updated.meta?.changes);
+}
+
 export async function advanceWinner(db, matchId, winnerTeamId) {
   const match = await db.prepare(
     "SELECT id,tournament_id,bracket,round_number,team_a_id,team_b_id FROM matches WHERE id=? LIMIT 1"
@@ -41,7 +52,8 @@ export async function advanceWinner(db, matchId, winnerTeamId) {
       const updated = await db.prepare("UPDATE matches SET " + column + "=?,updated_at=? WHERE id=? AND (" + column + " IS NULL OR " + column + "=?)")
         .bind(winnerTeamId, new Date().toISOString(), link.next_match_id, winnerTeamId).run();
       if (updated.meta?.changes === 0) throw new Error("Bracket slot was changed by another result");
-      return { advanced: true, next_match_id: link.next_match_id };
+      const tournamentCompleted = await completeTournamentIfReady(db, match.tournament_id);
+      return { advanced: true, next_match_id: link.next_match_id, tournament_completed: tournamentCompleted };
     }
   }
 
@@ -60,5 +72,6 @@ export async function advanceWinner(db, matchId, winnerTeamId) {
     }
   }
 
-  return { advanced: routes.length > 0, final: routes.length === 0 };
+  const tournamentCompleted = await completeTournamentIfReady(db, match.tournament_id);
+  return { advanced: routes.length > 0, final: routes.length === 0, tournament_completed: tournamentCompleted };
 }
