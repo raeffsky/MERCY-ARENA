@@ -17,6 +17,8 @@ export async function onRequestGet({ request, env }) {
   const auth = await currentUser(request, env);
   if (auth.response) return auth.response;
   const tournamentId = new URL(request.url).searchParams.get("tournament_id") || "";
+  const tournamentConfig = await env.DB.prepare("SELECT registration_slots FROM tournaments WHERE id=?").bind(tournamentId).first();
+  const availableSlots = String(tournamentConfig?.registration_slots || "").split(/\r?\n/).map((slot) => slot.trim()).filter(Boolean).slice(0, 20);
   const { results } = await env.DB.prepare(
     `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
       r.selected_slot,r.captain_note,r.submitted_at,r.reviewed_at,
@@ -36,6 +38,7 @@ export async function onRequestGet({ request, env }) {
        ORDER BY CASE WHEN p.user_id=t.captain_id THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
     ).all();
     row.available_players = available.results || [];
+    row.available_slots = availableSlots;
     if (!row.registration_id) { row.roster = []; continue; }
     const roster = await env.DB.prepare(
       `SELECT p.id,p.nickname,p.role,p.game_id,p.server_id,rr.roster_role
@@ -62,7 +65,7 @@ export async function onRequestPost({ request, env }) {
   if (!tournamentId || !teamId) return invalid("Выбери команду для участия.", 400, "MISSING_FIELDS");
 
   const tournament = await env.DB.prepare(
-    "SELECT id,title,status,max_teams,registration_open_at,registration_close_at FROM tournaments WHERE id=? AND published_at IS NOT NULL"
+    "SELECT id,title,status,max_teams,registration_open_at,registration_close_at,registration_slots FROM tournaments WHERE id=? AND published_at IS NOT NULL"
   ).bind(tournamentId).first();
   if (!tournament || tournament.status !== "published") return invalid("Регистрация на этот турнир сейчас закрыта.", 409, "REGISTRATION_CLOSED");
   const now = new Date().toISOString();
@@ -86,6 +89,8 @@ export async function onRequestPost({ request, env }) {
   if (new Set(requestedIds).size !== requestedIds.length) return invalid("В составе есть повторяющиеся игроки.", 400, "ROSTER_DUPLICATE");
   if (requestedIds.some((id) => !memberIds.has(id))) return invalid("Можно выбрать только игроков из текущего состава команды с подтверждённым профилем.", 409, "ROSTER_MEMBER_INVALID");
   if (selectedSlot && selectedSlot.length < 2) return invalid("Укажи корректный временной слот.", 400, "INVALID_SLOT");
+  const configuredSlots = String(tournament.registration_slots || "").split(/\r?\n/).map((slot) => slot.trim()).filter(Boolean).slice(0, 20);
+  if (configuredSlots.length && !configuredSlots.includes(selectedSlot)) return invalid("Выбери один из временных слотов, указанных организатором.", 409, "SLOT_NOT_AVAILABLE");
 
   const existing = await env.DB.prepare(
     "SELECT id,status FROM tournament_registrations WHERE tournament_id=? AND team_id=?"
