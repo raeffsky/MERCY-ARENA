@@ -47,20 +47,20 @@ export async function onRequestPost({ request, env }) {
     if ((count?.total || 0) >= tournament.max_teams) return json({ error: { code: "TOURNAMENT_FULL", message: "Все места турнира уже заняты или ожидают подтверждения." } }, 409);
   }
 
-  const id = crypto.randomUUID();
+  let registrationId = existing ? existing.id : null;
   try {
     if (existing) {
       await env.DB.prepare("UPDATE tournament_registrations SET status='pending',submitted_at=?,reviewed_at=NULL,reviewer_id=NULL WHERE id=?")
         .bind(now, existing.id).run();
     } else {
-      await env.DB.prepare("INSERT INTO tournament_registrations (id,tournament_id,team_id,status,submitted_at) VALUES (?,?,?,'pending',?)")
-        .bind(id, tournamentId, teamId, now).run();
+      const inserted = await env.DB.prepare("INSERT INTO tournament_registrations (tournament_id,team_id,status,submitted_at) VALUES (?,?,'pending',?)").bind(tournamentId, teamId, now).run();
+      registrationId = Number(inserted.meta?.last_row_id);
     }
   } catch (error) {
     console.error("Tournament application failed", error);
     return json({ error: { code: "APPLICATION_FAILED", message: "Не удалось отправить заявку. Попробуй ещё раз." } }, 500);
   }
-  return json({ data: { id: existing ? existing.id : id, tournament_id: tournamentId, team_id: teamId, team_name: team.name, team_tag: team.tag, status: "pending" } }, 201);
+  return json({ data: { id: registrationId, tournament_id: tournamentId, team_id: teamId, team_name: team.name, team_tag: team.tag, status: "pending" } }, 201);
 }
 
 export function onRequestPut() { return methodNotAllowed("GET, POST"); }
