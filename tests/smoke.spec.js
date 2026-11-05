@@ -35,6 +35,23 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#mlbbLookupResult')).toContainText('TestPlayer');
   });
 
+
+  test('public player profile displays verified match statistics', async ({ page }) => {
+    await page.route('**/api/v1/players?id=123', route => route.fulfill({ json: { data: [{
+      id: 123, nickname: 'ArenaPlayer', game_id: '123456789', role: 'MID', team_id: null,
+      region: 'EU', avatar_url: null,
+      stats: { matches_played: 12, wins: 9, losses: 3, points: 27, win_rate: 75 }
+    }] } }));
+    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [] } }));
+
+    await page.goto('/#/player/123');
+    await expect(page.locator('#profileNickname')).toHaveText('ArenaPlayer');
+    await expect(page.locator('#profileMmr')).toHaveText('12');
+    await expect(page.locator('#profileBpr')).toHaveText('9');
+    await expect(page.locator('#profileLevel')).toHaveText('27');
+    await expect(page.locator('#profileKda')).toHaveText('75%');
+  });
+
   test('notifications route renders a useful signed-out state', async ({ page }) => {
     await page.goto('/#/notifications');
     await expect(page.locator('#app')).toContainText('УВЕДОМЛЕНИЯ');
