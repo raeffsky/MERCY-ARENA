@@ -6,7 +6,15 @@ export async function onRequestGet({ request, env }) {
   const auth = await getSessionUser(request, env);
   if (auth.error) return auth.error;
   if (!auth.user) return json({ data: [] });
-  const teamId = Number(new URL(request.url).searchParams.get("team_id"));
+  const url = new URL(request.url);
+  const teamIdValue = url.searchParams.get("team_id");
+  if (!teamIdValue) {
+    const player = await env.DB.prepare("SELECT id FROM players WHERE user_id=? AND profile_status='approved' LIMIT 1").bind(auth.user.id).first();
+    if (!player) return json({ data: [] });
+    const { results } = await env.DB.prepare("SELECT i.id,i.team_id,i.status,i.created_at,t.name AS team_name,t.tag AS team_tag,p.nickname AS captain_name FROM team_invites i JOIN teams t ON t.id=i.team_id LEFT JOIN players p ON p.user_id=t.captain_id WHERE i.player_id=? AND i.status='pending' ORDER BY i.created_at DESC").bind(player.id).all();
+    return json({ data: results || [] });
+  }
+  const teamId = Number(teamIdValue);
   if (!Number.isSafeInteger(teamId) || teamId < 1) return json({ error: { code: "INVALID_TEAM", message: "Укажи команду." } }, 400);
   const own = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND captain_id=?").bind(teamId, auth.user.id).first();
   if (!own) return json({ data: [] });
