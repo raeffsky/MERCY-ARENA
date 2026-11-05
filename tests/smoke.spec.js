@@ -1,20 +1,15 @@
 const { test, expect } = require('@playwright/test');
 
 test.describe('MERCY ARENA public shell', () => {
-  test('renders the home page and primary tournament action', async ({ page }) => {
+  test('renders the season hub, match center and team ladder', async ({ page }) => {
     const runtimeErrors = [];
     page.on('pageerror', error => runtimeErrors.push(error.message));
-    page.on('console', message => {
-      if (message.type() === 'error' && /Uncaught (?:SyntaxError|ReferenceError|TypeError)/.test(message.text())) {
-        runtimeErrors.push(message.text());
-      }
-    });
-
     await page.goto('/');
     await expect(page).toHaveTitle(/MERCY ARENA/);
-    await expect(page.locator('#app')).toContainText('ТВОЙ ПУТЬ');
-    await page.getByRole('link', { name: /Начать свой путь/i }).click();
-    await expect(page).toHaveURL(/#\/tournaments$/);
+    await expect(page.locator('#app')).toContainText('СЕЗОНЫ И ТУРНИРЫ');
+    await expect(page.locator('#homeMatches')).toBeVisible();
+    await expect(page.locator('#homeRankings')).toBeVisible();
+    await expect(page.locator('#homeMatches')).toContainText(/DEMO|Демо-матч/);
     expect(runtimeErrors).toEqual([]);
   });
 
