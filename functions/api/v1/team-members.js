@@ -99,8 +99,8 @@ export async function onRequestDelete({ request, env }) {
   if (!auth.user) return json({ error: { code: "UNAUTHORIZED", message: "Войди в аккаунт." } }, 401);
   let body;
   try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректные данные." } }, 400); }
-  const teamId = Number(body.team_id), playerId = Number(body.player_id);
-  if (!Number.isSafeInteger(teamId) || teamId < 1 || !Number.isSafeInteger(playerId) || playerId < 1) return json({ error: { code: "INVALID_MEMBER", message: "Укажи команду и игрока." } }, 400);
+  const teamId = String(body.team_id || "").trim(), playerId = String(body.player_id || "").trim();
+  if (!teamId || !playerId) return json({ error: { code: "INVALID_MEMBER", message: "Укажи команду и игрока." } }, 400);
   const team = await env.DB.prepare("SELECT id,captain_id FROM teams WHERE id=? AND status='active'").bind(teamId).first();
   if (!team) return json({ error: { code: "TEAM_NOT_FOUND", message: "Команда не найдена." } }, 404);
   const member = await env.DB.prepare("SELECT r.roster_role,p.user_id FROM team_roster r JOIN players p ON p.id=r.player_id WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL").bind(teamId, playerId).first();
