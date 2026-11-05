@@ -93,8 +93,8 @@ export async function onRequestPut({ request, env }) {
   // Counting players.team_id also closes the race between parallel invite acceptances,
   // before their team_roster rows are written.
   const claimed = await env.DB.prepare(
-    "UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL AND (SELECT COUNT(*) FROM players WHERE team_id=?)<7"
-  ).bind(invite.team_id, now, player.id, invite.team_id).run();
+    "UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL AND (SELECT COUNT(*) FROM players p WHERE p.team_id=? OR p.id IN (SELECT tr.player_id FROM team_roster tr WHERE tr.team_id=? AND tr.left_at IS NULL))<7"
+  ).bind(invite.team_id, now, player.id, invite.team_id, invite.team_id).run();
   if (!claimed.meta?.changes) {
     const current = await env.DB.prepare("SELECT team_id FROM players WHERE id=?").bind(player.id).first();
     if (current?.team_id) return json({ error: { code: "ALREADY_IN_TEAM", message: "Игрок уже вступил в другую команду." } }, 409);
