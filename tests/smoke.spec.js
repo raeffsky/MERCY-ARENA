@@ -56,6 +56,34 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('.profile-match-row')).toContainText('2 : 0');
   });
 
+
+  test('seasonal team rankings retain teams with zero verified matches', async ({ page }) => {
+    const rankingRequests = [];
+    await page.route('**/api/v1/seasons?limit=50', route => route.fulfill({ json: { data: [
+      { id: 'season-1', title: 'Season One', status: 'active', starts_at: '2026-11-01' }
+    ] } }));
+    await page.route('**/api/v1/rankings**', async route => {
+      const url = new URL(route.request().url());
+      rankingRequests.push(url.search);
+      if (url.searchParams.get('scope') === 'teams') {
+        await route.fulfill({ json: { data: [
+          { id: 42, name: 'Zero Match Club', tag: 'ZMC', matches_played: 0, wins: 0, losses: 0, points: 0, win_rate: 0 }
+        ] } });
+      } else {
+        await route.fulfill({ json: { data: [] } });
+      }
+    });
+    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [] } }));
+
+    await page.goto('/#/rankings');
+    await page.locator('[data-ranking-scope="teams"]').click();
+    await expect(page.locator('#rankingRows')).toContainText('Zero Match Club');
+    await page.locator('#rankingSeason').selectOption('season-1');
+    await expect.poll(() => rankingRequests.some(q => q.includes('scope=teams') && q.includes('season_id=season-1'))).toBe(true);
+    await expect(page.locator('#rankingRows')).toContainText('Zero Match Club');
+    await expect(page.locator('#rankingRows')).toContainText('0');
+  });
+
   test('notifications route renders a useful signed-out state', async ({ page }) => {
     await page.goto('/#/notifications');
     await expect(page.locator('#app')).toContainText('УВЕДОМЛЕНИЯ');
