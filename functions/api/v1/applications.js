@@ -52,7 +52,7 @@ export async function onRequestGet({ request, env }) {
     results = response.results || [];
   } catch (error) {
     const message = String(error?.message || error);
-    if (/no such column:\s*(?:r\\.)?(?:selected_slot|captain_note|updated_at)|no such table:\s*tournament_registrations/i.test(message)) {
+    if (/no such column:\s*(?:r\.)?(?:selected_slot|captain_note|updated_at)|no such table:\s*tournament_registrations/i.test(message)) {
       const response = await env.DB.prepare(
         `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
           NULL AS selected_slot,NULL AS captain_note,r.submitted_at,r.reviewed_at,
@@ -88,7 +88,7 @@ export async function onRequestGet({ request, env }) {
          ORDER BY CASE WHEN p.user_id=t.captain_id THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
       ).bind(row.id).all();
     } catch (error) {
-      if (!/no such column:\s*(?:p\\.)?(?:profile_status|server_id)/i.test(String(error?.message || error))) throw error;
+      if (!/no such column:\s*(?:p\.)?(?:profile_status|server_id)/i.test(String(error?.message || error))) throw error;
       available = await env.DB.prepare(
         `SELECT p.id,p.nickname,p.role,p.game_id,
           CASE WHEN p.user_id=t.captain_id THEN 'captain' ELSE COALESCE(tr.roster_role,'player') END AS team_role
