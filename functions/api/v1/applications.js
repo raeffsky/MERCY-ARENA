@@ -1,3 +1,4 @@
+import { createAuditEventId } from "./_lib/audit.js";
 import { json, databaseUnavailable, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
 
@@ -214,8 +215,8 @@ export async function onRequestPost({ request, env }) {
     writes.push(
       env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'application_submitted','Заявка отправлена',?,?, 'tournament',?)")
         .bind(auth.user.id, "Заявка команды " + team.name + " отправлена на рассмотрение.", "#/tournament/" + tournamentId, tournamentId),
-      env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'tournament_application_submitted','tournament_registration',?,?)")
-        .bind(auth.user.id, registrationId, JSON.stringify({ tournament_id: tournamentId, team_id: teamId, player_ids: requestedIds, selected_slot: selectedSlot || null }))
+      env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'tournament_application_submitted','tournament_registration',?,?)")
+        .bind(await createAuditEventId(env.DB), auth.user.id, registrationId, JSON.stringify({ tournament_id: tournamentId, team_id: teamId, player_ids: requestedIds, selected_slot: selectedSlot || null }))
     );
     // Replacing the roster, writing the notification and audit record are atomic.
     await env.DB.batch(writes);
