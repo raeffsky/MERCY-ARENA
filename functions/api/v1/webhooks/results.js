@@ -1,4 +1,5 @@
 import { json, databaseUnavailable, methodNotAllowed } from "../_lib/http.js";
+import { advanceWinner } from "../_lib/match-progression.js";
 
 function toHex(bytes) {
   return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, "0")).join("");
@@ -63,7 +64,8 @@ export async function onRequestPost({ request, env }) {
       env.DB.prepare("UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,status='completed',result_source=?,result_verified_at=?,updated_at=? WHERE id=? AND status!='completed'").bind(scoreA, scoreB, winner, "webhook:" + provider, now, now, matchId),
       env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (NULL,'match_result_auto_verified','match',?,?)").bind(matchId, JSON.stringify({ provider, event_id: eventId, score_a: scoreA, score_b: scoreB, winner_team_id: winner }))
     ]);
-    return json({ data: { accepted: true, duplicate: false, match_id: matchId, status: "completed", score_a: scoreA, score_b: scoreB, winner_team_id: winner } }, 201);
+    const progression = await advanceWinner(env.DB, matchId, winner);
+    return json({ data: { accepted: true, duplicate: false, match_id: matchId, status: "completed", score_a: scoreA, score_b: scoreB, winner_team_id: winner, progression } }, 201);
   } catch (error) {
     console.error("MERCY result webhook failed:", error);
     return json({ error: { code: "RESULT_INGEST_FAILED", message: "Не удалось сохранить результат матча." } }, 500);
