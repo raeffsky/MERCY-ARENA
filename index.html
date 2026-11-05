@@ -1221,7 +1221,7 @@ catch(error){body.innerHTML='<tr><td colspan="5" style="text-align:center;paddin
 rankingButtons.forEach(function(button){button.addEventListener('click',function(){showRanking(button.dataset.rankingScope)})});
 showRanking('players');
 }
-if(key==='seasons'){var seasons=await apiList('seasons');var target=document.getElementById('seasonResults');if(target&&seasons.length)target.innerHTML=cardList(seasons.map(function(s){return {title:s.title,description:s.status,starts_at:s.starts_at}}),'tournaments')}
+if(key==='seasons'){var seasons=await apiList('seasons');var target=document.getElementById('seasonResults');if(target)target.innerHTML=seasons.length?seasons.map(function(item){return '<a class="season-list-card" href="#/season/'+encodeURIComponent(item.id)+'"><div><div class="kicker">MERCY CIRCUIT / '+esc(item.status||'SEASON')+'</div><h3>'+esc(item.title)+'</h3><p>'+esc(dateLabel(item.starts_at))+' · Открыть турниры сезона</p></div><iconify-icon icon="mdi:arrow-right" style="font-size:22px;color:var(--lime)"></iconify-icon></a>'}).join(''):'<div class="empty"><b>Сезоны ещё не запущены</b><p>После объявления первого сезона здесь появится его календарь и каталог турниров.</p></div>'}
 }catch(error){console.warn('MERCY ARENA API unavailable:',error.message)}
 }
 window.addEventListener('hashchange',route);route();
