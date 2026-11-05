@@ -37,9 +37,9 @@ export async function onRequestPost({ request, env }) {
   try { body = JSON.parse(raw); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректный JSON события." } }, 400); }
   const provider = String(body.provider || "").trim().slice(0, 40);
   const eventId = String(body.event_id || "").trim().slice(0, 160);
-  const matchId = Number(body.match_id), teamA = Number(body.team_a_id), teamB = Number(body.team_b_id);
+  const matchId = String(body.match_id || "").trim(), teamA = String(body.team_a_id || "").trim(), teamB = String(body.team_b_id || "").trim();
   const scoreA = Number(body.score_a), scoreB = Number(body.score_b);
-  if (!provider || !eventId || ![matchId, teamA, teamB, scoreA, scoreB].every(Number.isSafeInteger) || matchId < 1 || teamA < 1 || teamB < 1 || teamA === teamB || scoreA < 0 || scoreB < 0 || scoreA === scoreB) {
+  if (!provider || !eventId || !matchId || !teamA || !teamB || teamA === teamB || !Number.isSafeInteger(scoreA) || !Number.isSafeInteger(scoreB) || scoreA < 0 || scoreB < 0 || scoreA === scoreB) {
     return json({ error: { code: "INVALID_RESULT_EVENT", message: "В событии не хватает корректных данных матча и счёта." } }, 400);
   }
   const match = await env.DB.prepare("SELECT id,tournament_id,team_a_id,team_b_id,status FROM matches WHERE id=? LIMIT 1").bind(matchId).first();
