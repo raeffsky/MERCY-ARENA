@@ -50,7 +50,12 @@ export async function onRequestPost({ request, env }) {
   if (String(match.team_a_id) !== String(teamA) || String(match.team_b_id) !== String(teamB)) {
     return json({ error: { code: "MATCH_TEAMS_MISMATCH", message: "Команды события не совпадают с командами матча." } }, 409);
   }
-  const payloadHash = await digest(raw);
+  // Hash normalized result fields, not raw JSON formatting. Providers may
+  // reorder keys or whitespace when retrying the same logical event.
+  const payloadHash = await digest(JSON.stringify({
+    provider, event_id: eventId, match_id: matchId,
+    team_a_id: teamA, team_b_id: teamB, score_a: scoreA, score_b: scoreB
+  }));
   const duplicate = await env.DB.prepare("SELECT id,match_id,validation_status,payload_hash FROM result_events WHERE provider=? AND provider_event_id=?").bind(provider, eventId).first();
   if (duplicate) {
     if (String(duplicate.match_id) !== String(matchId)) return json({ error: { code: "EVENT_ID_CONFLICT", message: "Этот ID события уже использован для другого матча." } }, 409);
