@@ -13,9 +13,18 @@ function invalid(message, status = 400, code = "INVALID_APPLICATION") {
   return json({ error: { code, message } }, status);
 }
 
-async function hasColumn(db, table, column) {
-  const { results } = await db.prepare("PRAGMA table_info(" + table + ")").all();
-  return (results || []).some((item) => item.name === column);
+async function tournamentConfig(db, tournamentId, includePublished = false) {
+  const suffix = includePublished ? " AND published_at IS NOT NULL" : "";
+  try {
+    return await db.prepare(
+      "SELECT id,title,status,max_teams,registration_open_at,registration_close_at,registration_slots FROM tournaments WHERE id=?" + suffix
+    ).bind(tournamentId).first();
+  } catch (error) {
+    if (!/no such column:\s*registration_slots/i.test(String(error?.message || error))) throw error;
+    return await db.prepare(
+      "SELECT id,title,status,max_teams,registration_open_at,registration_close_at,NULL AS registration_slots FROM tournaments WHERE id=?" + suffix
+    ).bind(tournamentId).first();
+  }
 }
 
 async function hasTable(db, table) {
@@ -26,10 +35,8 @@ export async function onRequestGet({ request, env }) {
   const auth = await currentUser(request, env);
   if (auth.response) return auth.response;
   const tournamentId = new URL(request.url).searchParams.get("tournament_id") || "";
-  const hasRegistrationSlots = await hasColumn(env.DB, "tournaments", "registration_slots");
-  const tournamentConfig = await env.DB.prepare(
-    "SELECT id" + (hasRegistrationSlots ? ",registration_slots" : ",NULL AS registration_slots") + " FROM tournaments WHERE id=?"
-  ).bind(tournamentId).first();
+  const tournamentConfigRow = await tournamentConfig(env.DB, tournamentId);
+  const tournamentConfig = tournamentConfigRow && { registration_slots: tournamentConfigRow.registration_slots };
   const availableSlots = String(tournamentConfig?.registration_slots || "").split(/\r?\n/).map((slot) => slot.trim()).filter(Boolean).slice(0, 20);
   const { results } = await env.DB.prepare(
     `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
@@ -82,12 +89,7 @@ export async function onRequestPost({ request, env }) {
   const captainNote = String(body.captain_note || "").trim().slice(0, 1000);
   if (!tournamentId || !teamId) return invalid("Выбери команду для участия.", 400, "MISSING_FIELDS");
 
-  const hasRegistrationSlots = await hasColumn(env.DB, "tournaments", "registration_slots");
-  const tournament = await env.DB.prepare(
-    "SELECT id,title,status,max_teams,registration_open_at,registration_close_at" +
-      (hasRegistrationSlots ? ",registration_slots" : ",NULL AS registration_slots") +
-      " FROM tournaments WHERE id=? AND published_at IS NOT NULL"
-  ).bind(tournamentId).first();
+  const tournament = await tournamentConfig(env.DB, tournamentId, true);
   if (!tournament || tournament.status !== "published") return invalid("Регистрация на этот турнир сейчас закрыта.", 409, "REGISTRATION_CLOSED");
   const now = new Date().toISOString();
   if (tournament.registration_open_at && now < tournament.registration_open_at) return invalid("Регистрация ещё не началась.", 409, "REGISTRATION_NOT_STARTED");
