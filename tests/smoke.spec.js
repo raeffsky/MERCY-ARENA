@@ -13,6 +13,13 @@ test.describe('MERCY ARENA public shell', () => {
     expect(runtimeErrors).toEqual([]);
   });
 
+
+  test('notifications route renders a useful signed-out state', async ({ page }) => {
+    await page.goto('/#/notifications');
+    await expect(page.locator('#app')).toContainText('УВЕДОМЛЕНИЯ');
+    await expect(page.locator('#notificationsRoot')).toContainText(/Войди в аккаунт|Пока нет уведомлений/);
+  });
+
   test('mobile menu opens, navigates and closes', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
