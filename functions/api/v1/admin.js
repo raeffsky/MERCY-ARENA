@@ -96,21 +96,42 @@ export async function onRequestPost({ request, env }) {
     const registrationId = String(id || "").trim();
     const status = data.status;
     if (!registrationId || !["approved","rejected"].includes(status)) return bad("Укажите заявку и решение: approved или rejected.");
-    const before = await env.DB.prepare("SELECT * FROM tournament_registrations WHERE id=?").bind(registrationId).first();
+    const before = await env.DB.prepare(
+      "SELECT r.*,t.status AS tournament_status,t.max_teams FROM tournament_registrations r JOIN tournaments t ON t.id=r.tournament_id WHERE r.id=?"
+    ).bind(registrationId).first();
     if (!before) return bad("Заявка не найдена.", 404);
     if (before.status !== "pending") return bad("Эта заявка уже рассмотрена.", 409);
-    const reviewed = await env.DB.prepare("UPDATE tournament_registrations SET status=?,reviewed_at=?,reviewer_id=? WHERE id=? AND status='pending'")
-      .bind(status, now(), auth.user.id, registrationId).run();
-    if (!reviewed.meta?.changes) return bad("Эта заявка уже была обработана другим организатором.", 409);
-    const after = await env.DB.prepare("SELECT * FROM tournament_registrations WHERE id=?").bind(registrationId).first();
-    await audit(env.DB, auth.user.id, "registration_" + status, "tournament_registration", registrationId, before, after);
-    const recipient = await env.DB.prepare("SELECT tm.captain_id,t.title AS tournament_title,tm.name AS team_name FROM teams tm JOIN tournaments t ON t.id=? WHERE tm.id=?").bind(before.tournament_id,before.team_id).first();
-    if (recipient?.captain_id) {
-      await env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'tournament_registration',?)")
-        .bind(recipient.captain_id,"application_"+status,status==="approved"?"Заявка одобрена":"Заявка отклонена",
-          "Заявка команды "+recipient.team_name+" на турнир «"+recipient.tournament_title+"» "+(status==="approved"?"одобрена.":"отклонена."),
-          "#/tournament/"+before.tournament_id,String(registrationId)).run();
+    if (status === "approved" && !["published","active"].includes(before.tournament_status)) {
+      return bad("Нельзя одобрить заявку: турнир уже закрыт.", 409);
     }
+    const recipient = await env.DB.prepare(
+      "SELECT tm.captain_id,t.title AS tournament_title,tm.name AS team_name FROM teams tm JOIN tournaments t ON t.id=? WHERE tm.id=?"
+    ).bind(before.tournament_id,before.team_id).first();
+    const reviewedAt = now();
+    const statements = [
+      env.DB.prepare(
+        "UPDATE tournament_registrations SET status=?,reviewed_at=?,reviewer_id=? WHERE id=? AND status='pending' AND (?!='approved' OR EXISTS (SELECT 1 FROM tournaments t WHERE t.id=? AND t.status IN ('published','active') AND (t.max_teams IS NULL OR (SELECT COUNT(*) FROM tournament_registrations approved WHERE approved.tournament_id=t.id AND approved.status='approved')<t.max_teams)))"
+      ).bind(status,reviewedAt,auth.user.id,registrationId,status,before.tournament_id),
+      env.DB.prepare(
+        "INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,'tournament_registration',?,? WHERE EXISTS (SELECT 1 FROM tournament_registrations WHERE id=? AND status=? AND reviewer_id=? AND reviewed_at=?)"
+      ).bind(auth.user.id,"registration_"+status,String(registrationId),JSON.stringify({status,tournament_id:before.tournament_id,team_id:before.team_id}),registrationId,status,auth.user.id,reviewedAt)
+    ];
+    if (recipient?.captain_id) {
+      statements.push(env.DB.prepare(
+        "INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) SELECT ?,?,?,?,?, 'tournament_registration',? WHERE EXISTS (SELECT 1 FROM tournament_registrations WHERE id=? AND status=? AND reviewer_id=? AND reviewed_at=?)"
+      ).bind(recipient.captain_id,"application_"+status,status==="approved"?"Заявка одобрена":"Заявка отклонена",
+        "Заявка команды "+recipient.team_name+" на турнир «"+recipient.tournament_title+"» "+(status==="approved"?"одобрена.":"отклонена."),
+        "#/tournament/"+before.tournament_id,String(registrationId),registrationId,status,auth.user.id,reviewedAt));
+    }
+    const writes = await env.DB.batch(statements);
+    if (!writes[0]?.meta?.changes) {
+      if (status === "approved" && before.max_teams != null) {
+        const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM tournament_registrations WHERE tournament_id=? AND status='approved'").bind(before.tournament_id).first();
+        if ((count?.total || 0) >= before.max_teams) return bad("Лимит команд уже достигнут. Заявку нельзя одобрить.", 409);
+      }
+      return bad("Заявка уже обработана или турнир изменился другим запросом.", 409);
+    }
+    const after = await env.DB.prepare("SELECT * FROM tournament_registrations WHERE id=?").bind(registrationId).first();
     return json({ data: after });
   }
   const config = TABLES[resource];
