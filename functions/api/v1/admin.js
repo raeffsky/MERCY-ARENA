@@ -170,7 +170,7 @@ export async function onRequestPost({ request, env }) {
     payload.organizer_id = auth.user.id;
   }
   if (resource === "tournaments" && (payload.status === "published" || payload.status === "active") && action !== "update") payload.published_at = now();
-  if (resource === "matches" && payload.status === "completed") {
+  if (resource === "matches" && (payload.status === "completed" || before.status === "completed")) {
     if (payload.score_a == null || payload.score_b == null || payload.team_a_id == null || payload.team_b_id == null || payload.score_a === payload.score_b) return bad("Для завершённого матча нужны две команды и победный счёт.");
     if (payload.winner_team_id == null) payload.winner_team_id = payload.score_a > payload.score_b ? payload.team_a_id : payload.team_b_id;
     if (![payload.team_a_id,payload.team_b_id].includes(payload.winner_team_id)) return bad("Победитель должен быть одной из команд матча.");
