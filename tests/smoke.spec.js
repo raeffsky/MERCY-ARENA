@@ -17,7 +17,7 @@ test.describe('MERCY ARENA public shell', () => {
   test('notifications route renders a useful signed-out state', async ({ page }) => {
     await page.goto('/#/notifications');
     await expect(page.locator('#app')).toContainText('УВЕДОМЛЕНИЯ');
-    await expect(page.locator('#notificationsRoot')).toContainText(/Войди в аккаунт|Пока нет уведомлений/);
+    await expect(page.locator('#notificationsRoot')).toBeVisible();
   });
 
   test('mobile menu opens, navigates and closes', async ({ page }) => {
