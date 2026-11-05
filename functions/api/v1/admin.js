@@ -99,8 +99,9 @@ export async function onRequestPost({ request, env }) {
     const before = await env.DB.prepare("SELECT * FROM tournament_registrations WHERE id=?").bind(registrationId).first();
     if (!before) return bad("Заявка не найдена.", 404);
     if (before.status !== "pending") return bad("Эта заявка уже рассмотрена.", 409);
-    await env.DB.prepare("UPDATE tournament_registrations SET status=?,reviewed_at=?,reviewer_id=? WHERE id=? AND status='pending'")
+    const reviewed = await env.DB.prepare("UPDATE tournament_registrations SET status=?,reviewed_at=?,reviewer_id=? WHERE id=? AND status='pending'")
       .bind(status, now(), auth.user.id, registrationId).run();
+    if (!reviewed.meta?.changes) return bad("Эта заявка уже была обработана другим организатором.", 409);
     const after = await env.DB.prepare("SELECT * FROM tournament_registrations WHERE id=?").bind(registrationId).first();
     await audit(env.DB, auth.user.id, "registration_" + status, "tournament_registration", registrationId, before, after);
     const recipient = await env.DB.prepare("SELECT tm.captain_id,t.title AS tournament_title,tm.name AS team_name FROM teams tm JOIN tournaments t ON t.id=? WHERE tm.id=?").bind(before.tournament_id,before.team_id).first();
