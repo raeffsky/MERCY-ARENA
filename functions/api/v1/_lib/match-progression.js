@@ -7,6 +7,7 @@ export async function advanceWinner(db, matchId, winnerTeamId) {
   if (!next) throw new Error("Next bracket match not found");
   const current = next[column];
   if (current != null && String(current) !== String(winnerTeamId)) throw new Error("Bracket slot already contains another team");
-  await db.prepare("UPDATE matches SET " + column + "=?,updated_at=? WHERE id=?").bind(winnerTeamId, new Date().toISOString(), link.next_match_id).run();
+  const updated = await db.prepare("UPDATE matches SET " + column + "=?,updated_at=? WHERE id=? AND (" + column + " IS NULL OR " + column + "=?)").bind(winnerTeamId, new Date().toISOString(), link.next_match_id, winnerTeamId).run();
+  if (updated.meta?.changes === 0) throw new Error("Bracket slot was changed by another result");
   return { advanced: true, next_match_id: link.next_match_id };
 }
