@@ -37,7 +37,7 @@ test.describe('MERCY ARENA public shell', () => {
 
 
   test('public player profile displays verified match statistics', async ({ page }) => {
-    await page.route('**/api/v1/players?id=123', route => route.fulfill({ json: { data: [{
+    await page.route(/\\/api\\/v1\\/players\\?id=123$/, route => route.fulfill({ json: { data: [{
       id: 123, nickname: 'ArenaPlayer', game_id: '123456789', role: 'MID', team_id: null,
       region: 'EU', avatar_url: null,
       stats: { matches_played: 12, wins: 9, losses: 3, points: 27, win_rate: 75 }
