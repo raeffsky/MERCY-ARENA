@@ -42,18 +42,19 @@ export async function onRequestPost({ request, env }) {
   if (!provider || !eventId || !matchId || !teamA || !teamB || teamA === teamB || !Number.isSafeInteger(scoreA) || !Number.isSafeInteger(scoreB) || scoreA < 0 || scoreB < 0 || scoreA === scoreB) {
     return json({ error: { code: "INVALID_RESULT_EVENT", message: "В событии не хватает корректных данных матча и счёта." } }, 400);
   }
-  const match = await env.DB.prepare("SELECT id,tournament_id,team_a_id,team_b_id,status FROM matches WHERE id=? LIMIT 1").bind(matchId).first();
+  const match = await env.DB.prepare("SELECT id,tournament_id,team_a_id,team_b_id,status,score_a,score_b,winner_team_id,result_source FROM matches WHERE id=? LIMIT 1").bind(matchId).first();
   if (!match) return json({ error: { code: "MATCH_NOT_FOUND", message: "Матч не найден." } }, 404);
   if (String(match.team_a_id) !== String(teamA) || String(match.team_b_id) !== String(teamB)) {
     return json({ error: { code: "MATCH_TEAMS_MISMATCH", message: "Команды события не совпадают с командами матча." } }, 409);
   }
   const payloadHash = await digest(raw);
-  const duplicate = await env.DB.prepare("SELECT id,match_id,validation_status FROM result_events WHERE provider=? AND provider_event_id=?").bind(provider, eventId).first();
+  const duplicate = await env.DB.prepare("SELECT id,match_id,validation_status,payload_hash FROM result_events WHERE provider=? AND provider_event_id=?").bind(provider, eventId).first();
   if (duplicate) {
     if (String(duplicate.match_id) !== String(matchId)) return json({ error: { code: "EVENT_ID_CONFLICT", message: "Этот ID события уже использован для другого матча." } }, 409);
+    if (duplicate.payload_hash !== payloadHash) return json({ error: { code: "EVENT_PAYLOAD_CONFLICT", message: "ID события уже использован с другим содержимым." } }, 409);
     let progression = null;
-    if (duplicate.validation_status === "valid" && match.status === "completed") {
-      try { progression = await advanceWinner(env.DB, matchId, scoreA > scoreB ? teamA : teamB); }
+    if (duplicate.validation_status === "valid" && match.status === "completed" && match.winner_team_id) {
+      try { progression = await advanceWinner(env.DB, matchId, match.winner_team_id); }
       catch (error) { console.error("Duplicate result progression retry failed:", error); return json({ error: { code: "PROGRESSION_RETRY_FAILED", message: "Результат сохранён, но продвижение команды по сетке пока не завершено." } }, 503); }
     }
     return json({ data: { accepted: true, duplicate: true, match_id: matchId, status: duplicate.validation_status, progression } });
@@ -63,12 +64,16 @@ export async function onRequestPost({ request, env }) {
   if (match.status === "completed") return json({ error: { code: "MATCH_ALREADY_COMPLETED", message: "Матч уже завершён. Повторный результат требует ручной проверки." } }, 409);
   const winner = scoreA > scoreB ? teamA : teamB;
   const now = new Date().toISOString();
+  const resultEventId = crypto.randomUUID();
   try {
-    await env.DB.batch([
-      env.DB.prepare("INSERT INTO result_events (id,provider,provider_event_id,match_id,payload_hash,raw_payload,validation_status,received_at,reviewed_at) VALUES (?,?,?,?,?,?,'valid',?,?)").bind(crypto.randomUUID(), provider, eventId, matchId, payloadHash, raw.slice(0, 20000), now, now),
-      env.DB.prepare("UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,status='completed',result_source=?,result_verified_at=?,updated_at=? WHERE id=? AND status!='completed'").bind(scoreA, scoreB, winner, "webhook:" + provider, now, now, matchId),
-      env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (NULL,'match_result_auto_verified','match',?,?)").bind(matchId, JSON.stringify({ provider, event_id: eventId, score_a: scoreA, score_b: scoreB, winner_team_id: winner }))
+    const writes = await env.DB.batch([
+      env.DB.prepare("UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,status='completed',result_source=?,result_verified_at=?,updated_at=? WHERE id=? AND status!='completed' AND team_a_id=? AND team_b_id=?").bind(scoreA, scoreB, winner, "webhook:" + provider, now, now, matchId, teamA, teamB),
+      env.DB.prepare("INSERT INTO result_events (id,provider,provider_event_id,match_id,payload_hash,raw_payload,validation_status,received_at,reviewed_at) SELECT ?,?,?,?,?,?,'valid',?,? WHERE EXISTS (SELECT 1 FROM matches WHERE id=? AND status='completed' AND result_source=? AND score_a=? AND score_b=? AND winner_team_id=?) AND NOT EXISTS (SELECT 1 FROM result_events WHERE match_id=? AND validation_status='valid')").bind(resultEventId, provider, eventId, matchId, payloadHash, raw.slice(0, 20000), now, now, matchId, "webhook:" + provider, scoreA, scoreB, winner, matchId),
+      env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) SELECT NULL,'match_result_auto_verified','match',?,? WHERE EXISTS (SELECT 1 FROM result_events WHERE id=?)").bind(matchId, JSON.stringify({ provider, event_id: eventId, score_a: scoreA, score_b: scoreB, winner_team_id: winner }), resultEventId)
     ]);
+    if (!writes[0]?.meta?.changes || !writes[1]?.meta?.changes) {
+      return json({ error: { code: "MATCH_ALREADY_COMPLETED", message: "Результат уже принят или матч изменён другим запросом. Повторная отправка требует проверки." } }, 409);
+    }
     const progression = await advanceWinner(env.DB, matchId, winner);
     return json({ data: { accepted: true, duplicate: false, match_id: matchId, status: "completed", score_a: scoreA, score_b: scoreB, winner_team_id: winner, progression } }, 201);
   } catch (error) {
