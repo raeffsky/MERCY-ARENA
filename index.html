@@ -959,7 +959,7 @@ if(type==='select'){
 var options=opts==='users'?users.map(function(u){return [String(u.id),u.email+' · '+u.display_name]}):opts==='seasons'?seasons.map(function(x){return [String(x.id),x.title+' · ID '+x.id]}):opts.map(function(o){return [o,o||'Не указано']});
 return '<label class="admin-field">'+esc(label)+'<select class="field" name="'+key+'" '+(required?'required':'')+'><option value="">'+(opts==='seasons'?'Выберите сезон':opts==='users'?'Выберите аккаунт':'Выберите значение')+'</option>'+options.map(function(o){return '<option value="'+esc(o[0])+'">'+esc(o[1])+'</option>'}).join('')+'</select>'+(opts==='seasons'?'<small class="muted">Внутренний ID создаётся автоматически. Номер сезона задаётся отдельно и отображается на карточке.</small>':'')+'</label>';
 }
-return '<label class="admin-field">'+esc(label)+'<input class="field" name="'+key+'" type="'+type+'" '+(required?'required':'')+' '+(type==='number'?'min="'+(key==='season_number'?'1':'0')+'" step="1"':'')+'></label>';
+return '<label class="admin-field">'+esc(label)+'<input class="field" name="'+key+'" type="'+type+'" '+(required?'required':'')+' '+(type==='number'?'min="'+((key==='season_number'||key==='id')?'1':'0')+'" step="1"':'')+'></label>';
 }
 function formMarkup(resource,users,seasons){
 return '<form id="adminRecordForm" class="admin-editor"><div class="admin-form-grid">'+fields[resource].map(function(f){return fieldMarkup(f,users,seasons)}).join('')+'</div><div class="admin-actions"><button class="btn primary" type="submit" id="adminSaveButton">Создать запись</button><button class="btn secondary" type="button" id="adminCancelEdit" hidden>Отмена</button><span class="muted" id="adminFormMessage" role="status"></span></div></form>';
