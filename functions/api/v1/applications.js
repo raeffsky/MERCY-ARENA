@@ -146,7 +146,7 @@ export async function onRequestPost({ request, env }) {
   if (!tournamentId || !teamId) return invalid("Выбери команду для участия.", 400, "MISSING_FIELDS");
 
   const tournament = await tournamentConfig(env.DB, tournamentId, true);
-  if (!tournament || tournament.status !== "published") return invalid("Регистрация на этот турнир сейчас закрыта.", 409, "REGISTRATION_CLOSED");
+  if (!tournament || !["published","active"].includes(tournament.status)) return invalid("Регистрация на этот турнир сейчас закрыта.", 409, "REGISTRATION_CLOSED");
   const now = new Date().toISOString();
   if (tournament.registration_open_at && now < tournament.registration_open_at) return invalid("Регистрация ещё не началась.", 409, "REGISTRATION_NOT_STARTED");
   if (tournament.registration_close_at && now > tournament.registration_close_at) return invalid("Срок подачи заявок завершён.", 409, "REGISTRATION_CLOSED");
