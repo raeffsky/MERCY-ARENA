@@ -41,8 +41,13 @@ export async function onRequestPost({ request, env }) {
   const provider = String(body.provider || "").trim().slice(0, 40);
   const eventId = String(body.event_id || "").trim().slice(0, 160);
   const matchId = String(body.match_id || "").trim(), teamA = String(body.team_a_id || "").trim(), teamB = String(body.team_b_id || "").trim();
-  const scoreA = Number(body.score_a), scoreB = Number(body.score_b);
-  if (!provider || !eventId || !matchId || !teamA || !teamB || teamA === teamB || !Number.isSafeInteger(scoreA) || !Number.isSafeInteger(scoreB) || scoreA < 0 || scoreB < 0 || scoreA === scoreB) {
+  const scoreAInput = body.score_a, scoreBInput = body.score_b;
+  const scoreA = Number(scoreAInput), scoreB = Number(scoreBInput);
+  const validScoreInput = (value) => (typeof value === "number" && Number.isSafeInteger(value)) ||
+    (typeof value === "string" && /^\\d+$/.test(value.trim()) && Number.isSafeInteger(Number(value)));
+  if (!provider || !eventId || !matchId || !teamA || !teamB || teamA === teamB ||
+      !validScoreInput(scoreAInput) || !validScoreInput(scoreBInput) ||
+      scoreA < 0 || scoreB < 0 || scoreA === scoreB) {
     return json({ error: { code: "INVALID_RESULT_EVENT", message: "В событии не хватает корректных данных матча и счёта." } }, 400);
   }
   const match = await env.DB.prepare("SELECT id,tournament_id,team_a_id,team_b_id,status,score_a,score_b,winner_team_id,result_source FROM matches WHERE id=? LIMIT 1").bind(matchId).first();
