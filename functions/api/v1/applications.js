@@ -104,14 +104,16 @@ export async function onRequestPost({ request, env }) {
   try {
     let registrationId = existing?.id;
     if (existing) {
-      await env.DB.prepare(
-        "UPDATE tournament_registrations SET status='pending',submitted_at=?,reviewed_at=NULL,reviewer_id=NULL,selected_slot=?,captain_note=?,updated_at=? WHERE id=?"
-      ).bind(now, selectedSlot || null, captainNote || null, now, existing.id).run();
+      const reopened = await env.DB.prepare(
+        "UPDATE tournament_registrations SET status='pending',submitted_at=?,reviewed_at=NULL,reviewer_id=NULL,selected_slot=?,captain_note=?,updated_at=? WHERE id=? AND status IN ('rejected','withdrawn') AND (? IS NULL OR (SELECT COUNT(*) FROM tournament_registrations WHERE tournament_id=? AND status IN ('pending','approved')) < ?)"
+      ).bind(now, selectedSlot || null, captainNote || null, now, existing.id, tournament.max_teams, tournamentId, tournament.max_teams).run();
+      if (!reopened.meta?.changes) return invalid("Все места турнира уже заняты или заявка была изменена другим запросом.", 409, "TOURNAMENT_FULL");
       await env.DB.prepare("DELETE FROM tournament_registration_roster WHERE registration_id=?").bind(existing.id).run();
     } else {
       const inserted = await env.DB.prepare(
-        "INSERT INTO tournament_registrations (tournament_id,team_id,status,submitted_at,selected_slot,captain_note,updated_at) VALUES (?,?,'pending',?,?,?,?)"
-      ).bind(tournamentId, teamId, now, selectedSlot || null, captainNote || null, now).run();
+        "INSERT INTO tournament_registrations (tournament_id,team_id,status,submitted_at,selected_slot,captain_note,updated_at) SELECT ?,?,'pending',?,?,?,? WHERE ? IS NULL OR (SELECT COUNT(*) FROM tournament_registrations WHERE tournament_id=? AND status IN ('pending','approved')) < ?"
+      ).bind(tournamentId, teamId, now, selectedSlot || null, captainNote || null, now, tournament.max_teams, tournamentId, tournament.max_teams).run();
+      if (!inserted.meta?.changes) return invalid("Все места турнира уже заняты или ожидают подтверждения.", 409, "TOURNAMENT_FULL");
       registrationId = inserted.meta?.last_row_id;
       if (registrationId == null) {
         const row = await env.DB.prepare("SELECT id FROM tournament_registrations WHERE tournament_id=? AND team_id=?").bind(tournamentId, teamId).first();
@@ -132,6 +134,9 @@ export async function onRequestPost({ request, env }) {
     return json({ data: { id: registrationId, tournament_id: tournamentId, team_id: teamId, team_name: team.name, team_tag: team.tag, player_ids: requestedIds, selected_slot: selectedSlot || null, status: "pending" } }, 201);
   } catch (error) {
     console.error("Tournament application failed", error);
+    if (/UNIQUE constraint failed/i.test(String(error?.message || error))) {
+      return invalid("Эта команда уже подала заявку на турнир.", 409, "ALREADY_APPLIED");
+    }
     return invalid("Не удалось отправить заявку. Попробуй ещё раз.", 500, "APPLICATION_FAILED");
   }
 }
