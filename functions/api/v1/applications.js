@@ -121,8 +121,14 @@ export async function onRequestGet({ request, env }) {
   }
   return json({ data: rows });
   } catch (error) {
+    const diagnostic = String(error?.message || error || "Unknown database error").replace(/[\\r\\n]+/g, " ").slice(0, 220);
     console.error("Tournament application lookup failed at stage " + stage + ":", error);
-    return json({ error: { code: "APPLICATION_LOOKUP_FAILED", message: "Не удалось загрузить данные заявки (этап: " + stage + "). Обнови страницу или сообщи организатору этот код." } }, 500);
+    return json({ error: {
+      code: "APPLICATION_LOOKUP_FAILED",
+      message: "Не удалось загрузить данные заявки (этап: " + stage + ").",
+      stage,
+      diagnostic
+    } }, 500);
   }
 }
 
