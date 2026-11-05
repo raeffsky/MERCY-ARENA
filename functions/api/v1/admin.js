@@ -165,8 +165,8 @@ export async function onRequestPost({ request, env }) {
   if (resource === "seasons" && payload.season_number != null) {
     const number = Number(payload.season_number);
     if (!Number.isSafeInteger(number) || number < 1) return bad("Номер сезона должен быть целым числом от 1.");
-    const duplicate = await env.DB.prepare("SELECT id FROM seasons WHERE season_number=? AND id!=COALESCE(?, -1)").bind(number, id || null).first();
-    if (duplicate) return bad("Сезон с номером " + number + " уже существует.");
+    const duplicate = await env.DB.prepare("SELECT id FROM seasons WHERE season_number=? AND (? IS NULL OR id!=?) LIMIT 1").bind(number, id == null ? null : String(id), id == null ? null : String(id)).first();
+    if (duplicate) return bad("Этот номер сезона уже занят. Укажи другой номер.", 409);
   }
   if (resource === "tournaments" && payload.season_id != null) {
     const season = await env.DB.prepare("SELECT id FROM seasons WHERE id=?").bind(payload.season_id).first();
