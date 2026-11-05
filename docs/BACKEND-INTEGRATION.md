@@ -99,7 +99,7 @@ Admin operations are restricted by server-side roles and are audited. Applicatio
 
 ## Rankings
 
-Team rankings are calculated from completed matches with a verified result timestamp. Unverified or provisional results do not affect the ladder. Individual player ranking points, tiers and season scoring are intentionally not fabricated; those require a defined competition scoring policy and trusted match data.
+Team and player rankings are calculated only from completed matches with a verified result timestamp. Unverified or provisional results do not affect the ladder. The current transparent baseline awards 3 points per verified win and 0 for a loss. Individual points are attributed to players marked as starters in the approved tournament registration roster. The ranking API accepts `season_id` to scope both ladders to a season. Tier names and tier thresholds remain disabled until a competitive progression policy is approved.
 
 ## Match implementation boundary
 
