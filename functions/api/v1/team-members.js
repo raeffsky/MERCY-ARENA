@@ -76,4 +76,29 @@ export async function onRequestPut({ request, env }) {
   ]);
   return json({ data: { team_id: invite.team_id, team_name: invite.team_name, status: "accepted" } });
 }
-export function onRequestDelete() { return methodNotAllowed("GET, POST, PUT"); }
+export async function onRequestDelete({ request, env }) {
+  if (!env.DB) return databaseUnavailable();
+  if (!request.headers.get("origin") || !sameOrigin(request, env)) return json({ error: { code: "ORIGIN_REJECTED", message: "Запрос отклонён." } }, 403);
+  const auth = await getSessionUser(request, env);
+  if (auth.error) return auth.error;
+  if (!auth.user) return json({ error: { code: "UNAUTHORIZED", message: "Войди в аккаунт." } }, 401);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректные данные." } }, 400); }
+  const teamId = Number(body.team_id), playerId = Number(body.player_id);
+  if (!Number.isSafeInteger(teamId) || teamId < 1 || !Number.isSafeInteger(playerId) || playerId < 1) return json({ error: { code: "INVALID_MEMBER", message: "Укажи команду и игрока." } }, 400);
+  const team = await env.DB.prepare("SELECT id,captain_id FROM teams WHERE id=? AND status='active'").bind(teamId).first();
+  if (!team) return json({ error: { code: "TEAM_NOT_FOUND", message: "Команда не найдена." } }, 404);
+  const member = await env.DB.prepare("SELECT r.roster_role,p.user_id FROM team_roster r JOIN players p ON p.id=r.player_id WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL").bind(teamId, playerId).first();
+  if (!member) return json({ error: { code: "MEMBER_NOT_FOUND", message: "Игрок не состоит в этой команде." } }, 404);
+  const isCaptain = String(team.captain_id) === String(auth.user.id);
+  const isSelf = String(member.user_id) === String(auth.user.id);
+  if (!isCaptain && !isSelf) return json({ error: { code: "FORBIDDEN", message: "Изменять состав может капитан команды или сам игрок при выходе." } }, 403);
+  if (member.roster_role === "captain") return json({ error: { code: "CAPTAIN_CANNOT_LEAVE", message: "Капитан не может покинуть команду. Сначала передай руководство." } }, 409);
+  const now = new Date().toISOString();
+  await env.DB.batch([
+    env.DB.prepare("UPDATE team_roster SET left_at=? WHERE team_id=? AND player_id=? AND left_at IS NULL").bind(now, teamId, playerId),
+    env.DB.prepare("UPDATE players SET team_id=NULL,updated_at=? WHERE id=? AND team_id=?").bind(now, playerId, teamId),
+    env.DB.prepare("UPDATE team_invites SET status='cancelled',responded_at=? WHERE team_id=? AND player_id=? AND status='pending'").bind(now, teamId, playerId)
+  ]);
+  return json({ data: { team_id: teamId, player_id: playerId, status: "removed" } });
+}
