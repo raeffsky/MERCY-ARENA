@@ -16,7 +16,7 @@ export async function onRequestGet({ request, env }) {
   }
   const limit = parseLimit(url);
   const { results } = await env.DB.prepare(`
-    SELECT s.id,s.title,s.starts_at,s.ends_at,s.status,s.image_url,s.created_at,
+    SELECT s.id,s.season_number,s.title,s.starts_at,s.ends_at,s.status,s.image_url,s.created_at,
       (SELECT COUNT(*) FROM tournaments t WHERE t.season_id=s.id AND t.published_at IS NOT NULL AND t.status!='draft') AS tournaments_count
     FROM seasons s
     WHERE s.status != 'draft'
