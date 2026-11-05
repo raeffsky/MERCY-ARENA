@@ -32,13 +32,17 @@ async function hasTable(db, table) {
 }
 
 export async function onRequestGet({ request, env }) {
+  let stage = "session";
+  try {
   const auth = await currentUser(request, env);
   if (auth.response) return auth.response;
+  stage = "tournament_config";
   const tournamentId = new URL(request.url).searchParams.get("tournament_id") || "";
   const tournamentConfigRow = await tournamentConfig(env.DB, tournamentId);
   const tournamentConfig = tournamentConfigRow && { registration_slots: tournamentConfigRow.registration_slots };
   const availableSlots = String(tournamentConfig?.registration_slots || "").split(/\r?\n/).map((slot) => slot.trim()).filter(Boolean).slice(0, 20);
   let results = [];
+  stage = "team_lookup";
   try {
     const response = await env.DB.prepare(
       `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
@@ -77,6 +81,7 @@ export async function onRequestGet({ request, env }) {
     }
   }
   const rows = results;
+  stage = "team_roster";
   for (const row of rows) {
     let available;
     try {
@@ -115,6 +120,10 @@ export async function onRequestGet({ request, env }) {
     }
   }
   return json({ data: rows });
+  } catch (error) {
+    console.error("Tournament application lookup failed at stage " + stage + ":", error);
+    return json({ error: { code: "APPLICATION_LOOKUP_FAILED", message: "Не удалось загрузить данные заявки (этап: " + stage + "). Обнови страницу или сообщи организатору этот код." } }, 500);
+  }
 }
 
 export async function onRequestPost({ request, env }) {
