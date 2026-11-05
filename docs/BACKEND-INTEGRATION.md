@@ -1,84 +1,126 @@
-# MERCY ARENA — backend integration contract
+# MERCY ARENA — backend contract
 
-The frontend is deployed through Cloudflare Pages. The first backend layer uses Cloudflare Pages Functions and Cloudflare D1. The UI must never invent tournaments, teams, players, match schedules, scores, rankings, or account state.
+MERCY ARENA is a tournament platform for Mobile Legends: Bang Bang. The production frontend is deployed through Cloudflare Pages; API handlers are Cloudflare Pages Functions; persistent data lives in Cloudflare D1.
 
-## Current backend foundation
+## Deployment model
 
-- Pages Functions API routes live under `functions/api/v1/`.
-- Initial D1 schema is in `migrations/0001_initial_schema.sql`.
-- The API exposes public read endpoints for tournaments, teams, players, matches, seasons, rankings, and health.
-- Bind the D1 database to the Pages project using the binding name `DB` before expecting data routes to return records.
-- No organizer write routes are enabled until authentication and server-side role checks are configured.
+- Static frontend: `index.html`, built by `bash scripts/build-pages.sh` into `dist/`.
+- API: `functions/api/v1/`.
+- Database migrations: `migrations/`, applied in numeric order.
+- Public UI must show real database data only. It must not invent teams, players, registrations, official fixtures, results or ranking points.
+- Demo fixtures, when intentionally shown in a design preview, must be explicitly labelled and must never enter D1 or affect rankings.
 
-## Required next services
+## Cloudflare bindings
 
-- Organizer identity provider. Roles: player, team captain, organizer, referee, administrator.
-- Trusted match-result provider for MLBB. No official provider credentials or documented public endpoint are configured in this repository.
-- Background worker for polling/webhooks, validation, idempotency, and retry handling.
+Required Pages bindings and secrets:
+
+| Name | Type | Purpose |
+|---|---|---|
+| `DB` | D1 database binding | MERCY ARENA database |
+| `APP_BASE_URL` | Environment variable | Canonical origin for origin checks |
+| `AUTH_RATE_LIMIT_SALT` | Secret | Hash salt for auth rate limiting |
+| `MLBB_LOOKUP_API_KEY` | Secret | Server-side MLBB profile lookup |
+| `CLOUDINARY_CLOUD_NAME` | Environment variable | Avatar and media uploads |
+| `CLOUDINARY_API_KEY` | Environment variable | Cloudinary API |
+| `CLOUDINARY_API_SECRET` | Secret | Cloudinary signing secret |
+| `POSTHOG_PROJECT_TOKEN` | Environment variable | Optional browser analytics token |
+| `POSTHOG_API_HOST` | Environment variable | Optional analytics host, currently `https://eu.i.posthog.com` |
+
+Never place server-side secrets in frontend JavaScript or commit them to Git.
+
+## Database setup and upgrades
+
+Apply migrations in ascending order. For a fresh database, apply every file from `0001_initial_schema.sql` through the latest numbered migration. For an existing production database, inspect the applied migration history first and apply only migrations that have not already run. Do not rerun ALTER TABLE migrations.
+
+The current platform foundation migration is `0013_platform_foundation.sql`. It adds:
+- selected time slot and captain note to tournament registrations;
+- per-registration starter and substitute rosters;
+- user notifications;
+- tournament staff assignments.
+
+The early schema and later compatibility migrations reflect the platform's legacy D1 history. Before rebuilding an existing database, take a D1 backup and verify the actual primary-key types and foreign-key relationships. Do not manually change ID types in production without a data migration and a rollback plan.
 
 ## API surface
 
-Implemented public GET routes: `/api/v1/health`, `/api/v1/tournaments`, `/api/v1/teams`, `/api/v1/players`, `/api/v1/matches`, `/api/v1/seasons`, and `/api/v1/rankings?scope=teams|players`. Public list routes currently return real database records only.
+### Public reads
+- `GET /api/v1/health`
+- `GET /api/v1/tournaments?status=&format=&season_id=&limit=`
+- `GET /api/v1/tournaments?id={id}`
+- `GET /api/v1/seasons?limit=`
+- `GET /api/v1/teams?query=&limit=`
+- `GET /api/v1/teams?id={id}`
+- `GET /api/v1/players?query=&role=&limit=`
+- `GET /api/v1/players?id={id}`
+- `GET /api/v1/matches?tournament_id=&status=&from=&to=&limit=`
+- `GET /api/v1/rankings?scope=teams|players&limit=`
 
-## Planned API surface
+Match reads include joined team names, tags and logos. The match API is a fixture and result data contract only; actual game operation and automated MLBB result acquisition are outside the current platform phase.
 
-All responses are JSON. All timestamps are ISO-8601 UTC. Public list endpoints currently support a bounded `limit` parameter (default 20, maximum 50). Cursor pagination is reserved for a later API revision.
+### Authentication and player account
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/me`
+- `PUT /api/v1/players` — verify/update the current MLBB player profile
+- `POST /api/v1/avatar` — upload the current player's avatar
 
-- GET /api/v1/tournaments?status=&format=&cursor=
-- GET /api/v1/tournaments/{id}
-- GET /api/v1/teams?query=&cursor=
-- GET /api/v1/teams/{id}
-- GET /api/v1/players?query=&role=&cursor=
-- GET /api/v1/players/{id}
-- GET /api/v1/matches?status=&tournament_id=&from=&to=&cursor=
-- GET /api/v1/matches/{id}
-- GET /api/v1/rankings?scope=teams|players&season_id=
-- GET /api/v1/seasons
-- POST /api/v1/organizer/tournaments
-- PATCH /api/v1/organizer/tournaments/{id}
-- POST /api/v1/organizer/tournaments/{id}/registrations
-- POST /api/v1/organizer/matches/{id}/result-review
-- POST /api/v1/organizer/matches/{id}/confirm-result
+Passwords are hashed server-side with PBKDF2-SHA-256. Sessions use HttpOnly, Secure, SameSite=Lax cookies. Authenticated write routes enforce same-origin checks and server-side role checks.
 
-## Core entities
+### Teams
+- `GET /api/v1/teams`
+- `POST /api/v1/teams` — create a team for an approved player
+- `GET /api/v1/team-members?team_id={id}` — pending invites for a captain
+- `GET /api/v1/team-members` — current player's pending invites
+- `POST /api/v1/team-members` — invite a player or transfer captaincy
+- `PUT /api/v1/team-members` — accept or decline an invite
+- `DELETE /api/v1/team-members` — remove a member or leave a team
 
-- Tournament: id, title, game, region, format, status, registration_open_at, registration_close_at, starts_at, rules_url, organizer_id.
-- Team: id, name, tag, logo_url, captain_id, roster.
-- Player: id, game_id, nickname, role, team_id.
-- Match: id, tournament_id, round, scheduled_at, status, team_a_id, team_b_id, score_a, score_b, result_source, result_verified_at.
-- ResultEvent: provider_event_id, match_id, payload_hash, received_at, validation_status, reviewer_id, decision_reason.
-- Season: id, title, starts_at, ends_at, status.
+Team membership is limited to seven active players. A tournament application requires five to seven approved team members.
 
-## Result ingestion rules
+### Tournament applications
+- `GET /api/v1/applications?tournament_id={id}` — captain's teams, eligible players and existing application state.
+- `POST /api/v1/applications` — submit a team, selected player IDs, optional time slot and captain note.
+- `PUT /api/v1/applications` — withdraw a pending application.
+- `GET /api/v1/notifications` — current user's inbox and unread count.
+- `PUT /api/v1/notifications` — mark one notification or all notifications as read.
 
-1. Accept provider webhooks only after signature verification. If the provider has no webhook support, poll its documented API from a server-side worker.
-2. Resolve provider match IDs to internal match IDs. Never match on team display names alone.
-3. Validate that the event is final, both participants match the scheduled fixture, and the score is structurally valid.
-4. Make ingestion idempotent using provider_event_id and payload_hash.
-5. Store raw provider payloads and an audit trail. Do not overwrite a previously confirmed result silently.
-6. Send ambiguous, conflicting, or incomplete events to referee review.
-7. Update match, bracket progression, standings, and rankings in one database transaction only after confirmation.
-8. Expose the result source and verification state to the public UI.
+The application API validates captain ownership, registration dates, tournament capacity, team membership, approved player profiles, duplicate player IDs and roster size. The first five selected players are starters; additional selected players are substitutes.
 
-## Security requirements
+### Organizer and administration
+- `GET /api/v1/admin?resource={tournaments|teams|players|matches|seasons|applications|users}`
+- `POST /api/v1/admin` — create/update/delete records, publish tournaments, review applications.
+- `POST /api/v1/brackets` — generate supported tournament fixture structures.
+- `POST /api/v1/uploads/tournament-poster`
+- `POST /api/v1/uploads/season-cover`
 
-- Provider secrets stay on the server and never in frontend JavaScript or Git.
-- Organizer and referee endpoints require server-side role checks.
-- Rate-limit public and authenticated endpoints.
-- Record audit events for tournament edits, result changes, and referee decisions.
-- Use database constraints and transactions for roster limits, registration deadlines, bracket progression, and duplicate result prevention.
+Admin operations are restricted by server-side roles and are audited. Application decisions generate a notification for the team captain. The organizer workflow manages tournament configuration, registrations and fixture structures. It does not run matches.
 
-## Current implementation boundary
+## Rankings
 
-The public pages and navigation are implemented in `index.html`. The API and database schema are now scaffolded, but the D1 database binding and migration still need to be provisioned in Cloudflare. Authentication, organizer write operations, and a trusted MLBB result provider are not yet configured. Public pages must keep their honest empty states until real records exist. Secrets must remain in server-side Cloudflare bindings, never in frontend JavaScript or Git.
+Team rankings are calculated from completed matches with a verified result timestamp. Unverified or provisional results do not affect the ladder. Individual player ranking points, tiers and season scoring are intentionally not fabricated; those require a defined competition scoring policy and trusted match data.
 
+## Match implementation boundary
 
-## Initial D1 setup
+This phase prepares the platform around matches: tournament fixture records, bracket metadata, registration rosters, schedules, standings data contracts and organizer access. It does not implement live match rooms, check-in, referee live operations, game client integration, automated result detection or match simulation. Those require a separate product and technical design.
 
-1. Create a Cloudflare D1 database named `mercy-arena-db`.
-2. In Cloudflare Pages → `mercy-arena` → Settings → Functions → D1 database bindings, add binding `DB` and select `mercy-arena-db` for production (and preview if required).
-3. Apply `migrations/0001_initial_schema.sql` to that database.
-4. Verify `GET /api/v1/health` returns `{"status":"ready","database":"connected"}`.
-5. Verify the public list endpoints return empty arrays until real data is entered.
+## Quality checks
 
-Do not enable organizer write endpoints until identity verification, role checks, CSRF/origin controls, rate limits, and audit logging are implemented.
+Run locally:
+
+```bash
+npm install
+npx playwright install chromium
+npm run build
+npm run test:e2e
+```
+
+GitHub Actions runs desktop and mobile smoke tests on pushes to `main` and pull requests. The current smoke suite covers page rendering, homepage sections, navigation and the mobile drawer. It is not a substitute for end-to-end tests against a provisioned D1 database.
+
+## Operational checklist
+
+1. Confirm the Pages project is connected to `raeffsky/MERCY-ARENA`, production branch `main`, build command `bash scripts/build-pages.sh`, output directory `dist`.
+2. Confirm the D1 binding name is exactly `DB` for Production and Preview environments as needed.
+3. Apply outstanding migrations in order after taking a backup.
+4. Configure the server-side environment variables and secrets above.
+5. Verify `GET /api/v1/health`, registration, login, profile retrieval, team creation and tournament application flows against the deployed environment.
+6. Verify an organizer can review an application and the captain receives an inbox notification.
