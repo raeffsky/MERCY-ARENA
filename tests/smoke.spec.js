@@ -36,6 +36,38 @@ test.describe('MERCY ARENA public shell', () => {
   });
 
 
+  test('player registration can be submitted for manual review when MLBB lookup fails', async ({ page }) => {
+    let registrationBody = null;
+    await page.route('**/api/v1/players**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/mlbb-lookup', route => route.fulfill({
+      status: 422,
+      json: { error: { code: 'MLBB_PLAYER_NOT_FOUND', message: 'Автоматическая проверка не нашла аккаунт.' } }
+    }));
+    await page.route('**/api/v1/auth/register', async route => {
+      registrationBody = route.request().postDataJSON();
+      await route.fulfill({ status: 201, json: {
+        authenticated: true,
+        account: { id: 'user-2', email: 'manual@example.com', name: 'ManualPlayer' },
+        profile: { id: 'player-2', status: 'pending', nickname: 'ManualPlayer', game_id: '123456789', server_id: '1234' }
+      } });
+    });
+    await page.goto('/#/players');
+    await page.getByRole('button', { name: /Создать профиль/ }).click();
+    await page.locator('#playerCreateForm [name="email"]').fill('manual@example.com');
+    await page.locator('#playerCreateForm [name="password"]').fill('VeryStrongPassword123!');
+    await page.locator('#playerCreateForm [name="game_id"]').fill('123456789');
+    await page.locator('#playerCreateForm [name="server_id"]').fill('1234');
+    await page.locator('#playerCreateForm [name="role"]').selectOption('MID');
+    await page.getByRole('button', { name: 'Проверить игровой аккаунт' }).click();
+    await expect(page.locator('#manualNicknameWrap')).toBeVisible();
+    await page.locator('#playerCreateForm [name="nickname"]').fill('ManualPlayer');
+    await page.getByRole('button', { name: 'Отправить на ручную проверку' }).click();
+    await page.getByRole('button', { name: 'Создать аккаунт и профиль' }).click();
+    await expect.poll(() => registrationBody?.manual_review).toBe(true);
+    await expect(page.locator('#playerCreateMessage')).toContainText('отправлен на ручную проверку');
+  });
+
   test('player account exposes logout and clears the session', async ({ page }) => {
     let meCalls = 0;
     let logoutCalls = 0;
@@ -60,7 +92,7 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(logoutButton).toBeVisible();
     await logoutButton.click();
     await expect.poll(() => logoutCalls).toBe(1);
-    await expect(page.locator('#myProfileContent')).toContainText('ВОЙДИ В MERCY ARENA');
+    await expect(page).toHaveURL(/#\\/home$/);
   });
 
 
