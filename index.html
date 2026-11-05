@@ -957,7 +957,7 @@ if(type==='image')return '<label class="admin-field">'+esc(label)+'<input class=
 if(type==='textarea')return '<label class="admin-field">'+esc(label)+'<textarea class="field" name="'+key+'" '+(required?'required':'')+'></textarea></label>';
 if(type==='select'){
 var options=opts==='users'?users.map(function(u){return [String(u.id),u.email+' · '+u.display_name]}):opts==='seasons'?seasons.map(function(x){return [String(x.id),x.title+' · ID '+x.id]}):opts.map(function(o){return [o,o||'Не указано']});
-return '<label class="admin-field">'+esc(label)+'<select class="field" name="'+key+'" '+(required?'required':'')+'><option value="">'+(opts==='seasons'?'Выберите сезон':opts==='users'?'Выберите аккаунт':'Выберите значение')+'</option>'+options.map(function(o){return '<option value="'+esc(o[0])+'">'+esc(o[1])+'</option>'}).join('')+'</select>'+(opts==='seasons'?'<small class="muted">Внутренний ID создаётся автоматически. Номер сезона задаётся отдельно и отображается на карточке.</small>':'')+'</label>';
+return '<label class="admin-field">'+esc(label)+'<select class="field" name="'+key+'" '+(required?'required':'')+'><option value="">'+(opts==='seasons'?'Выберите сезон':opts==='users'?'Выберите аккаунт':'Выберите значение')+'</option>'+options.map(function(o){return '<option value="'+esc(o[0])+'">'+esc(o[1])+'</option>'}).join('')+'</select>'+(opts==='seasons'?'<small class="muted">Сезон выбирается по заданному ID. Номер сезона на карточке задаётся отдельно.</small>':'')+'</label>';
 }
 return '<label class="admin-field">'+esc(label)+'<input class="field" name="'+key+'" type="'+type+'" '+(required?'required':'')+' '+(type==='number'?'min="'+((key==='season_number'||key==='id')?'1':'0')+'" step="1"':'')+'></label>';
 }
