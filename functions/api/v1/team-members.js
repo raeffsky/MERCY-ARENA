@@ -138,7 +138,7 @@ export async function onRequestDelete({ request, env }) {
     env.DB.prepare("UPDATE players SET team_id=NULL,updated_at=? WHERE id=? AND team_id=?").bind(now, playerId, teamId),
     env.DB.prepare("UPDATE team_invites SET status='cancelled',responded_at=? WHERE team_id=? AND player_id=? AND status='pending'").bind(now, teamId, playerId),
     env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'team',?)")
-      .bind(isCaptain ? member.user_id : team.captain_id,"team_member_left",isCaptain?"Ты покинул команду":"Игрок покинул команду",isCaptain?"Тебя исключили из команды "+team.name+".":"Игрок "+member.nickname+" покинул команду "+team.name+".","#/teams",teamId)
+      .bind(isCaptain ? member.user_id : team.captain_id,"team_member_left","Изменение состава команды",isCaptain?"Тебя исключили из команды "+team.name+".":"Игрок "+member.nickname+" покинул команду "+team.name+".","#/teams",teamId)
   ]);
   return json({ data: { team_id: teamId, player_id: playerId, status: "removed" } });
 }
