@@ -51,7 +51,12 @@ export async function onRequestPost({ request, env }) {
   const duplicate = await env.DB.prepare("SELECT id,match_id,validation_status FROM result_events WHERE provider=? AND provider_event_id=?").bind(provider, eventId).first();
   if (duplicate) {
     if (String(duplicate.match_id) !== String(matchId)) return json({ error: { code: "EVENT_ID_CONFLICT", message: "Этот ID события уже использован для другого матча." } }, 409);
-    return json({ data: { accepted: true, duplicate: true, match_id: matchId, status: duplicate.validation_status } });
+    let progression = null;
+    if (duplicate.validation_status === "valid" && match.status === "completed") {
+      try { progression = await advanceWinner(env.DB, matchId, scoreA > scoreB ? teamA : teamB); }
+      catch (error) { console.error("Duplicate result progression retry failed:", error); return json({ error: { code: "PROGRESSION_RETRY_FAILED", message: "Результат сохранён, но продвижение команды по сетке пока не завершено." } }, 503); }
+    }
+    return json({ data: { accepted: true, duplicate: true, match_id: matchId, status: duplicate.validation_status, progression } });
   }
   const collision = await env.DB.prepare("SELECT id FROM result_events WHERE provider=? AND payload_hash=?").bind(provider, payloadHash).first();
   if (collision) return json({ error: { code: "DUPLICATE_RESULT", message: "Такой результат уже поступал." } }, 409);
