@@ -61,7 +61,11 @@ export async function onRequestGet({ request, env }) {
   if (auth.response) return auth.response;
   const resource = new URL(request.url).searchParams.get("resource") || "";
   if (resource === "applications") {
-    const { results } = await env.DB.prepare(`SELECT r.id,r.tournament_id,r.team_id,r.status,r.submitted_at,r.reviewed_at,r.reviewer_id,t.title AS tournament_title,tm.name AS team_name,tm.tag AS team_tag FROM tournament_registrations r JOIN tournaments t ON t.id=r.tournament_id JOIN teams tm ON tm.id=r.team_id ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END,r.submitted_at DESC LIMIT 200`).all();
+    const { results } = await env.DB.prepare(`SELECT r.id,r.tournament_id,r.team_id,r.status,r.submitted_at,r.reviewed_at,r.reviewer_id,r.selected_slot,r.captain_note,t.title AS tournament_title,tm.name AS team_name,tm.tag AS team_tag,tm.captain_id,
+      (SELECT COUNT(*) FROM tournament_registration_roster rr WHERE rr.registration_id=r.id AND rr.roster_role='starter') AS starters,
+      (SELECT COUNT(*) FROM tournament_registration_roster rr WHERE rr.registration_id=r.id AND rr.roster_role='substitute') AS substitutes
+      FROM tournament_registrations r JOIN tournaments t ON t.id=r.tournament_id JOIN teams tm ON tm.id=r.team_id
+      ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END,r.submitted_at DESC LIMIT 200`).all();
     return json({ data: results || [] });
   }
   if (resource === "users") {
@@ -97,6 +101,13 @@ export async function onRequestPost({ request, env }) {
       .bind(status, now(), auth.user.id, registrationId).run();
     const after = await env.DB.prepare("SELECT * FROM tournament_registrations WHERE id=?").bind(registrationId).first();
     await audit(env.DB, auth.user.id, "registration_" + status, "tournament_registration", registrationId, before, after);
+    const recipient = await env.DB.prepare("SELECT tm.captain_id,t.title AS tournament_title,tm.name AS team_name FROM teams tm JOIN tournaments t ON t.id=? WHERE tm.id=?").bind(before.tournament_id,before.team_id).first();
+    if (recipient?.captain_id) {
+      await env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'tournament_registration',?)")
+        .bind(recipient.captain_id,"application_"+status,status==="approved"?"Заявка одобрена":"Заявка отклонена",
+          "Заявка команды "+recipient.team_name+" на турнир «"+recipient.tournament_title+"» "+(status==="approved"?"одобрена.":"отклонена."),
+          "#/tournament/"+before.tournament_id,String(registrationId)).run();
+    }
     return json({ data: after });
   }
   const config = TABLES[resource];
