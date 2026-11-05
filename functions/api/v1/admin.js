@@ -191,7 +191,7 @@ export async function onRequestPost({ request, env }) {
   }
   const required = {
     tournaments:["title","format"], teams:["name","tag"], players:["user_id","game_id","nickname"],
-    matches:["tournament_id","round_number","match_number"], seasons:["title","starts_at","ends_at"]
+    matches:["tournament_id","round_number","match_number"], seasons:["title","season_number","starts_at","ends_at"]
   }[resource];
   if (action === "create") {
     const missing = required.find((field) => !(field in payload) || payload[field] === null || payload[field] === "");
