@@ -14,6 +14,27 @@ test.describe('MERCY ARENA public shell', () => {
   });
 
 
+
+  test('player registration accepts numeric MLBB and server IDs before lookup', async ({ page }) => {
+    await page.route('**/api/v1/players**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [] } }));
+    let lookupPayload = null;
+    await page.route('**/api/v1/mlbb-lookup', async route => {
+      lookupPayload = route.request().postDataJSON();
+      await route.fulfill({ json: { data: { game_id: '123456789', server_id: '1234', nickname: 'TestPlayer', verified: true } } });
+    });
+
+    await page.goto('/#/players');
+    await page.getByRole('button', { name: /Создать профиль/ }).click();
+    await page.locator('#playerCreateForm [name="game_id"]').fill('123456789');
+    await page.locator('#playerCreateForm [name="server_id"]').fill('1234');
+    await page.getByRole('button', { name: 'Проверить игровой аккаунт' }).click();
+
+    await expect.poll(() => lookupPayload).toEqual({ game_id: '123456789', server_id: '1234' });
+    await expect(page.locator('#submitPlayerRegistration')).toBeEnabled();
+    await expect(page.locator('#mlbbLookupResult')).toContainText('TestPlayer');
+  });
+
   test('notifications route renders a useful signed-out state', async ({ page }) => {
     await page.goto('/#/notifications');
     await expect(page.locator('#app')).toContainText('УВЕДОМЛЕНИЯ');
