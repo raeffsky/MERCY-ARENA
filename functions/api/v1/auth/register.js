@@ -88,7 +88,7 @@ export async function onRequestPost({ request, env }) {
     const playerId=Number(playerInsert.meta?.last_row_id);
     if(!Number.isSafeInteger(playerId)||playerId<=0) throw new Error("D1 did not return players.id after insert");
 
-    await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'player_profile_submitted','player',?,?)").bind(userId,playerId,JSON.stringify({nickname,role,region,profile_status:"approved",game_id:gameId,server_id:serverId,mlbb_verified:true})).run();
+    await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'player_profile_auto_verified','player',?,?)").bind(userId,playerId,JSON.stringify({nickname,role,region,profile_status:"approved",game_id:gameId,server_id:serverId,mlbb_verified:true})).run();
     await env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),userId,tokenHash,now+SESSION_TTL).run();
     await env.DB.prepare("INSERT INTO auth_login_attempts (id,email_hash,ip_hash,attempted_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),emailHash,ipHash,now).run();
     await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash,ipHash).run();
