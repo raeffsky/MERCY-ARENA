@@ -44,7 +44,7 @@ export async function onRequestPost({ request, env }) {
   const scoreAInput = body.score_a, scoreBInput = body.score_b;
   const scoreA = Number(scoreAInput), scoreB = Number(scoreBInput);
   const validScoreInput = (value) => (typeof value === "number" && Number.isSafeInteger(value)) ||
-    (typeof value === "string" && /^\\d+$/.test(value.trim()) && Number.isSafeInteger(Number(value)));
+    (typeof value === "string" && /^\d+$/.test(value.trim()) && Number.isSafeInteger(Number(value)));
   if (!provider || !eventId || !matchId || !teamA || !teamB || teamA === teamB ||
       !validScoreInput(scoreAInput) || !validScoreInput(scoreBInput) ||
       scoreA < 0 || scoreB < 0 || scoreA === scoreB) {
