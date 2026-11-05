@@ -32,11 +32,12 @@ Never place server-side secrets in frontend JavaScript or commit them to Git.
 
 Apply migrations in ascending order. For a fresh database, apply every file from `0001_initial_schema.sql` through the latest numbered migration. For an existing production database, inspect the applied migration history first and apply only migrations that have not already run. Do not rerun ALTER TABLE migrations.
 
-The current platform foundation migration is `0013_platform_foundation.sql`. It adds:
+The platform foundation migrations are `0013_platform_foundation.sql` and `0014_tournament_time_slots.sql`. They add:
 - selected time slot and captain note to tournament registrations;
 - per-registration starter and substitute rosters;
 - user notifications;
-- tournament staff assignments.
+- tournament staff assignments;
+- organizer-configured registration time slots, stored one per line and validated by the application API.
 
 The early schema and later compatibility migrations reflect the platform's legacy D1 history. Before rebuilding an existing database, take a D1 backup and verify the actual primary-key types and foreign-key relationships. Do not manually change ID types in production without a data migration and a rollback plan.
 
