@@ -7,7 +7,7 @@ const TABLES = {
   teams: { table: "teams", fields: ["name","tag","logo_url","captain_id","region","status"] },
   players: { table: "players", fields: ["user_id","game_id","nickname","role","team_id","region","profile_status"] },
   matches: { table: "matches", fields: ["tournament_id","round_number","bracket","match_number","scheduled_at","status","team_a_id","team_b_id","score_a","score_b","winner_team_id"] },
-  seasons: { table: "seasons", fields: ["title","starts_at","ends_at","status","image_url"] }
+  seasons: { table: "seasons", fields: ["title","season_number","starts_at","ends_at","status","image_url"] }
 };
 const FORMATS = new Set(["single_elimination","double_elimination","round_robin","swiss","group_playoff"]);
 const STATUSES = {
@@ -32,7 +32,7 @@ function bad(message, status = 400) {
   return json({ error: { code: "INVALID_REQUEST", message } }, status);
 }
 function cleanValue(field, value) {
-  const integerFields = new Set(["max_teams","round_number","match_number","score_a","score_b"]);
+  const integerFields = new Set(["max_teams","round_number","match_number","score_a","score_b","season_number"]);
   const nullableFields = new Set(["description","region","logo_url","poster_url","image_url","prize_pool","captain_id","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","role","team_id","scheduled_at","team_a_id","team_b_id","score_a","score_b","winner_team_id"]);
   if (value === "" && nullableFields.has(field)) return null;
   if (integerFields.has(field)) {
@@ -136,6 +136,12 @@ export async function onRequestPost({ request, env }) {
   }
   const config = TABLES[resource];
   if (!config) return bad("Неизвестный раздел.");
+  if (resource === "seasons" && data.season_number != null) {
+    const number = Number(data.season_number);
+    if (!Number.isSafeInteger(number) || number < 1) return bad("Номер сезона должен быть целым числом от 1.");
+    const duplicate = await env.DB.prepare("SELECT id FROM seasons WHERE season_number=? AND (? IS NULL OR id!=?) LIMIT 1").bind(number, id == null ? null : String(id), id == null ? null : String(id)).first();
+    if (duplicate) return bad("Этот номер сезона уже занят. Укажи другой номер.", 409);
+  }
   if (!["create","update","delete","publish"].includes(action)) return bad("Неизвестное действие.");
   if (action === "delete") {
     const recordId = String(id || "").trim();
