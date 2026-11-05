@@ -89,12 +89,20 @@ export async function onRequestPut({ request, env }) {
   if (player.team_id) return json({ error: { code: "ALREADY_IN_TEAM", message: "Ты уже состоишь в команде." } }, 409);
   const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster WHERE team_id=? AND left_at IS NULL").bind(invite.team_id).first();
   if ((count?.total || 0) >= 7) return json({ error: { code: "ROSTER_FULL", message: "В составе больше нет свободных мест." } }, 409);
-  await env.DB.batch([
-    env.DB.prepare("UPDATE team_invites SET status='accepted',responded_at=? WHERE id=? AND status='pending'").bind(now, inviteId),
-    env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at,left_at) VALUES (?,?,'player',?,NULL) ON CONFLICT(team_id,player_id) DO UPDATE SET roster_role='player',joined_at=excluded.joined_at,left_at=NULL").bind(invite.team_id, player.id, now),
-    env.DB.prepare("UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL").bind(invite.team_id, now, player.id),
-    env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'team_invite_accepted','Игрок принял приглашение',?,?, 'team',?)").bind(invite.captain_id,"Игрок "+player.nickname+" вступил в команду "+invite.team_name+".","#/teams",invite.team_id)
-  ]);
+  const claimed = await env.DB.prepare("UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL").bind(invite.team_id, now, player.id).run();
+  if (!claimed.meta?.changes) return json({ error: { code: "ALREADY_IN_TEAM", message: "Игрок уже вступил в другую команду." } }, 409);
+  try {
+    const accepted = await env.DB.prepare("UPDATE team_invites SET status='accepted',responded_at=? WHERE id=? AND player_id=? AND status='pending'").bind(now, inviteId, player.id).run();
+    if (!accepted.meta?.changes) throw new Error("INVITE_ALREADY_PROCESSED");
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at,left_at) VALUES (?,?,'player',?,NULL) ON CONFLICT(team_id,player_id) DO UPDATE SET roster_role='player',joined_at=excluded.joined_at,left_at=NULL").bind(invite.team_id, player.id, now),
+      env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'team_invite_accepted','Игрок принял приглашение',?,?, 'team',?)").bind(invite.captain_id,"Игрок "+player.nickname+" вступил в команду "+invite.team_name+".","#/teams",invite.team_id)
+    ]);
+  } catch (error) {
+    await env.DB.prepare("UPDATE players SET team_id=NULL,updated_at=? WHERE id=? AND team_id=?").bind(now, player.id, invite.team_id).run();
+    if (String(error.message).includes("INVITE_ALREADY_PROCESSED")) return json({ error: { code: "INVITE_NOT_FOUND", message: "Приглашение уже обработано." } }, 409);
+    throw error;
+  }
   return json({ data: { team_id: invite.team_id, team_name: invite.team_name, status: "accepted" } });
 }
 export async function onRequestDelete({ request, env }) {
