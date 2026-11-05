@@ -40,7 +40,8 @@ test.describe('MERCY ARENA public shell', () => {
     await page.route(/\\/api\\/v1\\/players\\?id=123$/, route => route.fulfill({ json: { data: [{
       id: 123, nickname: 'ArenaPlayer', game_id: '123456789', role: 'MID', team_id: null,
       region: 'EU', avatar_url: null,
-      stats: { matches_played: 12, wins: 9, losses: 3, points: 27, win_rate: 75 }
+      stats: { matches_played: 12, wins: 9, losses: 3, points: 27, win_rate: 75 },
+      recent_matches: [{ id: 1, opponent_name: 'Team B', tournament_title: 'Season Cup', scheduled_at: '2026-11-01T12:00:00Z', outcome: 'win', player_score: 2, opponent_score: 0 }]
     }] } }));
     await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [] } }));
 
@@ -50,6 +51,9 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#profileBpr')).toHaveText('9');
     await expect(page.locator('#profileLevel')).toHaveText('27');
     await expect(page.locator('#profileKda')).toHaveText('75%');
+    await page.locator('[data-profile-tab="history"]').click();
+    await expect(page.locator('.profile-match-row')).toContainText('Team B');
+    await expect(page.locator('.profile-match-row')).toContainText('2 : 0');
   });
 
   test('notifications route renders a useful signed-out state', async ({ page }) => {
