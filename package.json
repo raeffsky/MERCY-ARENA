@@ -6,6 +6,6 @@
     "build": "bash scripts/build-pages.sh"
   },
   "devDependencies": {
-    "@playwright/test": "latest"
+    "@playwright/test": "1.56.1"
   }
 }
