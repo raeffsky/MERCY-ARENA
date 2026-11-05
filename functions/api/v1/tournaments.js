@@ -13,10 +13,12 @@ export async function onRequestGet({ request, env }) {
   }
   const status = url.searchParams.get("status");
   const format = url.searchParams.get("format");
+  const seasonId = url.searchParams.get("season_id");
   const where = ["published_at IS NOT NULL", "status != 'draft'"];
   const values = [];
   if (status) { where.push("status = ?"); values.push(status); }
   if (format) { where.push("format = ?"); values.push(format); }
+  if (seasonId && /^\d+$/.test(seasonId)) { where.push("season_id = ?"); values.push(Number(seasonId)); }
   const stmt = env.DB.prepare(`SELECT id,title,description,game,region,format,status,max_teams,registration_open_at,registration_close_at,starts_at,ends_at,rules_url,season_id,prize_pool,poster_url,published_at,created_at,updated_at FROM tournaments WHERE ${where.join(" AND ")} ORDER BY starts_at IS NULL, starts_at ASC, published_at DESC LIMIT ?`).bind(...values, limit);
   const { results } = await stmt.all();
   return json(publicList(results || [], limit));
