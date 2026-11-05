@@ -1,3 +1,4 @@
+import { createAuditEventId } from "./_lib/audit.js";
 import { json, databaseUnavailable, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
 
@@ -41,7 +42,7 @@ export async function onRequestPost({ request, env }) {
     await env.DB.batch([
       env.DB.prepare("UPDATE teams SET captain_id=?,updated_at=? WHERE id=? AND captain_id=?").bind(member.user_id, now, teamId, auth.user.id),
       env.DB.prepare("UPDATE team_roster SET roster_role=CASE WHEN player_id=? THEN 'captain' WHEN roster_role='captain' THEN 'player' ELSE roster_role END WHERE team_id=? AND left_at IS NULL").bind(nextPlayerId, teamId),
-      env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'team_captain_transferred','team',?,?)").bind(auth.user.id, teamId, JSON.stringify({ new_captain_player_id: nextPlayerId, new_captain_user_id: member.user_id, nickname: member.nickname }))
+      env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'team_captain_transferred','team',?,?)").bind(await createAuditEventId(env.DB), auth.user.id, teamId, JSON.stringify({ new_captain_player_id: nextPlayerId, new_captain_user_id: member.user_id, nickname: member.nickname }))
     ]);
     return json({ data: { team_id: teamId, captain_player_id: nextPlayerId, captain_name: member.nickname, status: "transferred" } });
   }
