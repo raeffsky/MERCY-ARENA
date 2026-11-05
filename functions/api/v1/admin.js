@@ -162,7 +162,7 @@ export async function onRequestPost({ request, env }) {
     if (resource !== "tournaments") return bad("Публиковать можно только турниры.");
     payload.status = "published";
   }
-  if (resource === "tournaments" && payload.season_id != null) {
+  if (resource === "seasons" && payload.season_number != null) {\n    const duplicate = await env.DB.prepare("SELECT id FROM seasons WHERE season_number=? AND id!=COALESCE(?, -1)").bind(payload.season_number, id || null).first();\n    if (duplicate) return bad("Сезон с номером " + payload.season_number + " уже существует.");\n  }\n  if (resource === "tournaments" && payload.season_id != null) {
     const season = await env.DB.prepare("SELECT id FROM seasons WHERE id=?").bind(payload.season_id).first();
     if (!season) return bad("Сезон с ID " + payload.season_id + " не найден. Сначала создайте сезон во вкладке «Сезоны» и укажите его реальный ID.");
   }
