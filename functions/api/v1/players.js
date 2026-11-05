@@ -39,12 +39,20 @@ export async function onRequestPut({ request, env }) {
   const profile = await env.DB.prepare("SELECT id FROM players WHERE user_id=? LIMIT 1").bind(session.user.id).first();
   const verifiedAt = new Date().toISOString();
   let playerId = profile?.id;
-  if (profile) {
-    await env.DB.prepare("UPDATE players SET nickname=?,game_id=?,server_id=?,mlbb_verified_at=?,role=?,region=?,profile_status='approved',updated_at=? WHERE user_id=?").bind(mlbb.nickname, gameId, serverId, verifiedAt, role, region || null, verifiedAt, session.user.id).run();
-  } else {
-    const inserted = await env.DB.prepare("INSERT INTO players (user_id,nickname,game_id,server_id,mlbb_verified_at,role,region,profile_status) VALUES (?,?,?,?,?,?,?,'approved')").bind(session.user.id, mlbb.nickname, gameId, serverId, verifiedAt, role, region || null).run();
-    playerId = Number(inserted.meta?.last_row_id);
-    if (!Number.isSafeInteger(playerId) || playerId <= 0) return json({ error: { code: "PROFILE_CREATE_FAILED", message: "Не удалось создать игровой профиль. Попробуй ещё раз." } }, 500);
+  try {
+    if (profile) {
+      await env.DB.prepare("UPDATE players SET nickname=?,game_id=?,server_id=?,mlbb_verified_at=?,role=?,region=?,profile_status='approved',updated_at=? WHERE user_id=?").bind(mlbb.nickname, gameId, serverId, verifiedAt, role, region || null, verifiedAt, session.user.id).run();
+    } else {
+      const inserted = await env.DB.prepare("INSERT INTO players (user_id,nickname,game_id,server_id,mlbb_verified_at,role,region,profile_status) VALUES (?,?,?,?,?,?,?,'approved')").bind(session.user.id, mlbb.nickname, gameId, serverId, verifiedAt, role, region || null).run();
+      playerId = Number(inserted.meta?.last_row_id);
+      if (!Number.isSafeInteger(playerId) || playerId <= 0) return json({ error: { code: "PROFILE_CREATE_FAILED", message: "Не удалось создать игровой профиль. Попробуй ещё раз." } }, 500);
+    }
+  } catch (error) {
+    if (/UNIQUE constraint failed/i.test(String(error?.message || error))) {
+      return json({ error: { code: "GAME_ACCOUNT_IN_USE", message: "Этот игровой аккаунт уже привязан к другому профилю MERCY ARENA." } }, 409);
+    }
+    console.error("Player profile save failed:", error);
+    return json({ error: { code: "PROFILE_SAVE_FAILED", message: "Не удалось сохранить игровой профиль. Попробуй позже." } }, 500);
   }
   await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?, ?, 'player', ?, ?)").bind(session.user.id, profile ? "player_profile_reverified" : "player_profile_created", playerId, JSON.stringify({ nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: "approved", mlbb_verified: true })).run();
   return json({ data: { id: playerId, nickname: mlbb.nickname, game_id: gameId, server_id: serverId, role, region, profile_status: "approved", mlbb_verified_at: verifiedAt } });
