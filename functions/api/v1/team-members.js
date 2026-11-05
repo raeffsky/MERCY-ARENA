@@ -89,8 +89,17 @@ export async function onRequestPut({ request, env }) {
   if (player.team_id) return json({ error: { code: "ALREADY_IN_TEAM", message: "Ты уже состоишь в команде." } }, 409);
   const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster WHERE team_id=? AND left_at IS NULL").bind(invite.team_id).first();
   if ((count?.total || 0) >= 7) return json({ error: { code: "ROSTER_FULL", message: "В составе больше нет свободных мест." } }, 409);
-  const claimed = await env.DB.prepare("UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL").bind(invite.team_id, now, player.id).run();
-  if (!claimed.meta?.changes) return json({ error: { code: "ALREADY_IN_TEAM", message: "Игрок уже вступил в другую команду." } }, 409);
+  // Enforce the seven-player cap in the same atomic statement that claims the player.
+  // Counting players.team_id also closes the race between parallel invite acceptances,
+  // before their team_roster rows are written.
+  const claimed = await env.DB.prepare(
+    "UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL AND (SELECT COUNT(*) FROM players WHERE team_id=?)<7"
+  ).bind(invite.team_id, now, player.id, invite.team_id).run();
+  if (!claimed.meta?.changes) {
+    const current = await env.DB.prepare("SELECT team_id FROM players WHERE id=?").bind(player.id).first();
+    if (current?.team_id) return json({ error: { code: "ALREADY_IN_TEAM", message: "Игрок уже вступил в другую команду." } }, 409);
+    return json({ error: { code: "ROSTER_FULL", message: "В составе больше нет свободных мест." } }, 409);
+  }
   try {
     const accepted = await env.DB.prepare("UPDATE team_invites SET status='accepted',responded_at=? WHERE id=? AND player_id=? AND status='pending'").bind(now, inviteId, player.id).run();
     if (!accepted.meta?.changes) throw new Error("INVITE_ALREADY_PROCESSED");
