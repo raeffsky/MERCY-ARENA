@@ -109,7 +109,12 @@ export async function onRequestPut({ request, env }) {
       env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'team_invite_accepted','Игрок принял приглашение',?,?, 'team',?)").bind(invite.captain_id,"Игрок "+player.nickname+" вступил в команду "+invite.team_name+".","#/teams",invite.team_id)
     ]);
   } catch (error) {
-    await env.DB.prepare("UPDATE players SET team_id=NULL,updated_at=? WHERE id=? AND team_id=?").bind(now, player.id, invite.team_id).run();
+    // Roll back both sides of the claim if roster creation or notification fails.
+    // The timestamp guard prevents reverting an invite changed by another request.
+    await env.DB.batch([
+      env.DB.prepare("UPDATE players SET team_id=NULL,updated_at=? WHERE id=? AND team_id=?").bind(now, player.id, invite.team_id),
+      env.DB.prepare("UPDATE team_invites SET status='pending',responded_at=NULL WHERE id=? AND player_id=? AND status='accepted' AND responded_at=?").bind(inviteId, player.id, now)
+    ]).catch((cleanupError) => console.error("Invite acceptance rollback failed:", cleanupError));
     if (String(error.message).includes("INVITE_ALREADY_PROCESSED")) return json({ error: { code: "INVITE_NOT_FOUND", message: "Приглашение уже обработано." } }, 409);
     throw error;
   }
