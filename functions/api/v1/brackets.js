@@ -154,7 +154,7 @@ export async function onRequestPost({ request, env }) {
       }
     } else if (tournament.format === "double_elimination") {
       const size = teams.length;
-      if ((size & (size - 1)) !== 0) return json({ error: { code: "BRACKET_TEAM_COUNT", message: "Для Double Elimination нужно 2, 4, 8, 16 или 32 команды. Сначала утверди состав кратный степени двойки." } }, 409);
+      if (size < 4 || (size & (size - 1)) !== 0) return json({ error: { code: "BRACKET_TEAM_COUNT", message: "Для Double Elimination нужно 4, 8, 16 или 32 команды. Сначала утверди состав кратный степени двойки." } }, 409);
       const details = await createDoubleElimination(env.DB, tournamentId, teams, now, created);
       await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'bracket_generated','tournament',?,?)").bind(auth.user.id, tournamentId, JSON.stringify({ format: tournament.format, teams: teams.length, matches: created.length, double_elimination: details })).run();
       return json({ data: { tournament_id: tournamentId, format: tournament.format, teams: teams.length, matches_created: created.length, match_ids: created, ...details } }, 201);
