@@ -14,6 +14,6 @@ export async function onRequestGet({ request, env }) {
   if (status) { clauses.push("status = ?"); values.push(status); }
   if (from) { clauses.push("scheduled_at >= ?"); values.push(from); }
   if (to) { clauses.push("scheduled_at <= ?"); values.push(to); }
-  const { results } = await env.DB.prepare(`SELECT id,tournament_id,round_number,bracket,match_number,scheduled_at,status,team_a_id,team_b_id,score_a,score_b,winner_team_id,result_source,result_verified_at,created_at FROM matches WHERE ${clauses.join(" AND ")} ORDER BY scheduled_at IS NULL, scheduled_at ASC LIMIT ?`).bind(...values, limit).all();
+  const { results } = await env.DB.prepare(`SELECT id,tournament_id,round_number,bracket,match_number,scheduled_at,status,team_a_id,team_b_id,score_a,score_b,winner_team_id,result_source,result_verified_at,created_at FROM matches WHERE ${clauses.join(" AND ")} ORDER BY CASE WHEN ? IS NOT NULL THEN round_number END ASC, scheduled_at IS NULL, scheduled_at ASC, round_number ASC, bracket ASC, match_number ASC LIMIT ?`).bind(...values, tournamentId, limit).all();
   return json(publicList(results || [], limit));
 }
