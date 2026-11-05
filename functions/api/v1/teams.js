@@ -6,10 +6,11 @@ export async function onRequestGet({ request, env }) {
   const url = new URL(request.url), limit = parseLimit(url);
   const teamId = url.searchParams.get("id");
   if (teamId && /^\d+$/.test(teamId)) {
-    const team = await env.DB.prepare("SELECT t.id,t.name,t.tag,t.logo_url,t.region,t.status,t.created_at,p.nickname AS captain_name FROM teams t LEFT JOIN players p ON p.user_id=t.captain_id WHERE t.id=? AND t.status='active' LIMIT 1").bind(Number(teamId)).first();
+    const viewer = await getSessionUser(request, env);
+    const team = await env.DB.prepare("SELECT t.id,t.name,t.tag,t.logo_url,t.region,t.status,t.created_at,t.captain_id,p.nickname AS captain_name FROM teams t LEFT JOIN players p ON p.user_id=t.captain_id WHERE t.id=? AND t.status='active' LIMIT 1").bind(Number(teamId)).first();
     if (!team) return json({ data: [] });
     const { results } = await env.DB.prepare("SELECT p.id,p.nickname,p.role,p.avatar_url,p.region,r.roster_role,r.joined_at FROM team_roster r JOIN players p ON p.id=r.player_id WHERE r.team_id=? AND r.left_at IS NULL AND p.profile_status='approved' ORDER BY CASE r.roster_role WHEN 'captain' THEN 0 WHEN 'player' THEN 1 ELSE 2 END,p.nickname COLLATE NOCASE").bind(Number(teamId)).all();
-    return json({ data: [{ ...team, roster: results || [] }] });
+    return json({ data: [{ ...team, is_captain: Boolean(viewer.user && String(viewer.user.id) === String(team.captain_id)), roster: results || [] }] });
   }
   const query = (url.searchParams.get("query") || "").trim().slice(0, 80);
   const { results } = await env.DB.prepare("SELECT id,name,tag,logo_url,region,status,created_at FROM teams WHERE status='active' AND (?='' OR name LIKE ? OR tag LIKE ?) ORDER BY name COLLATE NOCASE LIMIT ?").bind(query, `%${query}%`, `%${query}%`, limit).all();
