@@ -52,7 +52,7 @@ export async function onRequestGet({ request, env }) {
     results = response.results || [];
   } catch (error) {
     const message = String(error?.message || error);
-    if (/no such column:\\s*(?:r\\.)?(?:selected_slot|captain_note|updated_at)|no such table:\\s*tournament_registrations/i.test(message)) {
+    if (/no such column:\s*(?:r\\.)?(?:selected_slot|captain_note|updated_at)|no such table:\s*tournament_registrations/i.test(message)) {
       const response = await env.DB.prepare(
         `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
           NULL AS selected_slot,NULL AS captain_note,r.submitted_at,r.reviewed_at,
@@ -62,7 +62,7 @@ export async function onRequestGet({ request, env }) {
          WHERE t.captain_id=? AND t.status='active'
          ORDER BY t.name COLLATE NOCASE`
       ).bind(tournamentId, auth.user.id).all().catch(async (fallbackError) => {
-        if (!/no such table:\\s*tournament_registrations/i.test(String(fallbackError?.message || fallbackError))) throw fallbackError;
+        if (!/no such table:\s*tournament_registrations/i.test(String(fallbackError?.message || fallbackError))) throw fallbackError;
         return env.DB.prepare(
           `SELECT t.id,t.name,t.tag,t.region,NULL AS registration_id,NULL AS application_status,
             NULL AS selected_slot,NULL AS captain_note,NULL AS submitted_at,NULL AS reviewed_at,
