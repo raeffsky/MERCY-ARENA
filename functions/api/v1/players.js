@@ -10,8 +10,6 @@ export async function onRequestGet({ request, env }) {
     if (!profile) return json({ data: [], limit: 1 });
     let stats = null;
     let recentMatches = [];
-    let stats = null;
-    let recentMatches = [];
     try {
       stats = await env.DB.prepare(`
         SELECT COUNT(*) AS matches_played,
