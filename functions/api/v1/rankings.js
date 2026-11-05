@@ -60,7 +60,7 @@ export async function onRequestGet({ request, env }) {
       `).bind(...(seasonId ? [seasonId, limit] : [limit])).all();
       return json({ data: results || [], meta: { scope, limit, season_id: seasonId || null, scoring: "3 points per verified win; only registered starting players count" } });
     } catch (error) {
-      if (!/no such table:\\s*tournament_registration_roster/i.test(String(error?.message || error))) throw error;
+      if (!/no such table:\s*tournament_registration_roster/i.test(String(error?.message || error))) throw error;
       console.warn("Player rankings are unavailable until migration 0013 is applied.");
       const { results } = await env.DB.prepare(`
         SELECT id,nickname,role,team_id,avatar_url,region,
