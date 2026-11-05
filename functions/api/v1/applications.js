@@ -37,11 +37,14 @@ export async function onRequestPost({ request, env }) {
   const team = await env.DB.prepare("SELECT id,name,tag FROM teams WHERE id=? AND captain_id=? AND status='active'").bind(teamId, auth.user.id).first();
   if (!team) return json({ error: { code: "TEAM_NOT_MANAGED", message: "Подать заявку может только капитан активной команды." } }, 403);
 
+  const roster = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster WHERE team_id=? AND left_at IS NULL").bind(teamId).first();
+  if ((roster?.total || 0) < 5) return json({ error: { code: "ROSTER_INCOMPLETE", message: "Для участия в турнире в составе должно быть минимум 5 активных игроков." } }, 409);
+
   const existing = await env.DB.prepare("SELECT id,status FROM tournament_registrations WHERE tournament_id=? AND team_id=?").bind(tournamentId, teamId).first();
   if (existing && existing.status !== "rejected" && existing.status !== "withdrawn") return json({ error: { code: "ALREADY_APPLIED", message: "Эта команда уже подала заявку на турнир." } }, 409);
   if (tournament.max_teams) {
-    const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM tournament_registrations WHERE tournament_id=? AND status='approved'").bind(tournamentId).first();
-    if ((count?.total || 0) >= tournament.max_teams) return json({ error: { code: "TOURNAMENT_FULL", message: "Свободных мест в турнире больше нет." } }, 409);
+    const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM tournament_registrations WHERE tournament_id=? AND status IN ('pending','approved')").bind(tournamentId).first();
+    if ((count?.total || 0) >= tournament.max_teams) return json({ error: { code: "TOURNAMENT_FULL", message: "Все места турнира уже заняты или ожидают подтверждения." } }, 409);
   }
 
   const id = crypto.randomUUID();
