@@ -204,9 +204,14 @@ export async function onRequestPost({ request, env }) {
     if (a == null || b == null || ta == null || tb == null || a === b) return bad("Для завершённого матча нужны две команды и победный счёт.");
     const winner = payload.winner_team_id ?? (a > b ? ta : tb);
     if (winner !== ta && winner !== tb) return bad("Победитель должен быть одной из команд матча.");
+    if (before.status === "completed" && (
+      Number(a) !== Number(before.score_a) ||
+      Number(b) !== Number(before.score_b) ||
+      String(winner) !== String(before.winner_team_id)
+    )) return bad("Результат уже завершён. Изменение счёта или победителя требует отдельной корректировки турнирной сетки.", 409);
     payload.winner_team_id = winner;
-    payload.result_source = "admin_manual";
-    payload.result_verified_at = now();
+    payload.result_source = before.status === "completed" ? (before.result_source || "admin_manual") : "admin_manual";
+    payload.result_verified_at = before.status === "completed" ? (before.result_verified_at || now()) : now();
   }
   payload.updated_at = now();
   const fields = Object.keys(payload);
@@ -215,8 +220,17 @@ export async function onRequestPost({ request, env }) {
   const after = await getById(env.DB, config.table, recordId);
   await audit(env.DB, auth.user.id, resource + "_updated", resource, recordId, before, after);
   if (resource === "matches" && after.status === "completed" && after.winner_team_id != null) {
-    try { await advanceWinner(env.DB, recordId, after.winner_team_id); }
-    catch (progressionError) { console.error("Manual result bracket progression failed:", progressionError); }
+    try {
+      const progression = await advanceWinner(env.DB, recordId, after.winner_team_id);
+      return json({ data: after, progression });
+    } catch (progressionError) {
+      console.error("Manual result bracket progression failed:", progressionError);
+      return json({
+        error: { code: "RESULT_SAVED_PROGRESSION_PENDING", message: "Результат матча сохранён, но победитель пока не продвинут по сетке. Повтори сохранение этого же результата после проверки следующего матча." },
+        data: after,
+        result_saved: true
+      }, 503);
+    }
   }
   return json({ data: after });
   } catch (error) {
