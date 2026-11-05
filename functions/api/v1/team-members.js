@@ -14,8 +14,8 @@ export async function onRequestGet({ request, env }) {
     const { results } = await env.DB.prepare("SELECT i.id,i.team_id,i.status,i.created_at,t.name AS team_name,t.tag AS team_tag,p.nickname AS captain_name FROM team_invites i JOIN teams t ON t.id=i.team_id LEFT JOIN players p ON p.user_id=t.captain_id WHERE i.player_id=? AND i.status='pending' ORDER BY i.created_at DESC").bind(player.id).all();
     return json({ data: results || [] });
   }
-  const teamId = Number(teamIdValue);
-  if (!Number.isSafeInteger(teamId) || teamId < 1) return json({ error: { code: "INVALID_TEAM", message: "Укажи команду." } }, 400);
+  const teamId = String(teamIdValue || "").trim();
+  if (!teamId) return json({ error: { code: "INVALID_TEAM", message: "Укажи команду." } }, 400);
   const own = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND captain_id=?").bind(teamId, auth.user.id).first();
   if (!own) return json({ data: [] });
   const { results } = await env.DB.prepare("SELECT i.id,i.status,i.created_at,p.id AS player_id,p.nickname,p.role,p.avatar_url FROM team_invites i JOIN players p ON p.id=i.player_id WHERE i.team_id=? AND i.status='pending' ORDER BY i.created_at DESC").bind(teamId).all();
@@ -31,8 +31,8 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректные данные." } }, 400); }
   if (body.action === "transfer_captain") {
-    const teamId = Number(body.team_id), nextPlayerId = Number(body.new_captain_player_id);
-    if (!Number.isSafeInteger(teamId) || teamId < 1 || !Number.isSafeInteger(nextPlayerId) || nextPlayerId < 1) return json({ error: { code: "INVALID_TRANSFER", message: "Укажи команду и нового капитана." } }, 400);
+    const teamId = String(body.team_id || "").trim(), nextPlayerId = String(body.new_captain_player_id || "").trim();
+    if (!teamId || !nextPlayerId) return json({ error: { code: "INVALID_TRANSFER", message: "Укажи команду и нового капитана." } }, 400);
     const team = await env.DB.prepare("SELECT id,captain_id FROM teams WHERE id=? AND captain_id=? AND status='active'").bind(teamId, auth.user.id).first();
     if (!team) return json({ error: { code: "CAPTAIN_REQUIRED", message: "Передать капитанство может только текущий капитан." } }, 403);
     const member = await env.DB.prepare("SELECT p.id,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL AND p.profile_status='approved'").bind(teamId, nextPlayerId).first();
@@ -45,8 +45,8 @@ export async function onRequestPost({ request, env }) {
     ]);
     return json({ data: { team_id: teamId, captain_player_id: nextPlayerId, captain_name: member.nickname, status: "transferred" } });
   }
-  const teamId = Number(body.team_id), playerId = Number(body.player_id);
-  if (!Number.isSafeInteger(teamId) || teamId < 1 || !Number.isSafeInteger(playerId) || playerId < 1) return json({ error: { code: "INVALID_INVITE", message: "Проверь команду и игрока." } }, 400);
+  const teamId = String(body.team_id || "").trim(), playerId = String(body.player_id || "").trim();
+  if (!teamId || !playerId) return json({ error: { code: "INVALID_INVITE", message: "Проверь команду и игрока." } }, 400);
   const team = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND captain_id=? AND status='active'").bind(teamId, auth.user.id).first();
   if (!team) return json({ error: { code: "CAPTAIN_REQUIRED", message: "Приглашать игроков может только капитан." } }, 403);
   const player = await env.DB.prepare("SELECT id,team_id,profile_status FROM players WHERE id=?").bind(playerId).first();
