@@ -79,7 +79,7 @@ async function createDoubleElimination(db, tournamentId, teams, now, created) {
       } else if ((roundIndex + 1) % 2 === 1) {
         route(match, "winner", lower[roundIndex + 1][index], "team_a_id");
       } else {
-        route(match, "winner", lower[roundIndex + 1][Math.floor(index / 2)], "team_a_id");
+        route(match, "winner", lower[roundIndex + 1][Math.floor(index / 2)], index % 2 === 0 ? "team_a_id" : "team_b_id");
       }
     });
   });
