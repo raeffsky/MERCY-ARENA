@@ -1,0 +1,11 @@
+{
+  "name": "mercy-arena",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "build": "bash scripts/build-pages.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "latest"
+  }
+}
