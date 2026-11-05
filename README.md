@@ -47,3 +47,23 @@ Auto Result Engine пока не активирован. Frontend не заяв�
 - Векторный логотип: `public/assets/brand/mercy-mark.svg`
 
 Иконки: Iconify. Шрифты: Barlow Condensed и Manrope.
+
+## Аналитика и контроль качества
+
+PostHog подключается на этапе сборки. В Cloudflare Pages → Settings → Environment variables добавьте для Production и Preview:
+
+- `POSTHOG_PROJECT_TOKEN` — project API token из PostHog.
+- `POSTHOG_API_HOST` — `https://eu.i.posthog.com`.
+
+Токен является публичным ключом браузерного проекта, но хранится в настройках сборки, а не в исходниках репозитория. Если переменные не заданы, аналитический SDK не загружается. Встроенный сборщик отправляет просмотры hash-маршрутов и ограниченный autocapture только кликов по ссылкам и кнопкам. Сбор исключений включён. Запись сессий выключена до отдельной проверки настроек приватности.
+
+Локальные проверки:
+
+```bash
+npm install
+npx playwright install chromium
+npm run build
+npm run test:e2e
+```
+
+GitHub Actions выполняет smoke-тесты на Chromium Desktop и мобильном профиле при каждом push в `main` и pull request. Проверяются главная страница, основная CTA, открытие/закрытие мобильного меню и переходы по маршрутам.
