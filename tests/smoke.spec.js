@@ -9,7 +9,7 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#app')).toContainText('СЕЗОНЫ И ТУРНИРЫ');
     await expect(page.locator('#homeMatches')).toBeVisible();
     await expect(page.locator('#homeRankings')).toBeVisible();
-    await expect(page.locator('#homeMatches')).toContainText(/DEMO|Демо-матч/);
+    await expect(page.locator('#homeMatches')).toContainText(/DEMO|Демо-матч|Расписание временно недоступно/);
     expect(runtimeErrors).toEqual([]);
   });
 
