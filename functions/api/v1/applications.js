@@ -34,9 +34,9 @@ export async function onRequestGet({ request, env }) {
       `SELECT p.id,p.nickname,p.role,p.game_id,p.server_id,
         CASE WHEN p.user_id=t.captain_id THEN 'captain' ELSE COALESCE(tr.roster_role,'player') END AS team_role
        FROM team_roster tr JOIN players p ON p.id=tr.player_id JOIN teams t ON t.id=tr.team_id
-       WHERE tr.team_id=t.id AND tr.left_at IS NULL AND p.profile_status='approved'
+       WHERE tr.team_id=? AND tr.left_at IS NULL AND p.profile_status='approved'
        ORDER BY CASE WHEN p.user_id=t.captain_id THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
-    ).all();
+    ).bind(row.id).all();
     row.available_players = available.results || [];
     row.available_slots = availableSlots;
     if (!row.registration_id) { row.roster = []; continue; }
