@@ -3,7 +3,7 @@ import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
 
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return databaseUnavailable();
-  const url = new URL(request.url), limit = parseLimit(url);
+  const url = new URL(request.url), limit = parseLimit(url, 50, 50);
   const teamId = url.searchParams.get("id");
   if (teamId) {
     const viewer = await getSessionUser(request, env);
