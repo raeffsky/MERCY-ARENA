@@ -730,20 +730,21 @@ function menu(open){drawer.classList.toggle('open',open);shade.classList.toggle(
 document.getElementById('open').addEventListener('click',function(){menu(true)});
 document.getElementById('close').addEventListener('click',function(){menu(false)});
 shade.addEventListener('click',function(){menu(false)});
+document.addEventListener('click',function(event){var trigger=event.target.closest('[data-open-register]');if(!trigger)return;window.__mercyOpenRegistration=true;if(location.hash==='#/players'){route();}else{location.hash='#/players';}});
 function pageHead(kicker,title,lead){return '<section class="wrap pagehead"><div class="kicker">'+kicker+'</div><h1 class="page-title">'+title+'</h1></section>'}
 function empty(icon,title,desc,link,label){return '<div class="empty"><div class="empty-row"><iconify-icon icon="'+icon+'"></iconify-icon><div><b>'+title+'</b><p>'+desc+'</p>'+(link?'<a class="btn secondary" style="margin-top:14px" href="'+link+'">'+label+'</a>':'')+'</div></div></div>'}
 function tile(icon,title,desc,href){return '<a class="tile" href="'+href+'"><iconify-icon icon="'+icon+'"></iconify-icon><h3>'+title+'</h3><p>'+desc+'</p></a>'}
 function section(kicker,title,sub,body){return '<section class="wrap section"><div class="section-head"><div><div class="kicker">'+kicker+'</div><h2>'+title+'</h2></div></div>'+body+'</section>'}
 var pages={
 home:function(){return [
-`<section class="hero">
+`<section class="hero" id="guestHero">
 <div class="hero-layout">
   <div class="hero-copy">
     <div class="eyebrow"><span class="live-mark"></span> MOBILE LEGENDS: BANG BANG <i>·</i> MERCY CIRCUIT</div>
     <h1>ТВОЙ ПУТЬ<br>В КИБЕРСПОРТ <span>НАЧИНАЕТСЯ ЗДЕСЬ</span></h1>
     <p>Участвуй в турнирах, развивай свой скилл, найди команду, выходи на полупрофессиональную и профессиональную сцену и зарабатывай, играя в Mobile Legends: Bang Bang.</p>
     <div class="actions">
-      <a class="btn primary hero-cta" href="#/tournaments">Начать свой путь <iconify-icon icon="mdi:arrow-right"></iconify-icon></a>
+      <button class="btn primary hero-cta" type="button" data-open-register>Начать свой путь <iconify-icon icon="mdi:arrow-right"></iconify-icon></button>
     </div>
   </div>
   <div class="arena-visual" aria-label="MERCY ARENA — путь игрока к киберспорту">
@@ -1023,6 +1024,7 @@ finally{button.disabled=false}
 }
 async function wireFilters(key){
 try{
+if(key==='home'){try{var sessionResponse=await fetch('/api/v1/me',{credentials:'same-origin',cache:'no-store'});var sessionData=await sessionResponse.json();if(sessionData.authenticated){var guestHero=document.getElementById('guestHero');if(guestHero)guestHero.remove();}}catch(sessionError){console.warn('Could not check guest homepage state:',sessionError)}}
 if(key==='tournaments'){var tournaments=await apiList('tournaments');var target=document.getElementById('tResults');if(target&&tournaments.length)target.innerHTML=cardList(tournaments,'tournaments')}
 if(key==='tournament'){await loadTournamentDetail((location.hash.split('/')[2]||'').trim())}
 if(key==='teams'){
@@ -1098,6 +1100,7 @@ var createDialog=document.getElementById('playerCreateDialog'),createForm=docume
 document.getElementById('openPlayerCreate').addEventListener('click',function(){createDialog.showModal()});
 document.getElementById('closePlayerCreate').addEventListener('click',function(){createDialog.close()});
 createDialog.addEventListener('click',function(event){if(event.target===createDialog)createDialog.close()});
+if(window.__mercyOpenRegistration){window.__mercyOpenRegistration=false;createDialog.showModal();}
 var mlbbVerified=false,mlbbNickname='';
 var verifyButton=document.getElementById('verifyMlbbAccount'),lookupResult=document.getElementById('mlbbLookupResult'),registerButton=document.getElementById('submitPlayerRegistration');
 ['game_id','server_id'].forEach(function(name){createForm.elements[name].addEventListener('input',function(){mlbbVerified=false;mlbbNickname='';registerButton.disabled=true;lookupResult.hidden=true;createMessage.textContent='';})});
