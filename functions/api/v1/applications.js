@@ -78,13 +78,25 @@ export async function onRequestGet({ request, env }) {
   }
   const rows = results;
   for (const row of rows) {
-    const available = await env.DB.prepare(
-      `SELECT p.id,p.nickname,p.role,p.game_id,p.server_id,
-        CASE WHEN p.user_id=t.captain_id THEN 'captain' ELSE COALESCE(tr.roster_role,'player') END AS team_role
-       FROM team_roster tr JOIN players p ON p.id=tr.player_id JOIN teams t ON t.id=tr.team_id
-       WHERE tr.team_id=? AND tr.left_at IS NULL AND p.profile_status='approved'
-       ORDER BY CASE WHEN p.user_id=t.captain_id THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
-    ).bind(row.id).all();
+    let available;
+    try {
+      available = await env.DB.prepare(
+        `SELECT p.id,p.nickname,p.role,p.game_id,p.server_id,
+          CASE WHEN p.user_id=t.captain_id THEN 'captain' ELSE COALESCE(tr.roster_role,'player') END AS team_role
+         FROM team_roster tr JOIN players p ON p.id=tr.player_id JOIN teams t ON t.id=tr.team_id
+         WHERE tr.team_id=? AND tr.left_at IS NULL AND p.profile_status='approved'
+         ORDER BY CASE WHEN p.user_id=t.captain_id THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
+      ).bind(row.id).all();
+    } catch (error) {
+      if (!/no such column:\s*(?:p\\.)?(?:profile_status|server_id)/i.test(String(error?.message || error))) throw error;
+      available = await env.DB.prepare(
+        `SELECT p.id,p.nickname,p.role,p.game_id,
+          CASE WHEN p.user_id=t.captain_id THEN 'captain' ELSE COALESCE(tr.roster_role,'player') END AS team_role
+         FROM team_roster tr JOIN players p ON p.id=tr.player_id JOIN teams t ON t.id=tr.team_id
+         WHERE tr.team_id=? AND tr.left_at IS NULL
+         ORDER BY CASE WHEN p.user_id=t.captain_id THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
+      ).bind(row.id).all();
+    }
     row.available_players = available.results || [];
     row.available_slots = availableSlots;
     if (!row.registration_id) { row.roster = []; continue; }
