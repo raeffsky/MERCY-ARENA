@@ -36,6 +36,34 @@ test.describe('MERCY ARENA public shell', () => {
   });
 
 
+  test('player account exposes logout and clears the session', async ({ page }) => {
+    let meCalls = 0;
+    let logoutCalls = 0;
+    await page.route('**/api/v1/me', async route => {
+      meCalls += 1;
+      await route.fulfill({ json: meCalls === 1 ? {
+        authenticated: true,
+        account: { id: 'user-1', email: 'player@example.com', name: 'Player' },
+        profile: { id: 12, nickname: 'PlayerOne', game_id: '123456789', server_id: '1234', role: 'MID', region: 'EU', profile_status: 'approved' },
+        roles: [], access: 'user'
+      } : { authenticated: false, account: null, roles: [], access: 'guest' } });
+    });
+    await page.route('**/api/v1/team-members', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/auth/logout', async route => {
+      logoutCalls += 1;
+      expect(route.request().method()).toBe('POST');
+      await route.fulfill({ json: { ok: true }, headers: { 'set-cookie': 'mercy_session=; Path=/; Max-Age=0' } });
+    });
+
+    await page.goto('/#/my-profile');
+    const logoutButton = page.getByRole('button', { name: /Выйти из аккаунта/ });
+    await expect(logoutButton).toBeVisible();
+    await logoutButton.click();
+    await expect.poll(() => logoutCalls).toBe(1);
+    await expect(page.locator('#myProfileContent')).toContainText('ВОЙДИ В MERCY ARENA');
+  });
+
+
   test('public player profile displays verified match statistics', async ({ page }) => {
     await page.route(/\/api\/v1\/players\?id=123$/, route => route.fulfill({ json: { data: [{
       id: 123, nickname: 'ArenaPlayer', game_id: '123456789', role: 'MID', team_id: null,
