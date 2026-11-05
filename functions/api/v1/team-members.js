@@ -47,7 +47,7 @@ export async function onRequestPost({ request, env }) {
   }
   const teamId = String(body.team_id || "").trim(), playerId = String(body.player_id || "").trim();
   if (!teamId || !playerId) return json({ error: { code: "INVALID_INVITE", message: "Проверь команду и игрока." } }, 400);
-  const team = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND captain_id=? AND status='active'").bind(teamId, auth.user.id).first();
+  const team = await env.DB.prepare("SELECT id,name FROM teams WHERE id=? AND captain_id=? AND status='active'").bind(teamId, auth.user.id).first();
   if (!team) return json({ error: { code: "CAPTAIN_REQUIRED", message: "Приглашать игроков может только капитан." } }, 403);
   const player = await env.DB.prepare("SELECT id,user_id,nickname,team_id,profile_status FROM players WHERE id=?").bind(playerId).first();
   if (!player || player.profile_status !== "approved") return json({ error: { code: "PLAYER_NOT_AVAILABLE", message: "Игрок не найден или профиль не подтверждён." } }, 404);
@@ -74,7 +74,7 @@ export async function onRequestPut({ request, env }) {
   try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректные данные." } }, 400); }
   const inviteId = Number(body.invite_id), action = body.action;
   if (!Number.isSafeInteger(inviteId) || inviteId < 1 || !["accept","decline"].includes(action)) return json({ error: { code: "INVALID_ACTION", message: "Некорректное действие." } }, 400);
-  const player = await env.DB.prepare("SELECT id,team_id FROM players WHERE user_id=? AND profile_status='approved'").bind(auth.user.id).first();
+  const player = await env.DB.prepare("SELECT id,team_id,nickname FROM players WHERE user_id=? AND profile_status='approved'").bind(auth.user.id).first();
   if (!player) return json({ error: { code: "PROFILE_REQUIRED", message: "Нужен подтверждённый игровой профиль." } }, 409);
   const invite = await env.DB.prepare("SELECT i.*,t.name AS team_name,t.captain_id FROM team_invites i JOIN teams t ON t.id=i.team_id WHERE i.id=? AND i.player_id=? AND i.status='pending'").bind(inviteId, player.id).first();
   if (!invite) return json({ error: { code: "INVITE_NOT_FOUND", message: "Приглашение не найдено или уже обработано." } }, 404);
@@ -82,7 +82,7 @@ export async function onRequestPut({ request, env }) {
   if (action === "decline") {
     await env.DB.batch([
       env.DB.prepare("UPDATE team_invites SET status='declined',responded_at=? WHERE id=? AND status='pending'").bind(now, inviteId),
-      env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'team_invite_declined','Приглашение отклонено',?,?, 'team',?)").bind(invite.captain_id,"Игрок "+player.id+" отклонил приглашение в команду "+invite.team_name+".","#/teams",invite.team_id)
+      env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'team_invite_declined','Приглашение отклонено',?,?, 'team',?)").bind(invite.captain_id,"Игрок "+player.nickname+" отклонил приглашение в команду "+invite.team_name+".","#/teams",invite.team_id)
     ]);
     return json({ data: { status: "declined" } });
   }
@@ -93,7 +93,7 @@ export async function onRequestPut({ request, env }) {
     env.DB.prepare("UPDATE team_invites SET status='accepted',responded_at=? WHERE id=? AND status='pending'").bind(now, inviteId),
     env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at,left_at) VALUES (?,?,'player',?,NULL) ON CONFLICT(team_id,player_id) DO UPDATE SET roster_role='player',joined_at=excluded.joined_at,left_at=NULL").bind(invite.team_id, player.id, now),
     env.DB.prepare("UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL").bind(invite.team_id, now, player.id),
-    env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'team_invite_accepted','Игрок принял приглашение',?,?, 'team',?)").bind(invite.captain_id,"Игрок "+player.id+" вступил в команду "+invite.team_name+".","#/teams",invite.team_id)
+    env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'team_invite_accepted','Игрок принял приглашение',?,?, 'team',?)").bind(invite.captain_id,"Игрок "+player.nickname+" вступил в команду "+invite.team_name+".","#/teams",invite.team_id)
   ]);
   return json({ data: { team_id: invite.team_id, team_name: invite.team_name, status: "accepted" } });
 }
