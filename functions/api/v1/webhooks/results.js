@@ -1,3 +1,4 @@
+import { createAuditEventId } from "../_lib/audit.js";
 import { json, databaseUnavailable, methodNotAllowed } from "../_lib/http.js";
 import { advanceWinner } from "../_lib/match-progression.js";
 
@@ -82,7 +83,7 @@ export async function onRequestPost({ request, env }) {
     const writes = await env.DB.batch([
       env.DB.prepare("UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,status='completed',result_source=?,result_verified_at=?,updated_at=? WHERE id=? AND status!='completed' AND team_a_id=? AND team_b_id=?").bind(scoreA, scoreB, winner, "webhook:" + provider, now, now, matchId, teamA, teamB),
       env.DB.prepare("INSERT INTO result_events (id,provider,provider_event_id,match_id,payload_hash,raw_payload,validation_status,received_at,reviewed_at) SELECT ?,?,?,?,?,?,'valid',?,? WHERE EXISTS (SELECT 1 FROM matches WHERE id=? AND status='completed' AND result_source=? AND score_a=? AND score_b=? AND winner_team_id=?) AND NOT EXISTS (SELECT 1 FROM result_events WHERE match_id=? AND validation_status='valid')").bind(resultEventId, provider, eventId, matchId, payloadHash, raw.slice(0, 20000), now, now, matchId, "webhook:" + provider, scoreA, scoreB, winner, matchId),
-      env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,NULL,'match_result_auto_verified','match',?,? WHERE EXISTS (SELECT 1 FROM result_events WHERE id=?)").bind(crypto.randomUUID(), matchId, JSON.stringify({ provider, event_id: eventId, score_a: scoreA, score_b: scoreB, winner_team_id: winner }), resultEventId)
+      env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,NULL,'match_result_auto_verified','match',?,? WHERE EXISTS (SELECT 1 FROM result_events WHERE id=?)").bind(await createAuditEventId(env.DB), matchId, JSON.stringify({ provider, event_id: eventId, score_a: scoreA, score_b: scoreB, winner_team_id: winner }), resultEventId)
     ]);
     if (!writes[0]?.meta?.changes || !writes[1]?.meta?.changes) {
       return json({ error: { code: "MATCH_ALREADY_COMPLETED", message: "Результат уже принят или матч изменён другим запросом. Повторная отправка требует проверки." } }, 409);
