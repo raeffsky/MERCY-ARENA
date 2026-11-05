@@ -35,10 +35,12 @@ export async function onRequestPost({ request, env }) {
   if (!player) return json({ error: { code: "APPROVED_PROFILE_REQUIRED", message: "Сначала создай и подтверди игровой профиль." } }, 409);
   if (player.team_id) return json({ error: { code: "ALREADY_IN_TEAM", message: "Сначала выйди из текущей команды." } }, 409);
   const now = new Date().toISOString();
+  let createdTeamId = null;
   try {
     const inserted = await env.DB.prepare("INSERT INTO teams (name,tag,captain_id,region,status,created_at,updated_at) VALUES (?,?,?,?,'active',?,?)").bind(name, tag, auth.user.id, region || null, now, now).run();
     const teamId = Number(inserted.meta?.last_row_id);
     if (!Number.isSafeInteger(teamId) || teamId < 1) throw new Error("Team ID was not returned");
+    createdTeamId = teamId;
     const membership = await env.DB.batch([
       env.DB.prepare("UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL").bind(teamId, now, player.id),
       env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at) SELECT ?,id,'captain',? FROM players WHERE id=? AND team_id=?").bind(teamId, now, player.id, teamId),
@@ -52,6 +54,12 @@ export async function onRequestPost({ request, env }) {
     return json({ data: { id: teamId, name, tag, region, captain_id: auth.user.id, roster: [{ player_id: player.id, roster_role: "captain" }] } }, 201);
   } catch (error) {
     console.error("Team creation failed:", error);
+    if (createdTeamId !== null) {
+      await env.DB.batch([
+        env.DB.prepare("UPDATE players SET team_id=NULL,updated_at=? WHERE id=? AND team_id=?").bind(new Date().toISOString(), player.id, createdTeamId),
+        env.DB.prepare("DELETE FROM teams WHERE id=? AND captain_id=?").bind(createdTeamId, auth.user.id)
+      ]).catch((cleanupError) => console.error("Team creation rollback failed:", cleanupError));
+    }
     if (/UNIQUE constraint failed/i.test(String(error.message))) return json({ error: { code: "TEAM_TAG_TAKEN", message: "Этот тег уже занят. Выбери другой." } }, 409);
     return json({ error: { code: "TEAM_CREATE_FAILED", message: "Не удалось создать команду. Попробуй ещё раз." } }, 500);
   }
