@@ -7,7 +7,7 @@ const TABLES = {
   teams: { table: "teams", fields: ["name","tag","logo_url","captain_id","region","status"] },
   players: { table: "players", fields: ["user_id","game_id","nickname","role","team_id","region","profile_status"] },
   matches: { table: "matches", fields: ["tournament_id","round_number","bracket","match_number","scheduled_at","status","team_a_id","team_b_id","score_a","score_b","winner_team_id"] },
-  seasons: { table: "seasons", fields: ["title","season_number","starts_at","ends_at","status","image_url"] }
+  seasons: { table: "seasons", fields: ["id","title","season_number","starts_at","ends_at","status","image_url"] }
 };
 const FORMATS = new Set(["single_elimination","double_elimination","round_robin","swiss","group_playoff"]);
 const STATUSES = {
@@ -32,13 +32,13 @@ function bad(message, status = 400) {
   return json({ error: { code: "INVALID_REQUEST", message } }, status);
 }
 function cleanValue(field, value) {
-  const integerFields = new Set(["max_teams","round_number","match_number","score_a","score_b","season_number"]);
+  const integerFields = new Set(["id","max_teams","round_number","match_number","score_a","score_b","season_number"]);
   const nullableFields = new Set(["description","region","logo_url","poster_url","image_url","prize_pool","captain_id","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","role","team_id","scheduled_at","team_a_id","team_b_id","score_a","score_b","winner_team_id"]);
   if (value === "" && nullableFields.has(field)) return null;
   if (integerFields.has(field)) {
     if (value === null && nullableFields.has(field)) return null;
     const n = Number(value);
-    if (!Number.isSafeInteger(n) || n < 0) throw new Error("Поле «" + field + "» должно быть целым числом.");
+    if (!Number.isSafeInteger(n) || n < (field === "id" || field === "season_number" ? 1 : 0)) throw new Error("Поле «" + field + "» должно быть положительным целым числом.");
     return n;
   }
   if (value === null && nullableFields.has(field)) return null;
@@ -136,6 +136,10 @@ export async function onRequestPost({ request, env }) {
   }
   const config = TABLES[resource];
   if (!config) return bad("Неизвестный раздел.");
+  if (resource === "seasons" && action === "create" && data.id != null) {
+    const duplicateId = await env.DB.prepare("SELECT id FROM seasons WHERE id=? LIMIT 1").bind(String(data.id)).first();
+    if (duplicateId) return bad("Этот ID сезона уже занят. Укажи другой ID.", 409);
+  }
   if (resource === "seasons" && data.season_number != null) {
     const number = Number(data.season_number);
     if (!Number.isSafeInteger(number) || number < 1) return bad("Номер сезона должен быть целым числом от 1.");
@@ -155,6 +159,7 @@ export async function onRequestPost({ request, env }) {
   const payload = {};
   try {
     for (const field of config.fields) {
+      if (field === "id" && action !== "create") continue;
       if (Object.prototype.hasOwnProperty.call(data, field)) payload[field] = cleanValue(field, data[field]);
     }
   } catch (error) { return bad(error.message); }
@@ -200,7 +205,7 @@ export async function onRequestPost({ request, env }) {
     const placeholders = fields.map(() => "?").join(",");
     const result = await env.DB.prepare("INSERT INTO " + config.table + " (" + fields.join(",") + ") VALUES (" + placeholders + ")")
       .bind(...fields.map((field) => payload[field])).run();
-    const recordId = result.meta?.last_row_id;
+    const recordId = payload.id ?? result.meta?.last_row_id;
     const after = await getById(env.DB, config.table, recordId);
     await audit(env.DB, auth.user.id, resource + "_created", resource, recordId, null, after);
     return json({ data: after }, 201);
