@@ -38,7 +38,7 @@ export async function lookupMlbbPlayer(env, gameId, zoneId) {
   const nickname = String(player?.username || player?.nickname || player?.name || "").trim().slice(0, 32);
   const returnedId = String(player?.gameId ?? player?.player_id ?? player?.user_id ?? data?.gameId ?? data?.player_id ?? gameId);
   const returnedZone = String(player?.zoneId ?? player?.server_id ?? player?.zone ?? data?.zoneId ?? data?.zone ?? zoneId);
-  const verified = player?.verified === true || data?.verified === true || payload?.success === true || payload?.status === "success" || payload?.status === 200;
+  const verified = player?.verified === true || data?.verified === true;
   if (!nickname || !verified || returnedId !== gameId || returnedZone !== zoneId) {
     return { ok: false, status: 422, code: "MLBB_PLAYER_UNVERIFIED", message: "Не удалось подтвердить этот игровой аккаунт. Проверь ID и Server ID." };
   }
