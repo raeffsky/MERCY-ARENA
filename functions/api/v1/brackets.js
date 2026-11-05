@@ -153,6 +153,8 @@ export async function onRequestPost({ request, env }) {
         }
       }
     } else if (tournament.format === "double_elimination") {
+      const advancementTable = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='match_advancement'").first();
+      if (!advancementTable) return json({ error: { code: "MIGRATION_REQUIRED", message: "Для Double Elimination сначала примени миграцию 0016_double_elimination_advancement.sql к D1." } }, 503);
       const size = teams.length;
       if (size < 4 || (size & (size - 1)) !== 0) return json({ error: { code: "BRACKET_TEAM_COUNT", message: "Для Double Elimination нужно 4, 8, 16 или 32 команды. Сначала утверди состав кратный степени двойки." } }, 409);
       const details = await createDoubleElimination(env.DB, tournamentId, teams, now, created);
