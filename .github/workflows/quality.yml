@@ -26,6 +26,8 @@ jobs:
         run: npm install
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
+      - name: Check API JavaScript syntax
+        run: find functions -name '*.js' -print0 | xargs -0 -n1 sh -c 'node --input-type=module --check < "$0"'
       - name: Build static site
         run: npm run build
       - name: Run desktop and mobile tests
