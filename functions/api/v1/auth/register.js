@@ -24,9 +24,6 @@ export async function onRequestPost({ request, env }) {
     if(!validEmail(email)) return json({error:{code:"INVALID_EMAIL",message:"Укажи корректный email."}},400);
     if(password.length<12||password.length>128) return json({error:{code:"WEAK_PASSWORD",message:"Пароль должен содержать от 12 до 128 символов."}},400);
     if(!/^\d{5,15}$/.test(gameId)||!/^\d{1,6}$/.test(serverId)) return json({error:{code:"INVALID_GAME_ID",message:"Укажи корректные MLBB ID и Server ID."}},400);
-    const mlbb=await lookupMlbbPlayer(env,gameId,serverId);
-    if(!mlbb.ok)return json({error:{code:mlbb.code,message:mlbb.message}},mlbb.status);
-    const nickname=mlbb.nickname;
     if(!["EXP","JUNGLE","MID","GOLD","ROAM","FLEX"].includes(role)) return json({error:{code:"INVALID_ROLE",message:"Выбери игровую роль."}},400);
 
     const requiredTables=["users","players","user_roles","audit_events","auth_sessions","auth_login_attempts"];
@@ -70,8 +67,13 @@ export async function onRequestPost({ request, env }) {
     await env.DB.prepare("DELETE FROM auth_login_attempts WHERE attempted_at<=?").bind(now-3600).run();
     const attempts=await env.DB.prepare("SELECT COUNT(*) AS total FROM auth_login_attempts WHERE (email_hash=? OR ip_hash=?) AND attempted_at>?").bind(emailHash,ipHash,now-3600).first();
     if((attempts?.total||0)>=20) return json({error:{code:"REGISTER_RATE_LIMITED",message:"Слишком много попыток регистрации. Подожди немного и попробуй снова."}},429);
+    // Record the attempt before the external MLBB lookup so failed requests are rate-limited too.
+    await env.DB.prepare("INSERT INTO auth_login_attempts (id,email_hash,ip_hash,attempted_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),emailHash,ipHash,now).run();
     const existing=await env.DB.prepare("SELECT id FROM users WHERE email=?").bind(email).first();
     if(existing) return json({error:{code:"EMAIL_EXISTS",message:"Аккаунт с таким email уже существует. Войди в него."}},409);
+    const mlbb=await lookupMlbbPlayer(env,gameId,serverId);
+    if(!mlbb.ok)return json({error:{code:mlbb.code,message:mlbb.message}},mlbb.status);
+    const nickname=mlbb.nickname;
 
     const salt=crypto.getRandomValues(new Uint8Array(16));
     const storedHash=await passwordHash(password,salt);
@@ -90,13 +92,10 @@ export async function onRequestPost({ request, env }) {
 
     await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'player_profile_auto_verified','player',?,?)").bind(userId,playerId,JSON.stringify({nickname,role,region,profile_status:"approved",game_id:gameId,server_id:serverId,mlbb_verified:true})).run();
     await env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),userId,tokenHash,now+SESSION_TTL).run();
-    await env.DB.prepare("INSERT INTO auth_login_attempts (id,email_hash,ip_hash,attempted_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),emailHash,ipHash,now).run();
-    await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash,ipHash).run();
     return json({authenticated:true,account:{id:String(userId),email,name:displayName||nickname},profile:{id:String(playerId),status:"approved",nickname,game_id:gameId,server_id:serverId}},201,{"set-cookie":sessionCookie(token)});
   } catch(error) {
     console.error("Player registration request failed:",error);
     if(userId!==null) await env.DB.prepare("DELETE FROM users WHERE id=?").bind(userId).run().catch(()=>{});
-    if(emailHash||ipHash) await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash||"__none__",ipHash||"__none__").run().catch(()=>{});
     const detail=String(error?.message||"").replace(/[\r\n\t]+/g," ").slice(0,180);
     if(/UNIQUE constraint failed/i.test(detail)) return json({error:{code:"REGISTRATION_CONFLICT",message:"Этот email или игровой профиль уже зарегистрирован."}},409);
     if(/FOREIGN KEY constraint failed/i.test(detail)) return json({error:{code:"REGISTRATION_RELATION_ERROR",message:"Ошибка связи аккаунта с игровым профилем: "+detail}},409);
