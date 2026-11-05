@@ -84,6 +84,27 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#rankingRows')).toContainText('0');
   });
 
+
+  test('double elimination bracket distinguishes upper, lower and grand final matches', async ({ page }) => {
+    await page.route('**/api/v1/tournaments?id=777', route => route.fulfill({ json: { data: [{
+      id: 777, title: 'Double Elimination Cup', format: 'double_elimination', status: 'active',
+      registered_teams_list: [
+        { id: 1, name: 'Alpha', tag: 'ALP' },
+        { id: 2, name: 'Bravo', tag: 'BRV' }
+      ]
+    }] } }));
+    await page.route('**/api/v1/matches?tournament_id=777', route => route.fulfill({ json: { data: [
+      { id: 1, bracket: 'upper', round_number: 1, match_number: 1, status: 'completed', team_a_id: 1, team_b_id: 2, score_a: 2, score_b: 0, winner_team_id: 1 },
+      { id: 2, bracket: 'lower', round_number: 1, match_number: 1, status: 'scheduled', team_a_id: 2, team_b_id: null },
+      { id: 3, bracket: 'final', round_number: 1, match_number: 1, status: 'scheduled', team_a_id: null, team_b_id: null }
+    ] } }));
+    await page.goto('/#/tournament/777');
+    await page.locator('[data-tournament-tab="bracket"]').click();
+    await expect(page.locator('#tournamentTabContent')).toContainText('ВЕРХНЯЯ СЕТКА');
+    await expect(page.locator('#tournamentTabContent')).toContainText('НИЖНЯЯ СЕТКА');
+    await expect(page.locator('#tournamentTabContent')).toContainText('ГРАНД-ФИНАЛ');
+  });
+
   test('notifications route renders a useful signed-out state', async ({ page }) => {
     await page.goto('/#/notifications');
     await expect(page.locator('#app')).toContainText('УВЕДОМЛЕНИЯ');
