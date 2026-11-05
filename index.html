@@ -707,6 +707,17 @@ th{background:var(--panel)!important}
 .home-section-top p{margin:0;color:var(--muted);font-size:11px;line-height:1.7}
 .home-all-link{display:inline-flex;align-items:center;gap:7px;color:var(--lime);font-size:10px;font-weight:900;letter-spacing:.7px;text-transform:uppercase;text-decoration:none;white-space:nowrap;padding-bottom:4px}
 .season-feature{position:relative;min-height:260px;overflow:hidden;display:grid;grid-template-columns:1.15fr .85fr;background:linear-gradient(112deg,#11180d 0%,#151b10 46%,#202716 100%);border:1px solid #58643b;box-shadow:inset 0 0 70px #d7ff5e0b}
+/* Real, finger-following season carousel */
+.season-feature{display:block;touch-action:pan-y;cursor:grab}
+.season-feature:active{cursor:grabbing}
+.season-track{display:flex;width:100%;height:100%;min-height:260px;will-change:transform}
+.season-slide{position:relative;display:grid;grid-template-columns:1.15fr .85fr;align-items:stretch;flex:0 0 100%;width:100%;min-width:100%;min-height:260px;overflow:hidden;background:linear-gradient(112deg,#11180d 0%,#151b10 46%,#202716 100%)}
+.season-slide:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 42%,#d7ff5e12 42.2%,transparent 42.6%),repeating-linear-gradient(135deg,transparent 0 34px,#d7ff5e08 35px 36px);pointer-events:none}
+.season-slide.has-cover{display:flex;align-items:center;background-color:#0b0d0a;background-repeat:no-repeat}
+.season-slide.has-cover:before{display:none}
+.season-slide.has-cover .season-feature-copy{width:min(70%,680px);padding:clamp(24px,5vw,54px)}
+.season-slide.has-cover .season-feature-copy h2{max-width:12ch}
+@media(max-width:680px){.season-slide{grid-template-columns:1fr;min-height:300px}.season-slide .season-feature-copy{padding:22px 20px 4px}.season-slide .season-feature-art{position:absolute;right:-10px;bottom:0;width:46%;height:100%;opacity:.7;pointer-events:none}.season-slide .season-feature-copy h2{font-size:54px;max-width:70%}.season-slide.has-cover{min-height:300px}.season-slide.has-cover .season-feature-copy{width:100%;padding:22px 20px}.season-slide.has-cover .season-feature-copy h2{max-width:12ch}}
 .season-feature:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 42%,#d7ff5e12 42.2%,transparent 42.6%),repeating-linear-gradient(135deg,transparent 0 34px,#d7ff5e08 35px 36px);pointer-events:none}
 .season-feature-copy{position:relative;z-index:1;padding:clamp(22px,4vw,42px);align-self:center}
 .season-chip{display:inline-flex;padding:6px 9px;border:1px solid #d7ff5e66;color:var(--lime);font-size:9px;font-weight:900;letter-spacing:1.6px;text-transform:uppercase}
@@ -1099,22 +1110,31 @@ var seasonFeature=document.getElementById('homeSeasonFeature'),seasonDots=docume
 try{
 var seasons=await apiList('seasons?limit=6'),tournaments=await apiList('tournaments?limit=20');
 if(seasons.length){
-var seasonIndex=0,seasonTouchStartX=0,seasonTouchStartY=0;
-function renderHomeSeason(index){
-seasonIndex=(index+seasons.length)%seasons.length;
-var featured=seasons[seasonIndex],seasonTournaments=tournaments.filter(function(t){return String(t.season_id||'')===String(featured.id)});
-var hasSeasonCover=!!featured.image_url;
-seasonFeature.classList.toggle('has-cover',hasSeasonCover);
-seasonFeature.style.backgroundImage=hasSeasonCover?'linear-gradient(90deg,rgba(7,9,7,.78) 0%,rgba(7,9,7,.46) 48%,rgba(7,9,7,.08) 100%),url("'+esc(featured.image_url)+'")':'';
-seasonFeature.style.backgroundSize='cover';seasonFeature.style.backgroundPosition='center';
-seasonFeature.innerHTML='<div class="season-feature-copy"><span class="season-chip">MERCY CIRCUIT / СЕЗОН '+(seasonIndex+1)+'</span><h2>'+esc(featured.title)+'</h2><div class="season-meta"><span><iconify-icon icon="mdi:calendar-range"></iconify-icon>'+esc(dateLabel(featured.starts_at))+'</span><span><iconify-icon icon="mdi:trophy-outline"></iconify-icon>'+seasonTournaments.length+' турниров</span></div><a class="btn primary" href="#/season/'+encodeURIComponent(featured.id)+'">Открыть сезон <iconify-icon icon="mdi:arrow-right"></iconify-icon></a></div>'+(hasSeasonCover?'':'<div class="season-feature-art"><span class="season-art-mark">M</span><span class="season-art-caption">PLAY · IMPROVE · COMPETE</span></div>');
-seasonDots.innerHTML=seasons.map(function(_,i){return '<button type="button" class="season-dot '+(i===seasonIndex?'active':'')+'" data-season-index="'+i+'" aria-label="Открыть сезон '+(i+1)+'" aria-current="'+(i===seasonIndex?'true':'false')+'"></button>'}).join('');
-seasonDots.querySelectorAll('[data-season-index]').forEach(function(dot){dot.addEventListener('click',function(){renderHomeSeason(Number(dot.dataset.seasonIndex))})});
+var seasonIndex=0,seasonPointerStart=0,seasonDragX=0,seasonDragging=false,seasonWidth=0;
+var seasonCards=seasons.map(function(featured,index){
+var seasonTournaments=tournaments.filter(function(t){return String(t.season_id||'')===String(featured.id)}),hasCover=!!featured.image_url;
+var cover=hasCover?' style="background-image:linear-gradient(90deg,rgba(7,9,7,.78) 0%,rgba(7,9,7,.46) 48%,rgba(7,9,7,.08) 100%),url(\''+esc(featured.image_url)+'\');background-size:cover;background-position:center"':'';
+return '<article class="season-slide'+(hasCover?' has-cover':'')+'"'+cover+'><div class="season-feature-copy"><span class="season-chip">MERCY CIRCUIT / СЕЗОН '+(index+1)+'</span><h2>'+esc(featured.title)+'</h2><div class="season-meta"><span><iconify-icon icon="mdi:calendar-range"></iconify-icon>'+esc(dateLabel(featured.starts_at))+'</span><span><iconify-icon icon="mdi:trophy-outline"></iconify-icon>'+seasonTournaments.length+' турниров</span></div><a class="btn primary" href="#/season/'+encodeURIComponent(featured.id)+'">Открыть сезон <iconify-icon icon="mdi:arrow-right"></iconify-icon></a></div>'+(hasCover?'':'<div class="season-feature-art"><span class="season-art-mark">M</span><span class="season-art-caption">PLAY · IMPROVE · COMPETE</span></div>')+'</article>';
+}).join('');
+seasonFeature.innerHTML='<div class="season-track" id="homeSeasonTrack">'+seasonCards+'</div>';
+var seasonTrack=document.getElementById('homeSeasonTrack');
+seasonDots.innerHTML=seasons.map(function(_,i){return '<button type="button" class="season-dot '+(i===0?'active':'')+'" data-season-index="'+i+'" aria-label="Открыть сезон '+(i+1)+'" aria-current="'+(i===0?'true':'false')+'"></button>'}).join('');
+function setHomeSeason(index,animate){
+seasonIndex=Math.max(0,Math.min(seasons.length-1,index));
+seasonWidth=seasonFeature.clientWidth;
+seasonTrack.style.transition=animate?'transform .38s cubic-bezier(.22,.75,.25,1)':'none';
+seasonTrack.style.transform='translate3d('+(-seasonIndex*seasonWidth)+'px,0,0)';
+seasonDots.querySelectorAll('[data-season-index]').forEach(function(dot,i){dot.classList.toggle('active',i===seasonIndex);dot.setAttribute('aria-current',i===seasonIndex?'true':'false')});
 }
-renderHomeSeason(0);
+seasonDots.querySelectorAll('[data-season-index]').forEach(function(dot){dot.addEventListener('click',function(){setHomeSeason(Number(dot.dataset.seasonIndex),true)})});
 seasonFeature.style.touchAction='pan-y';
-seasonFeature.addEventListener('touchstart',function(event){if(event.touches&&event.touches.length===1){seasonTouchStartX=event.touches[0].clientX;seasonTouchStartY=event.touches[0].clientY}},{passive:true});
-seasonFeature.addEventListener('touchend',function(event){if(!event.changedTouches||!event.changedTouches.length)return;var dx=event.changedTouches[0].clientX-seasonTouchStartX,dy=event.changedTouches[0].clientY-seasonTouchStartY;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.25)renderHomeSeason(seasonIndex+(dx<0?1:-1))},{passive:true});
+seasonFeature.addEventListener('pointerdown',function(event){if(event.pointerType==='mouse'&&event.button!==0)return;seasonWidth=seasonFeature.clientWidth;seasonPointerStart=event.clientX;seasonDragX=0;seasonDragging=true;seasonTrack.style.transition='none';seasonFeature.setPointerCapture(event.pointerId)});
+seasonFeature.addEventListener('pointermove',function(event){if(!seasonDragging)return;seasonDragX=event.clientX-seasonPointerStart;if(Math.abs(seasonDragX)>4){event.preventDefault();seasonTrack.style.transform='translate3d('+(-seasonIndex*seasonWidth+seasonDragX)+'px,0,0)'}},{passive:false});
+function finishSeasonDrag(){if(!seasonDragging)return;seasonDragging=false;var threshold=Math.max(45,seasonWidth*.16);if(Math.abs(seasonDragX)>threshold)setHomeSeason(seasonIndex+(seasonDragX<0?1:-1),true);else setHomeSeason(seasonIndex,true)}
+seasonFeature.addEventListener('pointerup',finishSeasonDrag);
+seasonFeature.addEventListener('pointercancel',finishSeasonDrag);
+window.addEventListener('resize',function(){setHomeSeason(seasonIndex,false)});
+setHomeSeason(0,false);
 }else if(tournaments.length){
 var t=tournaments[0];seasonFeature.innerHTML='<div class="season-feature-copy"><span class="season-chip">ГЛАВНЫЙ ТУРНИР / MERCY CIRCUIT</span><h2>'+esc(t.title)+'</h2><p>'+esc(t.description||'Главное соревнование MERCY ARENA. Следи за регистрацией, расписанием и результатами.')+'</p><div class="season-meta"><span><iconify-icon icon="mdi:calendar"></iconify-icon>'+esc(dateLabel(t.starts_at))+'</span><span><iconify-icon icon="mdi:account-group"></iconify-icon>'+(t.max_teams?esc(t.max_teams)+' команд':'Открытая сетка')+'</span></div><a class="btn primary" href="#/tournament/'+encodeURIComponent(t.id)+'">Подробнее <iconify-icon icon="mdi:arrow-right"></iconify-icon></a></div><div class="season-feature-art"><span class="season-art-mark">M</span><span class="season-art-caption">MERCY CIRCUIT</span></div>';seasonDots.innerHTML='';
 }else{seasonFeature.innerHTML='<div class="season-feature-copy"><span class="season-chip">MERCY CIRCUIT</span><h2>НОВЫЙ СЕЗОН<br>СКОРО</h2><p>Следи за анонсами. Здесь появится главный турнир и переход ко всем соревнованиям сезона.</p><a class="btn secondary" href="#/tournaments">Смотреть турниры <iconify-icon icon="mdi:arrow-right"></iconify-icon></a></div><div class="season-feature-art"><span class="season-art-mark">M</span><span class="season-art-caption">PLAY · IMPROVE · COMPETE</span></div>';seasonDots.innerHTML=''}
