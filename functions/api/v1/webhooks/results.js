@@ -22,6 +22,8 @@ export async function onRequestPost({ request, env }) {
   if (!env.DB) return databaseUnavailable();
   const secret = String(env.MATCH_RESULTS_WEBHOOK_SECRET || "");
   if (secret.length < 32) return json({ error: { code: "WEBHOOK_NOT_CONFIGURED", message: "Webhook результатов ещё не настроен." } }, 503);
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > 32768) return json({ error: { code: "WEBHOOK_TOO_LARGE", message: "Размер события не должен превышать 32 КБ." } }, 413);
   const timestamp = String(request.headers.get("x-mercy-timestamp") || "");
   const signature = String(request.headers.get("x-mercy-signature") || "").toLowerCase();
   const seconds = Number(timestamp);
@@ -29,6 +31,7 @@ export async function onRequestPost({ request, env }) {
     return json({ error: { code: "INVALID_WEBHOOK_TIMESTAMP", message: "Время webhook недействительно." } }, 401);
   }
   const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > 32768) return json({ error: { code: "WEBHOOK_TOO_LARGE", message: "Размер события не должен превышать 32 КБ." } }, 413);
   const expected = await hmac(secret, timestamp + "." + raw);
   if (!/^[a-f0-9]{64}$/.test(signature) || !safeEqual(expected, signature)) {
     return json({ error: { code: "INVALID_WEBHOOK_SIGNATURE", message: "Подпись webhook не прошла проверку." } }, 401);
