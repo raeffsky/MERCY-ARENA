@@ -71,7 +71,7 @@ export async function onRequestPut({ request, env }) {
   if ((count?.total || 0) >= 7) return json({ error: { code: "ROSTER_FULL", message: "В составе больше нет свободных мест." } }, 409);
   await env.DB.batch([
     env.DB.prepare("UPDATE team_invites SET status='accepted',responded_at=? WHERE id=? AND status='pending'").bind(now, inviteId),
-    env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at) VALUES (?,?,'player',?)").bind(invite.team_id, player.id, now),
+    env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at,left_at) VALUES (?,?,'player',?,NULL) ON CONFLICT(team_id,player_id) DO UPDATE SET roster_role='player',joined_at=excluded.joined_at,left_at=NULL").bind(invite.team_id, player.id, now),
     env.DB.prepare("UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL").bind(invite.team_id, now, player.id)
   ]);
   return json({ data: { team_id: invite.team_id, team_name: invite.team_name, status: "accepted" } });
