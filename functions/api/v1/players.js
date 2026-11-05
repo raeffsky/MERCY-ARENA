@@ -24,13 +24,32 @@ export async function onRequestGet({ request, env }) {
           AND m.status='completed' AND m.result_verified_at IS NOT NULL
       )
     `).bind(playerId).first();
+    const { results: recentMatches } = await env.DB.prepare(`
+      SELECT DISTINCT m.id,m.scheduled_at,m.updated_at,m.score_a,m.score_b,
+        CASE WHEN m.winner_team_id=r.team_id THEN 'win' ELSE 'loss' END AS outcome,
+        CASE WHEN m.team_a_id=r.team_id THEN m.score_a ELSE m.score_b END AS player_score,
+        CASE WHEN m.team_a_id=r.team_id THEN m.score_b ELSE m.score_a END AS opponent_score,
+        CASE WHEN m.team_a_id=r.team_id THEN tb.name ELSE ta.name END AS opponent_name,
+        t.title AS tournament_title
+      FROM tournament_registration_roster rr
+      JOIN tournament_registrations r ON r.id=rr.registration_id AND r.status='approved'
+      JOIN matches m ON m.tournament_id=r.tournament_id
+        AND (m.team_a_id=r.team_id OR m.team_b_id=r.team_id)
+      JOIN tournaments t ON t.id=m.tournament_id
+      LEFT JOIN teams ta ON ta.id=m.team_a_id
+      LEFT JOIN teams tb ON tb.id=m.team_b_id
+      WHERE rr.player_id=? AND rr.roster_role='starter'
+        AND m.status='completed' AND m.result_verified_at IS NOT NULL
+      ORDER BY COALESCE(m.scheduled_at,m.updated_at) DESC,m.id DESC
+      LIMIT 10
+    `).bind(playerId).all();
     return json({ data: [{ ...profile, stats: {
       matches_played: stats?.matches_played || 0,
       wins: stats?.wins || 0,
       losses: stats?.losses || 0,
       points: stats?.points || 0,
       win_rate: stats?.win_rate || 0
-    } }], limit: 1 });
+    }, recent_matches: recentMatches || [] }], limit: 1 });
   }
   const query = (url.searchParams.get("query") || "").trim().slice(0, 80);
   const role = url.searchParams.get("role");
