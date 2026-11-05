@@ -10,8 +10,8 @@ export async function onRequestPost({ request, env }) {
   if (!auth.user.roles.includes("administrator") && !auth.user.roles.includes("organizer")) return json({ error: { code: "FORBIDDEN", message: "Создавать сетку может только организатор." } }, 403);
   let body;
   try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректный запрос." } }, 400); }
-  const tournamentId = Number(body.tournament_id);
-  if (!Number.isSafeInteger(tournamentId) || tournamentId < 1) return json({ error: { code: "INVALID_TOURNAMENT", message: "Укажи турнир." } }, 400);
+  const tournamentId = String(body.tournament_id || "").trim();
+  if (!tournamentId) return json({ error: { code: "INVALID_TOURNAMENT", message: "Укажи турнир." } }, 400);
   const tournament = await env.DB.prepare("SELECT id,title,format,status,organizer_id FROM tournaments WHERE id=?").bind(tournamentId).first();
   if (!tournament) return json({ error: { code: "TOURNAMENT_NOT_FOUND", message: "Турнир не найден." } }, 404);
   if (!auth.user.roles.includes("administrator") && String(tournament.organizer_id) !== String(auth.user.id)) return json({ error: { code: "FORBIDDEN", message: "У тебя нет доступа к этому турниру." } }, 403);
