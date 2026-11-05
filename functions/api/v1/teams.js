@@ -39,11 +39,16 @@ export async function onRequestPost({ request, env }) {
     const inserted = await env.DB.prepare("INSERT INTO teams (name,tag,captain_id,region,status,created_at,updated_at) VALUES (?,?,?,?,'active',?,?)").bind(name, tag, auth.user.id, region || null, now, now).run();
     const teamId = Number(inserted.meta?.last_row_id);
     if (!Number.isSafeInteger(teamId) || teamId < 1) throw new Error("Team ID was not returned");
-    await env.DB.batch([
-      env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at) VALUES (?,?,'captain',?)").bind(teamId, player.id, now),
+    const membership = await env.DB.batch([
       env.DB.prepare("UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL").bind(teamId, now, player.id),
-      env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'team_created','team',?,?)").bind(auth.user.id, teamId, JSON.stringify({ name, tag, region, captain_player_id: player.id }))
+      env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at) SELECT ?,id,'captain',? FROM players WHERE id=? AND team_id=?").bind(teamId, now, player.id, teamId),
+      env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) SELECT ?,'team_created','team',?,? FROM players WHERE id=? AND team_id=?").bind(auth.user.id, teamId, JSON.stringify({ name, tag, region, captain_player_id: player.id }), player.id, teamId)
     ]);
+    if (!membership[0]?.meta?.changes) {
+      await env.DB.prepare("DELETE FROM teams WHERE id=? AND captain_id=?").bind(teamId, auth.user.id).run();
+      return json({ error: { code: "ALREADY_IN_TEAM", message: "Игрок уже вступил в другую команду. Обнови страницу." } }, 409);
+    }
+    if (!membership[1]?.meta?.changes) throw new Error("Captain roster entry was not created");
     return json({ data: { id: teamId, name, tag, region, captain_id: auth.user.id, roster: [{ player_id: player.id, roster_role: "captain" }] } }, 201);
   } catch (error) {
     console.error("Team creation failed:", error);
