@@ -164,6 +164,10 @@ test.describe('MERCY ARENA public shell', () => {
   });
 
   test('tournament application loads captain teams and available roster', async ({ page }) => {
+    await page.route('**/api/v1/me', route => route.fulfill({ json: {
+      authenticated: true, account: { id: 'captain-1', email: 'captain@example.com', name: 'Captain' },
+      profile: { id: 1, nickname: 'Captain', profile_status: 'approved' }, roles: ['team_captain'], access: 'user'
+    } }));
     await page.route('**/api/v1/tournaments?id=778', route => route.fulfill({ json: { data: [{
       id: 778, title: 'Application Test Cup', format: 'single_elimination', status: 'published',
       registered_teams_list: [], max_teams: 8, registration_slots: null
