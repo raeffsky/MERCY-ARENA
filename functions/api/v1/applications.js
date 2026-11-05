@@ -46,9 +46,9 @@ export async function onRequestGet({ request, env }) {
         (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
        FROM teams t
        LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
-       WHERE t.captain_id=? AND t.status='active'
+       WHERE t.status='active' AND (t.captain_id=? OR EXISTS (SELECT 1 FROM players cp LEFT JOIN team_roster cr ON cr.player_id=cp.id AND cr.team_id=t.id AND cr.left_at IS NULL WHERE cp.user_id=? AND (cp.team_id=t.id OR cr.roster_role='captain')))
        ORDER BY t.name COLLATE NOCASE`
-    ).bind(tournamentId, auth.user.id).all();
+    ).bind(tournamentId, auth.user.id, auth.user.id).all();
     results = response.results || [];
   } catch (error) {
     const message = String(error?.message || error);
@@ -59,16 +59,16 @@ export async function onRequestGet({ request, env }) {
           (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
          FROM teams t
          LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
-         WHERE t.captain_id=? AND t.status='active'
+         WHERE t.status='active' AND (t.captain_id=? OR EXISTS (SELECT 1 FROM players cp LEFT JOIN team_roster cr ON cr.player_id=cp.id AND cr.team_id=t.id AND cr.left_at IS NULL WHERE cp.user_id=? AND (cp.team_id=t.id OR cr.roster_role='captain')))
          ORDER BY t.name COLLATE NOCASE`
-      ).bind(tournamentId, auth.user.id).all().catch(async (fallbackError) => {
+      ).bind(tournamentId, auth.user.id, auth.user.id).all().catch(async (fallbackError) => {
         if (!/no such table:\s*tournament_registrations/i.test(String(fallbackError?.message || fallbackError))) throw fallbackError;
         return env.DB.prepare(
           `SELECT t.id,t.name,t.tag,t.region,NULL AS registration_id,NULL AS application_status,
             NULL AS selected_slot,NULL AS captain_note,NULL AS submitted_at,NULL AS reviewed_at,
             (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
-           FROM teams t WHERE t.captain_id=? AND t.status='active' ORDER BY t.name COLLATE NOCASE`
-        ).bind(auth.user.id).all();
+           FROM teams t WHERE t.status='active' AND (t.captain_id=? OR EXISTS (SELECT 1 FROM players cp LEFT JOIN team_roster cr ON cr.player_id=cp.id AND cr.team_id=t.id AND cr.left_at IS NULL WHERE cp.user_id=? AND (cp.team_id=t.id OR cr.roster_role='captain'))) ORDER BY t.name COLLATE NOCASE`
+        ).bind(auth.user.id, auth.user.id).all();
       });
       results = response.results || [];
     } else {
@@ -141,8 +141,8 @@ export async function onRequestPost({ request, env }) {
   }
 
   const team = await env.DB.prepare(
-    "SELECT id,name,tag FROM teams WHERE id=? AND captain_id=? AND status='active'"
-  ).bind(teamId, auth.user.id).first();
+    "SELECT t.id,t.name,t.tag FROM teams t WHERE t.id=? AND t.status='active' AND (t.captain_id=? OR EXISTS (SELECT 1 FROM players cp LEFT JOIN team_roster cr ON cr.player_id=cp.id AND cr.team_id=t.id AND cr.left_at IS NULL WHERE cp.user_id=? AND (cp.team_id=t.id OR cr.roster_role='captain')))"
+  ).bind(teamId, auth.user.id, auth.user.id).first();
   if (!team) return invalid("Подать заявку может только капитан активной команды.", 403, "TEAM_NOT_MANAGED");
 
   const { results: members } = await env.DB.prepare(
