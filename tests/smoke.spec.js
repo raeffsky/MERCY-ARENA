@@ -92,7 +92,7 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(logoutButton).toBeVisible();
     await logoutButton.click();
     await expect.poll(() => logoutCalls).toBe(1);
-    await expect(page).toHaveURL(/#\\/home$/);
+    await expect(page).toHaveURL(/#\/home$/);
   });
 
 
