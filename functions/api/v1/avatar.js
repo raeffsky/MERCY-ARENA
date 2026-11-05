@@ -8,34 +8,26 @@ const TYPES = {
   "image/webp": { ext: "webp", valid: (b) => b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50 }
 };
 
-function storageUnavailable(env) {
-  return !env.AVATARS ? json({ error: { code: "AVATAR_STORAGE_NOT_CONFIGURED", message: "Хранилище фотографий ещё не подключено." } }, 503) : null;
+function hex(bytes) {
+  return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
-function objectKey(url) {
-  const key = url.searchParams.get("key") || "";
-  return /^players\/\d+\/[a-f0-9-]{36}\.(jpg|png|webp)$/.test(key) ? key : "";
+async function cloudinarySignature(params, secret) {
+  const canonical = Object.keys(params).sort().map((key) => key + "=" + params[key]).join("&") + secret;
+  return hex(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(canonical)));
 }
-
-export async function onRequestGet({ request, env }) {
-  const unavailable = storageUnavailable(env); if (unavailable) return unavailable;
-  const key = objectKey(new URL(request.url));
-  if (!key) return json({ error: { code: "AVATAR_NOT_FOUND", message: "Фотография не найдена." } }, 404);
-  const object = await env.AVATARS.get(key);
-  if (!object) return json({ error: { code: "AVATAR_NOT_FOUND", message: "Фотография не найдена." } }, 404);
-  const headers = new Headers();
-  object.writeHttpMetadata(headers);
-  headers.set("etag", object.httpEtag);
-  headers.set("cache-control", "public, max-age=31536000, immutable");
-  headers.set("x-content-type-options", "nosniff");
-  return new Response(object.body, { headers });
+function configError(env) {
+  return !env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET
+    ? json({ error: { code: "CLOUDINARY_NOT_CONFIGURED", message: "Cloudinary ещё не настроен в переменных проекта." } }, 503)
+    : null;
 }
 
-export async function onRequestPut({ request, env }) {
-  const unavailable = storageUnavailable(env); if (unavailable) return unavailable;
+export async function onRequestPost({ request, env }) {
+  const unavailable = configError(env); if (unavailable) return unavailable;
   if (!request.headers.get("origin") || !sameOrigin(request, env)) return json({ error: { code: "ORIGIN_REJECTED", message: "Запрос отклонён." } }, 403);
   const session = await getSessionUser(request, env);
   if (session.error) return session.error;
   if (!session.user) return json({ error: { code: "UNAUTHORIZED", message: "Войди в аккаунт, чтобы загрузить фото." } }, 401);
+
   const contentType = (request.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
   const type = TYPES[contentType];
   if (!type) return json({ error: { code: "INVALID_AVATAR_TYPE", message: "Поддерживаются только JPG, PNG и WebP." } }, 415);
@@ -44,30 +36,41 @@ export async function onRequestPut({ request, env }) {
   const bytes = await request.arrayBuffer();
   if (!bytes.byteLength || bytes.byteLength > MAX_BYTES) return json({ error: { code: "AVATAR_TOO_LARGE", message: "Выбери фотографию размером до 5 МБ." } }, 413);
   if (!type.valid(new Uint8Array(bytes, 0, Math.min(12, bytes.byteLength)))) return json({ error: { code: "INVALID_AVATAR_FILE", message: "Файл не похож на изображение выбранного формата." } }, 415);
-  const profile = await env.DB.prepare("SELECT id,avatar_url FROM players WHERE user_id=? LIMIT 1").bind(session.user.id).first();
+
+  const profile = await env.DB.prepare("SELECT id FROM players WHERE user_id=? LIMIT 1").bind(session.user.id).first();
   if (!profile) return json({ error: { code: "PROFILE_REQUIRED", message: "Сначала создай игровой профиль." } }, 409);
-  const key = "players/" + String(session.user.id) + "/" + crypto.randomUUID() + "." + type.ext;
-  await env.AVATARS.put(key, bytes, { httpMetadata: { contentType, cacheControl: "public, max-age=31536000, immutable" } });
-  const avatarUrl = "/api/v1/avatar?key=" + encodeURIComponent(key);
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params = {
+    folder: "mercy-arena/players",
+    overwrite: "false",
+    public_id: "player-" + String(profile.id) + "-" + crypto.randomUUID(),
+    timestamp: String(timestamp)
+  };
+  const signature = await cloudinarySignature(params, env.CLOUDINARY_API_SECRET);
+  const form = new FormData();
+  form.set("file", new Blob([bytes], { type: contentType }), "avatar." + type.ext);
+  for (const [key, value] of Object.entries(params)) form.set(key, value);
+  form.set("api_key", env.CLOUDINARY_API_KEY);
+  form.set("signature", signature);
+
+  let uploaded;
   try {
-    await env.DB.prepare("UPDATE players SET avatar_url=?,updated_at=? WHERE user_id=?").bind(avatarUrl, new Date().toISOString(), session.user.id).run();
+    const response = await fetch("https://api.cloudinary.com/v1_1/" + encodeURIComponent(env.CLOUDINARY_CLOUD_NAME) + "/image/upload", { method: "POST", body: form });
+    uploaded = await response.json();
+    if (!response.ok || !uploaded.secure_url) {
+      console.error("Cloudinary avatar upload failed:", uploaded.error?.message || response.status);
+      return json({ error: { code: "CLOUDINARY_UPLOAD_FAILED", message: "Cloudinary не смог сохранить фотографию. Попробуй другой файл." } }, 502);
+    }
   } catch (error) {
-    await env.AVATARS.delete(key).catch(() => {});
-    throw error;
+    console.error("Cloudinary avatar request failed:", error);
+    return json({ error: { code: "CLOUDINARY_UNAVAILABLE", message: "Не удалось связаться с Cloudinary." } }, 502);
   }
-  const previousKey = profile.avatar_url ? objectKey(new URL(profile.avatar_url, request.url)) : "";
-  if (previousKey) await env.AVATARS.delete(previousKey).catch(() => {});
-  return json({ data: { avatar_url: avatarUrl } });
+
+  await env.DB.prepare("UPDATE players SET avatar_url=?,updated_at=? WHERE user_id=?").bind(uploaded.secure_url, new Date().toISOString(), session.user.id).run();
+  return json({ data: { avatar_url: uploaded.secure_url, public_id: uploaded.public_id } });
 }
 
-export async function onRequestDelete({ request, env }) {
-  if (!request.headers.get("origin") || !sameOrigin(request, env)) return json({ error: { code: "ORIGIN_REJECTED", message: "Запрос отклонён." } }, 403);
-  const session = await getSessionUser(request, env);
-  if (session.error) return session.error;
-  if (!session.user) return json({ error: { code: "UNAUTHORIZED", message: "Войди в аккаунт." } }, 401);
-  const profile = await env.DB.prepare("SELECT avatar_url FROM players WHERE user_id=? LIMIT 1").bind(session.user.id).first();
-  const key = profile?.avatar_url ? objectKey(new URL(profile.avatar_url, request.url)) : "";
-  await env.DB.prepare("UPDATE players SET avatar_url=NULL,updated_at=? WHERE user_id=?").bind(new Date().toISOString(), session.user.id).run();
-  if (key && env.AVATARS) await env.AVATARS.delete(key).catch(() => {});
-  return json({ data: { avatar_url: null } });
+export function onRequestGet() {
+  return json({ error: { code: "METHOD_NOT_ALLOWED", message: "Метод не поддерживается." } }, 405, { allow: "POST" });
 }
