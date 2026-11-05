@@ -48,8 +48,8 @@ function cleanValue(field, value) {
   return v || (nullableFields.has(field) ? null : "");
 }
 async function audit(db, actor, action, entity, id, before, after) {
-  await db.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,?,?,?,?)")
-    .bind(actor, action, entity, String(id), before ? JSON.stringify(before) : null, after ? JSON.stringify(after) : null).run();
+  await db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,?,?,?,?,?)")
+    .bind(crypto.randomUUID(), actor, action, entity, String(id), before ? JSON.stringify(before) : null, after ? JSON.stringify(after) : null).run();
 }
 async function getById(db, table, id) {
   return db.prepare("SELECT * FROM " + table + " WHERE id=?").bind(id).first();
@@ -113,8 +113,8 @@ export async function onRequestPost({ request, env }) {
         "UPDATE tournament_registrations SET status=?,reviewed_at=?,reviewer_id=? WHERE id=? AND status='pending' AND (?!='approved' OR EXISTS (SELECT 1 FROM tournaments t WHERE t.id=? AND t.status IN ('published','active') AND (t.max_teams IS NULL OR (SELECT COUNT(*) FROM tournament_registrations approved WHERE approved.tournament_id=t.id AND approved.status='approved')<t.max_teams)))"
       ).bind(status,reviewedAt,auth.user.id,registrationId,status,before.tournament_id),
       env.DB.prepare(
-        "INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,'tournament_registration',?,? WHERE EXISTS (SELECT 1 FROM tournament_registrations WHERE id=? AND status=? AND reviewer_id=? AND reviewed_at=?)"
-      ).bind(auth.user.id,"registration_"+status,String(registrationId),JSON.stringify({status,tournament_id:before.tournament_id,team_id:before.team_id}),registrationId,status,auth.user.id,reviewedAt)
+        "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,?, 'tournament_registration',?,? WHERE EXISTS (SELECT 1 FROM tournament_registrations WHERE id=? AND status=? AND reviewer_id=? AND reviewed_at=?)"
+      ).bind(crypto.randomUUID(),auth.user.id,"registration_"+status,String(registrationId),JSON.stringify({status,tournament_id:before.tournament_id,team_id:before.team_id}),registrationId,status,auth.user.id,reviewedAt)
     ];
     if (recipient?.captain_id) {
       statements.push(env.DB.prepare(
