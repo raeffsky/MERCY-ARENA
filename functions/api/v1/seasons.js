@@ -20,7 +20,7 @@ export async function onRequestGet({ request, env }) {
       (SELECT COUNT(*) FROM tournaments t WHERE t.season_id=s.id AND t.published_at IS NOT NULL AND t.status!='draft') AS tournaments_count
     FROM seasons s
     WHERE s.status != 'draft'
-    ORDER BY starts_at DESC
+    ORDER BY season_number DESC, starts_at DESC
     LIMIT ?
   `).bind(limit).all();
   return json(publicList(results || [], limit));
