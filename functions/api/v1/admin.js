@@ -76,7 +76,7 @@ export async function onRequestGet({ request, env }) {
   }
   const config = TABLES[resource];
   if (!config) return bad("Неизвестный раздел.");
-  const { results } = await env.DB.prepare("SELECT * FROM " + config.table + " ORDER BY id DESC LIMIT 200").all();
+  const { results } = await env.DB.prepare("SELECT * FROM " + config.table + (resource === "seasons" ? " ORDER BY season_number DESC,id DESC" : " ORDER BY id DESC") + " LIMIT 200").all();
   return json({ data: results || [] });
   } catch (error) {
     console.error("MERCY ARENA admin GET failed:", error);
