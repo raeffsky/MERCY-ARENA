@@ -1,3 +1,4 @@
+import { createAuditEventId } from "../_lib/audit.js";
 import { json, methodNotAllowed } from "../_lib/http.js";
 import { normalizedEmail, validEmail, sha256, sessionCookie, SESSION_TTL, sameOrigin } from "../_lib/session-auth.js";
 
@@ -64,7 +65,7 @@ export async function onRequestPost({ request, env }) {
         const granted = await env.DB.prepare("INSERT OR IGNORE INTO user_roles (user_id,role) VALUES (?,'administrator')").bind(user.id).run();
         if (granted.meta && granted.meta.changes === 1) {
           await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'bootstrap_admin_created','user',?,?)")
-            .bind(user.id, user.id, JSON.stringify({ email: adminEmail, role: "administrator", method: "password" })).run();
+            .bind(await createAuditEventId(env.DB), user.id, user.id, JSON.stringify({ email: adminEmail, role: "administrator", method: "password" })).run();
         }
       }
     }
@@ -80,7 +81,7 @@ export async function onRequestPost({ request, env }) {
   await env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)")
     .bind(crypto.randomUUID(), user.id, tokenHash, now + SESSION_TTL).run();
   await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'login','user',?,?)")
-    .bind(user.id, user.id, JSON.stringify({ method: "password" })).run();
+    .bind(await createAuditEventId(env.DB), user.id, user.id, JSON.stringify({ method: "password" })).run();
 
   return json({ authenticated: true, account: { email: user.email, name: user.display_name }, roles }, 200, { "set-cookie": sessionCookie(token) });
 }
