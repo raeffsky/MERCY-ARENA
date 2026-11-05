@@ -30,6 +30,21 @@ export async function onRequestPost({ request, env }) {
   if (!auth.user) return json({ error: { code: "UNAUTHORIZED", message: "Войди в аккаунт." } }, 401);
   let body;
   try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректные данные." } }, 400); }
+  if (body.action === "transfer_captain") {
+    const teamId = Number(body.team_id), nextPlayerId = Number(body.new_captain_player_id);
+    if (!Number.isSafeInteger(teamId) || teamId < 1 || !Number.isSafeInteger(nextPlayerId) || nextPlayerId < 1) return json({ error: { code: "INVALID_TRANSFER", message: "Укажи команду и нового капитана." } }, 400);
+    const team = await env.DB.prepare("SELECT id,captain_id FROM teams WHERE id=? AND captain_id=? AND status='active'").bind(teamId, auth.user.id).first();
+    if (!team) return json({ error: { code: "CAPTAIN_REQUIRED", message: "Передать капитанство может только текущий капитан." } }, 403);
+    const member = await env.DB.prepare("SELECT p.id,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL AND p.profile_status='approved'").bind(teamId, nextPlayerId).first();
+    if (!member) return json({ error: { code: "MEMBER_NOT_FOUND", message: "Новый капитан должен состоять в команде." } }, 404);
+    const now = new Date().toISOString();
+    await env.DB.batch([
+      env.DB.prepare("UPDATE teams SET captain_id=?,updated_at=? WHERE id=? AND captain_id=?").bind(member.user_id, now, teamId, auth.user.id),
+      env.DB.prepare("UPDATE team_roster SET roster_role=CASE WHEN player_id=? THEN 'captain' WHEN roster_role='captain' THEN 'player' ELSE roster_role END WHERE team_id=? AND left_at IS NULL").bind(nextPlayerId, teamId),
+      env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'team_captain_transferred','team',?,?)").bind(auth.user.id, teamId, JSON.stringify({ new_captain_player_id: nextPlayerId, new_captain_user_id: member.user_id, nickname: member.nickname }))
+    ]);
+    return json({ data: { team_id: teamId, captain_player_id: nextPlayerId, captain_name: member.nickname, status: "transferred" } });
+  }
   const teamId = Number(body.team_id), playerId = Number(body.player_id);
   if (!Number.isSafeInteger(teamId) || teamId < 1 || !Number.isSafeInteger(playerId) || playerId < 1) return json({ error: { code: "INVALID_INVITE", message: "Проверь команду и игрока." } }, 400);
   const team = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND captain_id=? AND status='active'").bind(teamId, auth.user.id).first();
