@@ -1,3 +1,4 @@
+import { createAuditEventId } from "./_lib/audit.js";
 import { json, databaseUnavailable, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
 
@@ -158,12 +159,12 @@ export async function onRequestPost({ request, env }) {
       const size = teams.length;
       if (size < 4 || (size & (size - 1)) !== 0) return json({ error: { code: "BRACKET_TEAM_COUNT", message: "Для Double Elimination нужно 4, 8, 16 или 32 команды. Сначала утверди состав кратный степени двойки." } }, 409);
       const details = await createDoubleElimination(env.DB, tournamentId, teams, now, created);
-      await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?, 'bracket_generated','tournament',?,?)").bind(crypto.randomUUID(), auth.user.id, tournamentId, JSON.stringify({ format: tournament.format, teams: teams.length, matches: created.length, double_elimination: details })).run();
+      await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?, 'bracket_generated','tournament',?,?)").bind(await createAuditEventId(env.DB), auth.user.id, tournamentId, JSON.stringify({ format: tournament.format, teams: teams.length, matches: created.length, double_elimination: details })).run();
       return json({ data: { tournament_id: tournamentId, format: tournament.format, teams: teams.length, matches_created: created.length, match_ids: created, ...details } }, 201);
     } else {
       return json({ error: { code: "FORMAT_NOT_SUPPORTED", message: "Автогенерация сетки пока доступна для Single Elimination, Double Elimination и Round Robin." } }, 422);
     }
-    await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?, 'bracket_generated','tournament',?,?)").bind(crypto.randomUUID(), auth.user.id, tournamentId, JSON.stringify({ format: tournament.format, teams: teams.length, matches: created.length })).run();
+    await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?, 'bracket_generated','tournament',?,?)").bind(await createAuditEventId(env.DB), auth.user.id, tournamentId, JSON.stringify({ format: tournament.format, teams: teams.length, matches: created.length })).run();
     return json({ data: { tournament_id: tournamentId, format: tournament.format, teams: teams.length, matches_created: created.length, match_ids: created } }, 201);
   } catch (error) {
     console.error("Bracket generation failed:", error);
