@@ -6,7 +6,7 @@ export async function onRequestGet({ request, env }) {
   const limit = parseLimit(url);
   const playerId = url.searchParams.get("id");
   if (playerId && /^\d+$/.test(playerId)) {
-    const profile = await env.DB.prepare("SELECT p.id,p.nickname,p.game_id,p.role,p.team_id,p.region,p.created_at,t.name AS team_name,t.tag AS team_tag,t.logo_url AS team_logo,t.region AS team_region FROM players p LEFT JOIN teams t ON t.id=p.team_id AND t.status='active' WHERE p.id=? AND p.profile_status='approved' LIMIT 1").bind(Number(playerId)).first();
+    const profile = await env.DB.prepare("SELECT p.id,p.nickname,p.game_id,p.role,p.team_id,p.region,p.avatar_url,p.created_at,t.name AS team_name,t.tag AS team_tag,t.logo_url AS team_logo,t.region AS team_region FROM players p LEFT JOIN teams t ON t.id=p.team_id AND t.status='active' WHERE p.id=? AND p.profile_status='approved' LIMIT 1").bind(Number(playerId)).first();
     return json({data:profile?[profile]:[],limit:1});
   }
   const query = (url.searchParams.get("query") || "").trim().slice(0, 80);
@@ -15,7 +15,7 @@ export async function onRequestGet({ request, env }) {
   const values = [];
   if (query) { clauses.push("nickname LIKE ?"); values.push(`%${query}%`); }
   if (role) { clauses.push("role = ?"); values.push(role); }
-  const { results } = await env.DB.prepare(`SELECT id,nickname,game_id,role,team_id,region,created_at FROM players WHERE ${clauses.join(" AND ")} ORDER BY nickname COLLATE NOCASE LIMIT ?`).bind(...values, limit).all();
+  const { results } = await env.DB.prepare(`SELECT id,nickname,game_id,role,team_id,region,avatar_url,created_at FROM players WHERE ${clauses.join(" AND ")} ORDER BY nickname COLLATE NOCASE LIMIT ?`).bind(...values, limit).all();
   return json(publicList(results || [], limit));
 }
 
