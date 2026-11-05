@@ -12,8 +12,8 @@ test.describe('MERCY ARENA public shell', () => {
 
     await page.goto('/');
     await expect(page).toHaveTitle(/MERCY ARENA/);
-    await expect(page.locator('#app')).toContainText('ТВОЙ ПУТЬ В КИБЕРСПОРТ');
-    await page.getByRole('link', { name: /Открыть турниры/i }).click();
+    await expect(page.locator('#app')).toContainText('ТВОЙ ПУТЬ');
+    await page.getByRole('link', { name: /Начать свой путь/i }).click();
     await expect(page).toHaveURL(/#\/tournaments$/);
     expect(runtimeErrors).toEqual([]);
   });
