@@ -717,7 +717,7 @@ th{background:var(--panel)!important}
 .season-feature-art{position:relative;display:grid;place-items:center;min-height:220px;overflow:hidden}
 .season-art-mark{font:900 clamp(180px,30vw,330px)/.8 'Barlow Condensed';color:#d7ff5e0b;-webkit-text-stroke:1px #d7ff5e38;transform:skew(-12deg);text-shadow:0 0 60px #d7ff5e20}
 .season-art-caption{position:absolute;bottom:24px;right:25px;color:#d7ff5e;font-size:9px;letter-spacing:2.5px;font-weight:900}
-.season-dots{display:flex;gap:6px;justify-content:center;padding-top:12px}.season-dots i{width:6px;height:6px;border-radius:50%;background:#515b42}.season-dots i.active{background:var(--lime);width:19px;border-radius:5px}
+.season-dots{display:flex;gap:8px;justify-content:center;align-items:center;padding-top:12px}.season-dots .season-dot{appearance:none;display:block;width:10px;height:10px;flex:none;padding:0;border:0;border-radius:50%;background:#515b42;cursor:pointer;transition:width .2s ease,background .2s ease,transform .2s ease}.season-dots .season-dot.active{width:30px;border-radius:6px;background:var(--lime)}.season-dots .season-dot:focus-visible{outline:2px solid var(--lime);outline-offset:4px}
 .home-match-list,.home-ranking{border:1px solid var(--line);background:var(--panel);overflow:hidden}
 .home-match-row{display:grid;grid-template-columns:105px minmax(0,1fr) 86px;gap:12px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line)}
 .home-match-row:last-child{border-bottom:0}
@@ -1099,9 +1099,22 @@ var seasonFeature=document.getElementById('homeSeasonFeature'),seasonDots=docume
 try{
 var seasons=await apiList('seasons?limit=6'),tournaments=await apiList('tournaments?limit=20');
 if(seasons.length){
-var featured=seasons[0],seasonTournaments=tournaments.filter(function(t){return String(t.season_id||'')===String(featured.id)});
-var hasSeasonCover=!!featured.image_url;seasonFeature.classList.toggle('has-cover',hasSeasonCover);seasonFeature.style.backgroundImage=hasSeasonCover?'linear-gradient(90deg,rgba(7,9,7,.78) 0%,rgba(7,9,7,.46) 48%,rgba(7,9,7,.08) 100%),url("'+esc(featured.image_url)+'")':'';seasonFeature.style.backgroundSize='cover';seasonFeature.style.backgroundPosition='center';seasonFeature.innerHTML='<div class="season-feature-copy"><span class="season-chip">MERCY CIRCUIT / СЕЗОН</span><h2>'+esc(featured.title)+'</h2><div class="season-meta"><span><iconify-icon icon="mdi:calendar-range"></iconify-icon>'+esc(dateLabel(featured.starts_at))+'</span><span><iconify-icon icon="mdi:trophy-outline"></iconify-icon>'+seasonTournaments.length+' турниров</span></div><a class="btn primary" href="#/season/'+encodeURIComponent(featured.id)+'">Открыть сезон <iconify-icon icon="mdi:arrow-right"></iconify-icon></a></div>'+(hasSeasonCover?'':'<div class="season-feature-art"><span class="season-art-mark">M</span><span class="season-art-caption">PLAY · IMPROVE · COMPETE</span></div>');
-seasonDots.innerHTML=seasons.slice(0,5).map(function(_,i){return '<i class="'+(i===0?'active':'')+'"></i>'}).join('');
+var seasonIndex=0,seasonTouchStartX=0,seasonTouchStartY=0;
+function renderHomeSeason(index){
+seasonIndex=(index+seasons.length)%seasons.length;
+var featured=seasons[seasonIndex],seasonTournaments=tournaments.filter(function(t){return String(t.season_id||'')===String(featured.id)});
+var hasSeasonCover=!!featured.image_url;
+seasonFeature.classList.toggle('has-cover',hasSeasonCover);
+seasonFeature.style.backgroundImage=hasSeasonCover?'linear-gradient(90deg,rgba(7,9,7,.78) 0%,rgba(7,9,7,.46) 48%,rgba(7,9,7,.08) 100%),url("'+esc(featured.image_url)+'")':'';
+seasonFeature.style.backgroundSize='cover';seasonFeature.style.backgroundPosition='center';
+seasonFeature.innerHTML='<div class="season-feature-copy"><span class="season-chip">MERCY CIRCUIT / СЕЗОН '+(seasonIndex+1)+'</span><h2>'+esc(featured.title)+'</h2><div class="season-meta"><span><iconify-icon icon="mdi:calendar-range"></iconify-icon>'+esc(dateLabel(featured.starts_at))+'</span><span><iconify-icon icon="mdi:trophy-outline"></iconify-icon>'+seasonTournaments.length+' турниров</span></div><a class="btn primary" href="#/season/'+encodeURIComponent(featured.id)+'">Открыть сезон <iconify-icon icon="mdi:arrow-right"></iconify-icon></a></div>'+(hasSeasonCover?'':'<div class="season-feature-art"><span class="season-art-mark">M</span><span class="season-art-caption">PLAY · IMPROVE · COMPETE</span></div>');
+seasonDots.innerHTML=seasons.map(function(_,i){return '<button type="button" class="season-dot '+(i===seasonIndex?'active':'')+'" data-season-index="'+i+'" aria-label="Открыть сезон '+(i+1)+'" aria-current="'+(i===seasonIndex?'true':'false')+'"></button>'}).join('');
+seasonDots.querySelectorAll('[data-season-index]').forEach(function(dot){dot.addEventListener('click',function(){renderHomeSeason(Number(dot.dataset.seasonIndex))})});
+}
+renderHomeSeason(0);
+seasonFeature.style.touchAction='pan-y';
+seasonFeature.addEventListener('touchstart',function(event){if(event.touches&&event.touches.length===1){seasonTouchStartX=event.touches[0].clientX;seasonTouchStartY=event.touches[0].clientY}},{passive:true});
+seasonFeature.addEventListener('touchend',function(event){if(!event.changedTouches||!event.changedTouches.length)return;var dx=event.changedTouches[0].clientX-seasonTouchStartX,dy=event.changedTouches[0].clientY-seasonTouchStartY;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.25)renderHomeSeason(seasonIndex+(dx<0?1:-1))},{passive:true});
 }else if(tournaments.length){
 var t=tournaments[0];seasonFeature.innerHTML='<div class="season-feature-copy"><span class="season-chip">ГЛАВНЫЙ ТУРНИР / MERCY CIRCUIT</span><h2>'+esc(t.title)+'</h2><p>'+esc(t.description||'Главное соревнование MERCY ARENA. Следи за регистрацией, расписанием и результатами.')+'</p><div class="season-meta"><span><iconify-icon icon="mdi:calendar"></iconify-icon>'+esc(dateLabel(t.starts_at))+'</span><span><iconify-icon icon="mdi:account-group"></iconify-icon>'+(t.max_teams?esc(t.max_teams)+' команд':'Открытая сетка')+'</span></div><a class="btn primary" href="#/tournament/'+encodeURIComponent(t.id)+'">Подробнее <iconify-icon icon="mdi:arrow-right"></iconify-icon></a></div><div class="season-feature-art"><span class="season-art-mark">M</span><span class="season-art-caption">MERCY CIRCUIT</span></div>';seasonDots.innerHTML='';
 }else{seasonFeature.innerHTML='<div class="season-feature-copy"><span class="season-chip">MERCY CIRCUIT</span><h2>НОВЫЙ СЕЗОН<br>СКОРО</h2><p>Следи за анонсами. Здесь появится главный турнир и переход ко всем соревнованиям сезона.</p><a class="btn secondary" href="#/tournaments">Смотреть турниры <iconify-icon icon="mdi:arrow-right"></iconify-icon></a></div><div class="season-feature-art"><span class="season-art-mark">M</span><span class="season-art-caption">PLAY · IMPROVE · COMPETE</span></div>';seasonDots.innerHTML=''}
