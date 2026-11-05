@@ -92,6 +92,8 @@ export async function onRequestPost({ request, env }) {
 
     await env.DB.prepare("INSERT INTO audit_events (actor_id,action,entity_type,entity_id,after_json) VALUES (?,'player_profile_auto_verified','player',?,?)").bind(userId,playerId,JSON.stringify({nickname,role,region,profile_status:"approved",game_id:gameId,server_id:serverId,mlbb_verified:true})).run();
     await env.DB.prepare("INSERT INTO auth_sessions (id,user_id,token_hash,expires_at) VALUES (?,?,?,?)").bind(crypto.randomUUID(),userId,tokenHash,now+SESSION_TTL).run();
+    // Successful registration clears the temporary attempt counters, matching login behavior.
+    await env.DB.prepare("DELETE FROM auth_login_attempts WHERE email_hash=? OR ip_hash=?").bind(emailHash,ipHash).run();
     return json({authenticated:true,account:{id:String(userId),email,name:displayName||nickname},profile:{id:String(playerId),status:"approved",nickname,game_id:gameId,server_id:serverId}},201,{"set-cookie":sessionCookie(token)});
   } catch(error) {
     console.error("Player registration request failed:",error);
