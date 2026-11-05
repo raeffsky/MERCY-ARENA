@@ -6,7 +6,7 @@ export async function onRequestGet({ request, env }) {
   const seasonId = url.searchParams.get("id");
   if (seasonId) {
     const season = await env.DB.prepare(`
-      SELECT s.id,s.title,s.starts_at,s.ends_at,s.status,s.image_url,s.created_at,
+      SELECT s.id,s.title,s.season_number,s.starts_at,s.ends_at,s.status,s.image_url,s.created_at,
         (SELECT COUNT(*) FROM tournaments t WHERE t.season_id=s.id AND t.published_at IS NOT NULL AND t.status!='draft') AS tournaments_count,
         (SELECT COUNT(*) FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE t.season_id=s.id) AS matches_count,
         (SELECT COUNT(*) FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE t.season_id=s.id AND m.status='completed' AND m.result_verified_at IS NOT NULL) AS verified_matches_count
