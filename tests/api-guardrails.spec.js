@@ -70,4 +70,20 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(page).toContain("(t.format==='single_elimination'&&approved>=2&&approved<=32)");
     expect(page).toContain("(t.format==='double_elimination'&&approved>=4&&approved<=32&&(approved&(approved-1))===0)");
   });
+
+  test('cancelled and postponed matches cannot complete a tournament', () => {
+    const progression = source('functions/api/v1/_lib/match-progression.js');
+    expect(progression).toContain("SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) AS completed");
+    expect(progression).toContain('Number(state?.completed || 0) !== Number(state?.total || 0)');
+    expect(progression).toContain('Cancelled matches are not played results');
+  });
+
+  test('match rescheduling and cancellation preserve completed results', () => {
+    const admin = source('functions/api/v1/admin.js');
+    expect(admin).toContain('payload.status === "in_progress" && (teamA == null || teamB == null)');
+    expect(admin).toContain('existing.status === "completed" && payload.status && payload.status !== "completed"');
+    const page = source('index.html');
+    expect(page).toContain('для отмены выбери статус «Отменён»');
+    expect(page).toContain("x.scheduled_at?dateLabel(x.scheduled_at):'Не назначено'");
+  });
 });
