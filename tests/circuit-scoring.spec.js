@@ -57,4 +57,28 @@ test.describe("MERCY CIRCUIT placement scoring", () => {
       {team_id:"1",placement:1},{team_id:"2",placement:2},{team_id:"3",placement:3}
     ]);
   });
+  test("derives complete Double Elimination placement groups for 4, 8, 16 and 32 teams", () => {
+    for (const size of [4,8,16,32]) {
+      const rounds = [];
+      const upperRoundCount = Math.log2(size);
+      for (let round = 1; round <= 2 * (upperRoundCount - 1); round++) {
+        const count = size / (2 ** (Math.floor((round + 1) / 2) + 1));
+        const rows = [];
+        for (let index = 0; index < count; index++) {
+          const eliminatedTeam = 3 + rounds.reduce((sum, group) => sum + group.length, 0) + index;
+          rows.push({bracket:"lower",round_number:round,status:"completed",team_a_id:eliminatedTeam,team_b_id:1,winner_team_id:1});
+        }
+        rounds.push(rows);
+      }
+      const lowerMatches = rounds.flat();
+      const final = {bracket:"final",round_number:1,status:"completed",team_a_id:1,team_b_id:2,winner_team_id:1};
+      const placements = scoring.deriveTournamentPlacements("double_elimination",[...lowerMatches,final]);
+      expect(placements).toHaveLength(size);
+      expect(new Set(placements.map(row=>row.team_id)).size).toBe(size);
+      expect(placements.find(row=>row.team_id==="1").placement).toBe(1);
+      expect(placements.find(row=>row.team_id==="2").placement).toBe(2);
+      expect(placements.filter(row=>row.placement===3)).toHaveLength(1);
+    }
+  });
+
 });
