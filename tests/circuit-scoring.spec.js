@@ -12,7 +12,7 @@ test.describe("MERCY CIRCUIT placement scoring", () => {
   });
   test("season rules override defaults without changing the placement band", () => {
     expect(scoring.pointsForPlacement(3,[{place_from:3,place_to:4,points:60}])).toBe(60);
-    expect(pointsForPlacement(1,[])).toBe(100);
+    expect(scoring.pointsForPlacement(1,[])).toBe(100);
   });
   test("ranking tie-breaks are deterministic and team-based", () => {
     const ranked = scoring.buildCircuitRanking([
