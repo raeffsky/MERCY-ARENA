@@ -1,5 +1,5 @@
 import { json } from "../_lib/http.js";
-import { getSessionUser, sameOrigin } from "../_lib/session-auth.js";
+import { getSessionUser, isOwnerAccount, sameOrigin } from "../_lib/session-auth.js";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -11,7 +11,7 @@ async function authorize(request, env) {
   if (!request.headers.get("origin") || !sameOrigin(request, env)) return { response: json({ error: { code: "ORIGIN_REJECTED", message: "Запрос отклонён." } }, 403) };
   const session = await getSessionUser(request, env);
   if (session.error) return { response: session.error };
-  if (!session.user || !session.user.roles.includes("administrator")) return { response: json({ error: { code: "FORBIDDEN", message: "Требуются права администратора." } }, 403) };
+  if (!session.user || !session.user.roles.includes("administrator") || !isOwnerAccount(session.user, env)) return { response: json({ error: { code: "FORBIDDEN", message: "Доступ к кабинету организатора закрыт." } }, 403) };
   return {};
 }
 function hex(buffer) { return Array.from(new Uint8Array(buffer), byte => byte.toString(16).padStart(2, "0")).join(""); }
