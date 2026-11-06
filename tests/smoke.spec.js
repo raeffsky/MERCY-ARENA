@@ -16,16 +16,17 @@ test.describe('MERCY ARENA public shell', () => {
 
 
   test('player registration accepts numeric MLBB and server IDs before lookup', async ({ page }) => {
-    await page.route('**/api/v1/players**', route => route.fulfill({ json: { data: [] } }));
-    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/me', route => route.fulfill({ json: {
+      authenticated: false, account: null, roles: [], access: 'guest'
+    } }));
     let lookupPayload = null;
     await page.route('**/api/v1/mlbb-lookup', async route => {
       lookupPayload = route.request().postDataJSON();
       await route.fulfill({ json: { data: { game_id: '123456789', server_id: '1234', nickname: 'TestPlayer', verified: true } } });
     });
 
-    await page.goto('/#/players');
-    await page.getByRole('button', { name: /Создать профиль/ }).click();
+    await page.goto('/#/my-profile');
+    await page.getByRole('button', { name: /Создать аккаунт и игровой профиль/ }).click();
     await page.locator('#playerCreateForm [name="game_id"]').fill('123456789');
     await page.locator('#playerCreateForm [name="server_id"]').fill('1234');
     await page.getByRole('button', { name: 'Проверить игровой аккаунт' }).click();
@@ -38,8 +39,9 @@ test.describe('MERCY ARENA public shell', () => {
 
   test('player registration can be submitted for manual review when MLBB lookup fails', async ({ page }) => {
     let registrationBody = null;
-    await page.route('**/api/v1/players**', route => route.fulfill({ json: { data: [] } }));
-    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/me', route => route.fulfill({ json: {
+      authenticated: false, account: null, roles: [], access: 'guest'
+    } }));
     await page.route('**/api/v1/mlbb-lookup', route => route.fulfill({
       status: 422,
       json: { error: { code: 'MLBB_PLAYER_NOT_FOUND', message: 'Автоматическая проверка не нашла аккаунт.' } }
@@ -52,8 +54,8 @@ test.describe('MERCY ARENA public shell', () => {
         profile: { id: 'player-2', status: 'pending', nickname: 'ManualPlayer', game_id: '123456789', server_id: '1234' }
       } });
     });
-    await page.goto('/#/players');
-    await page.getByRole('button', { name: /Создать профиль/ }).click();
+    await page.goto('/#/my-profile');
+    await page.getByRole('button', { name: /Создать аккаунт и игровой профиль/ }).click();
     await page.locator('#playerCreateForm [name="email"]').fill('manual@example.com');
     await page.locator('#playerCreateForm [name="password"]').fill('VeryStrongPassword123!');
     await page.locator('#playerCreateForm [name="game_id"]').fill('123456789');
