@@ -20,20 +20,20 @@ export async function onRequestGet({ request, env }) {
         COALESCE((SELECT SUM(tx.points_delta) FROM circuit_point_transactions tx
           WHERE tx.team_id=t.id AND tx.season_id=?),0) AS points,
         (SELECT COUNT(*) FROM circuit_tournament_results r
-          WHERE r.team_id=t.id AND r.season_id=?) AS tournaments_played,
+          WHERE r.team_id=t.id AND r.season_id=? AND r.is_qualifier=0) AS tournaments_played,
         (SELECT COUNT(*) FROM circuit_tournament_results r
-          WHERE r.team_id=t.id AND r.season_id=? AND r.placement=1) AS first_places,
+          WHERE r.team_id=t.id AND r.season_id=? AND r.is_qualifier=0 AND r.placement=1) AS first_places,
         (SELECT COUNT(*) FROM circuit_tournament_results r
-          WHERE r.team_id=t.id AND r.season_id=? AND r.placement=2) AS second_places,
+          WHERE r.team_id=t.id AND r.season_id=? AND r.is_qualifier=0 AND r.placement=2) AS second_places,
         (SELECT COUNT(*) FROM circuit_tournament_results r
-          WHERE r.team_id=t.id AND r.season_id=? AND r.placement<=4) AS top_four_finishes,
+          WHERE r.team_id=t.id AND r.season_id=? AND r.is_qualifier=0 AND r.placement<=4) AS top_four_finishes,
         (SELECT COUNT(*) FROM matches m JOIN tournaments mt ON mt.id=m.tournament_id
           WHERE mt.season_id=? AND m.status='completed' AND m.result_verified_at IS NOT NULL
           AND m.winner_team_id=t.id) AS verified_wins
       FROM teams t
       WHERE t.status='active'
         AND (EXISTS (SELECT 1 FROM circuit_point_transactions tx WHERE tx.team_id=t.id AND tx.season_id=?)
-          OR EXISTS (SELECT 1 FROM circuit_tournament_results r WHERE r.team_id=t.id AND r.season_id=?))
+          OR EXISTS (SELECT 1 FROM circuit_tournament_results r WHERE r.team_id=t.id AND r.season_id=? AND r.is_qualifier=0))
     `).bind(seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId).all();
 
     const { results: rankingMatches } = await env.DB.prepare(
