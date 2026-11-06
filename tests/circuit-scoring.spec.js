@@ -23,4 +23,38 @@ test.describe("MERCY CIRCUIT placement scoring", () => {
     expect(ranked.map(row=>row.team_id)).toEqual([2,3,1]);
     expect(ranked.map(row=>row.rank)).toEqual([1,2,3]);
   });
+  test("derives Single Elimination placements from completed rounds", () => {
+    const matches = [
+      {bracket:"main",round_number:1,status:"completed",team_a_id:1,team_b_id:2,winner_team_id:1},
+      {bracket:"main",round_number:1,status:"completed",team_a_id:3,team_b_id:4,winner_team_id:3},
+      {bracket:"main",round_number:2,status:"completed",team_a_id:1,team_b_id:3,winner_team_id:1}
+    ];
+    expect(scoring.deriveTournamentPlacements("single_elimination",matches)).toEqual([
+      {team_id:"1",placement:1},{team_id:"3",placement:2},{team_id:"2",placement:3},{team_id:"4",placement:4}
+    ]);
+  });
+  test("derives Double Elimination placements including lower-bracket exits", () => {
+    const matches = [
+      {bracket:"upper",round_number:1,status:"completed",team_a_id:1,team_b_id:2,winner_team_id:1},
+      {bracket:"upper",round_number:1,status:"completed",team_a_id:3,team_b_id:4,winner_team_id:3},
+      {bracket:"upper",round_number:2,status:"completed",team_a_id:1,team_b_id:3,winner_team_id:1},
+      {bracket:"lower",round_number:1,status:"completed",team_a_id:2,team_b_id:4,winner_team_id:2},
+      {bracket:"lower",round_number:2,status:"completed",team_a_id:2,team_b_id:3,winner_team_id:2},
+      {bracket:"final",round_number:1,status:"completed",team_a_id:1,team_b_id:2,winner_team_id:1},
+      {bracket:"final",round_number:2,status:"cancelled",team_a_id:1,team_b_id:2,winner_team_id:null}
+    ];
+    expect(scoring.deriveTournamentPlacements("double_elimination",matches)).toEqual([
+      {team_id:"1",placement:1},{team_id:"2",placement:2},{team_id:"3",placement:3},{team_id:"4",placement:4}
+    ]);
+  });
+  test("derives Round Robin placements from wins and score difference", () => {
+    const matches = [
+      {bracket:"group",status:"completed",team_a_id:1,team_b_id:2,score_a:2,score_b:0,winner_team_id:1},
+      {bracket:"group",status:"completed",team_a_id:1,team_b_id:3,score_a:2,score_b:1,winner_team_id:1},
+      {bracket:"group",status:"completed",team_a_id:2,team_b_id:3,score_a:2,score_b:0,winner_team_id:2}
+    ];
+    expect(scoring.deriveTournamentPlacements("round_robin",matches)).toEqual([
+      {team_id:"1",placement:1},{team_id:"2",placement:2},{team_id:"3",placement:3}
+    ]);
+  });
 });
