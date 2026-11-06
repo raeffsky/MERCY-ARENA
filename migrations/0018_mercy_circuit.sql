@@ -1,9 +1,3 @@
-PRAGMA foreign_keys = ON;
-
--- MERCY CIRCUIT: season-scoped team placement scoring and qualification.
--- Production D1 currently uses legacy INTEGER identifiers for core entities.
--- Keep these FK affinities aligned with the provisioned database.
-
 CREATE TABLE IF NOT EXISTS circuit_scoring_rules (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   season_id INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
@@ -15,7 +9,6 @@ CREATE TABLE IF NOT EXISTS circuit_scoring_rules (
   UNIQUE (season_id, place_to)
 );
 
--- Seed the default placement ladder for every existing season.
 INSERT OR IGNORE INTO circuit_scoring_rules (season_id,place_from,place_to,points)
 SELECT id,1,1,100 FROM seasons;
 INSERT OR IGNORE INTO circuit_scoring_rules (season_id,place_from,place_to,points)
