@@ -45,6 +45,42 @@ export async function onRequestPost({ request, env }) {
     const season = await env.DB.prepare("SELECT id,title,status FROM seasons WHERE id=? LIMIT 1").bind(seasonId).first();
     if (!season) return fail("SEASON_NOT_FOUND", "Сезон не найден.", 404);
 
+    if (action === "set_scoring_rules") {
+      const rawRules = Array.isArray(body.rules) ? body.rules : [];
+      if (!rawRules.length || rawRules.length > 12) return fail("INVALID_SCORING_RULES", "Укажи от одной до двенадцати ступеней начисления.");
+      const rules = rawRules.map((rule) => ({
+        place_from: Number(rule.place_from),
+        place_to: Number(rule.place_to),
+        points: Number(rule.points)
+      })).sort((a,b)=>a.place_from-b.place_from);
+      let expectedPlace = 1;
+      for (const rule of rules) {
+        if (!Number.isSafeInteger(rule.place_from) || !Number.isSafeInteger(rule.place_to) ||
+            !Number.isSafeInteger(rule.points) || rule.place_from !== expectedPlace ||
+            rule.place_to < rule.place_from || rule.points < 0) {
+          return fail("INVALID_SCORING_RULES", "Диапазоны мест должны идти подряд без пересечений, очки должны быть целыми числами от нуля.");
+        }
+        expectedPlace = rule.place_to + 1;
+      }
+      if (rules[rules.length-1].place_to !== 2147483647) {
+        return fail("INCOMPLETE_SCORING_RULES", "Последний диапазон должен покрывать все оставшиеся места.");
+      }
+      const existingResults = await env.DB.prepare(
+        "SELECT COUNT(*) AS total FROM circuit_tournament_results WHERE season_id=? AND is_qualifier=0"
+      ).bind(seasonId).first();
+      if (Number(existingResults?.total || 0) > 0) return fail("SCORING_ALREADY_USED", "Нельзя менять шкалу после начисления первых очков сезона.",409);
+      const statements = [env.DB.prepare("DELETE FROM circuit_scoring_rules WHERE season_id=?").bind(seasonId)];
+      for (const rule of rules) {
+        statements.push(env.DB.prepare(
+          "INSERT INTO circuit_scoring_rules (season_id,place_from,place_to,points) VALUES (?,?,?,?)"
+        ).bind(seasonId,rule.place_from,rule.place_to,rule.points));
+      }
+      statements.push(env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?, 'circuit_scoring_rules_updated','season',?,?)")
+        .bind(await createAuditEventId(env.DB),auth.user.id,seasonId,JSON.stringify(rules)));
+      await env.DB.batch(statements);
+      return json({ data: { season_id: seasonId, rules } });
+    }
+
     if (action === "register_qualifier") {
       const qualifierNumber = Number(body.qualifier_number);
       const tournamentId = String(body.tournament_id || "").trim();
