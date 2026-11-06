@@ -117,33 +117,28 @@ test.describe('MERCY ARENA public shell', () => {
   });
 
 
-  test('seasonal team rankings retain teams with zero verified matches', async ({ page }) => {
+  test('Circuit Ranking displays season placement points for teams', async ({ page }) => {
     const rankingRequests = [];
     await page.route('**/api/v1/seasons?limit=50', route => route.fulfill({ json: { data: [
-      { id: 'season-1', title: 'Season One', status: 'active', starts_at: '2026-11-01' }
+      { id: 'season-1', title: 'Season One', season_number: 1, status: 'active', starts_at: '2026-11-01' }
     ] } }));
-    await page.route('**/api/v1/rankings**', async route => {
+    await page.route('**/api/v1/circuit/ranking**', async route => {
       const url = new URL(route.request().url());
-      rankingRequests.push(url.search);
-      if (url.searchParams.get('scope') === 'teams') {
-        await route.fulfill({ json: { data: [
-          { id: 42, name: 'Zero Match Club', tag: 'ZMC', matches_played: 0, wins: 0, losses: 0, points: 0, win_rate: 0 }
-        ] } });
-      } else {
-        await route.fulfill({ json: { data: [] } });
-      }
+      rankingRequests.push(url.searchParams.get('season_id'));
+      await route.fulfill({ json: {
+        season: { id: 'season-1', title: 'Season One', season_number: 1 },
+        data: [{ rank: 1, team_id: 42, team_name: 'Zero Match Club', team_tag: 'ZMC', points: 25, tournaments_played: 1, verified_wins: 0 }],
+        qualifiers: [], championship: []
+      } });
     });
-    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [] } }));
 
     await page.goto('/#/rankings');
-    await page.locator('[data-ranking-scope="teams"]').click();
     await expect(page.locator('#rankingRows')).toContainText('Zero Match Club');
-    await page.locator('#rankingSeason').selectOption('season-1');
-    await expect.poll(() => rankingRequests.some(q => q.includes('scope=teams') && q.includes('season_id=season-1'))).toBe(true);
-    await expect(page.locator('#rankingRows')).toContainText('Zero Match Club');
+    await expect(page.locator('#rankingRows')).toContainText('25');
     await expect(page.locator('#rankingRows')).toContainText('0');
+    await expect.poll(() => rankingRequests.includes('season-1')).toBe(true);
+    await expect(page.locator('[data-ranking-scope]')).toHaveCount(0);
   });
-
 
   test('season hub displays season metrics and linked tournaments', async ({ page }) => {
     await page.route('**/api/v1/seasons?id=season-2', route => route.fulfill({ json: { data: [{
