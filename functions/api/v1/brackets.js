@@ -1,6 +1,7 @@
 import { createAuditEventId } from "./_lib/audit.js";
 import { json, databaseUnavailable, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, isOwnerAccount, sameOrigin } from "./_lib/session-auth.js";
+import { buildSingleEliminationSeeding } from "./_lib/single-elimination-seeding.mjs";
 
 async function createMatch(db, tournamentId, bracket, round, number, teamA, teamB, status, now) {
   const result = await db.prepare(
@@ -130,17 +131,8 @@ export async function onRequestPost({ request, env }) {
         }
       }
     } else if (tournament.format === "single_elimination") {
-      const size = 2 ** Math.ceil(Math.log2(teams.length));
-      if (size > 32) return json({ error: { code: "BRACKET_TEAM_LIMIT", message: "Сетка Single Elimination поддерживает максимум 32 команды." } }, 409);
-
-      // Seed teams into a standard bracket. Empty seeds are byes and are
-      // placed directly into the next round instead of creating fake matches.
-      let seedOrder = [1];
-      for (let bracketSize = 2; bracketSize <= size; bracketSize *= 2) {
-        seedOrder = seedOrder.flatMap((seed) => [seed, bracketSize + 1 - seed]);
-      }
-      const firstRoundSlots = seedOrder.map((seed) => seed <= teams.length ? teams[seed - 1].id : null);
-      const rounds = Math.log2(size);
+      if (teams.length > 32) return json({ error: { code: "BRACKET_TEAM_LIMIT", message: "Сетка Single Elimination поддерживает максимум 32 команды." } }, 409);
+      const { size, rounds, firstRoundSlots } = buildSingleEliminationSeeding(teams.map((team) => team.id));
       const roundMatches = [];
 
       for (let round = 1; round <= rounds; round++) {
