@@ -1,0 +1,54 @@
+import { json, databaseUnavailable } from "../_lib/http.js";
+import { buildCircuitRanking } from "../_lib/circuit-scoring.js";
+
+export async function onRequestGet({ request, env }) {
+  if (!env.DB) return databaseUnavailable();
+  const url = new URL(request.url);
+  const seasonId = String(url.searchParams.get("season_id") || "").trim();
+  if (!seasonId) {
+    return json({ error: { code: "SEASON_REQUIRED", message: "Укажи ID сезона MERCY CIRCUIT." } }, 400);
+  }
+
+  try {
+    const season = await env.DB.prepare(
+      "SELECT id,title,season_number,starts_at,ends_at,status FROM seasons WHERE id=? LIMIT 1"
+    ).bind(seasonId).first();
+    if (!season) return json({ error: { code: "SEASON_NOT_FOUND", message: "Сезон не найден." } }, 404);
+
+    const { results } = await env.DB.prepare(`
+      SELECT t.id AS team_id,t.name AS team_name,t.tag AS team_tag,t.logo_url AS team_logo,
+        COALESCE(SUM(tx.points_delta),0) AS points,
+        COUNT(DISTINCT r.tournament_id) AS tournaments_played,
+        COALESCE(SUM(CASE WHEN r.placement=1 THEN 1 ELSE 0 END),0) AS first_places,
+        COALESCE(SUM(CASE WHEN r.placement=2 THEN 1 ELSE 0 END),0) AS second_places,
+        COALESCE(SUM(CASE WHEN r.placement<=4 THEN 1 ELSE 0 END),0) AS top_four_finishes,
+        (SELECT COUNT(*) FROM matches m JOIN tournaments mt ON mt.id=m.tournament_id
+          WHERE mt.season_id=? AND m.status='completed' AND m.result_verified_at IS NOT NULL
+          AND m.winner_team_id=t.id) AS verified_wins
+      FROM teams t
+      LEFT JOIN circuit_point_transactions tx ON tx.team_id=t.id AND tx.season_id=?
+      LEFT JOIN circuit_tournament_results r ON r.team_id=t.id AND r.season_id=?
+      WHERE t.status='active'
+      GROUP BY t.id
+      HAVING points>0 OR tournaments_played>0
+    `).bind(seasonId,seasonId,seasonId).all();
+
+    const ranking = buildCircuitRanking(results || []);
+    const { results: entries } = await env.DB.prepare(
+      "SELECT team_id,qualification_source,source_id,seed,status FROM circuit_championship_entries WHERE season_id=? ORDER BY seed"
+    ).bind(seasonId).all();
+
+    return json({
+      data: ranking,
+      season,
+      championship: (entries || []).map((entry) => ({
+        ...entry,
+        team: ranking.find((team) => String(team.team_id) === String(entry.team_id)) || null
+      })),
+      meta: { scoring: "placement", season_reset: true, qualification_slots: "6+2", ranking_scope: "teams" }
+    });
+  } catch (error) {
+    console.error("MERCY CIRCUIT ranking failed:", error);
+    return json({ error: { code: "CIRCUIT_RANKING_FAILED", message: "Не удалось загрузить рейтинг MERCY CIRCUIT. Проверь миграцию 0018." } }, 500);
+  }
+}
