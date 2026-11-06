@@ -1,4 +1,4 @@
-import { json, databaseUnavailable } from "../../_lib/http.js";
+import { json, databaseUnavailable } from "../_lib/http.js";
 
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return databaseUnavailable();
