@@ -239,4 +239,39 @@ test.describe('MERCY ARENA public shell', () => {
     await page.locator('#shade').click({ position: { x: 8, y: 400 } });
     await expect(page.locator('#drawer')).not.toHaveClass(/open/);
   });
+  test('MERCY CHAMPIONSHIP shows all eight qualification slots', async ({ page }) => {
+    await page.route('**/api/v1/seasons?limit=50', route => route.fulfill({json:{data:[
+      {id:'s1',title:'Season One',season_number:1,status:'active'}
+    ]}}));
+    await page.route('**/api/v1/circuit/championship**', route => route.fulfill({json:{
+      season:{id:'s1',title:'Season One',season_number:1},
+      qualified_count:2,championship_ready:false,
+      slots:Array.from({length:8},(_,i)=>({seed:i+1,status:i<2?'qualified':'pending',qualification_source:i<6?'ranking':'qualifier',team:i===0?{id:10,name:'MERCY PRIME',tag:'MP',logo_url:null}:i===1?{id:11,name:'NOVA TEAM',tag:'NOVA',logo_url:null}:null})),
+      qualifiers:[{id:1,qualifier_number:1,tournament_id:20,status:'completed',winner_team_id:11,tournament_title:'Qualifier One'}]
+    }}));
+    await page.goto('/#/championship');
+    await expect(page.locator('#championshipSlots .championship-slot')).toHaveCount(8);
+    await expect(page.locator('#championshipSlots')).toContainText('MERCY PRIME');
+    await expect(page.locator('#championshipSlots')).toContainText('МЕСТО ОЖИДАЕТ УЧАСТНИКА');
+    await expect(page.locator('#championshipQualifiers')).toContainText('Qualifier One');
+  });
+
+  test('Circuit history renders team achievements, placements and ledger', async ({ page }) => {
+    await page.route('**/api/v1/seasons?limit=50', route => route.fulfill({json:{data:[
+      {id:'s1',title:'Season One',season_number:1,status:'completed'}
+    ]}}));
+    await page.route('**/api/v1/circuit/history**', route => route.fulfill({json:{
+      season:{id:'s1',title:'Season One'},
+      achievements:[{team_id:10,team_name:'MERCY PRIME',team_tag:'MP',tournaments:3,championships:1,runner_ups:1,top_four:2,points:230}],
+      results:[{team_id:10,team_name:'MERCY PRIME',team_tag:'MP',tournament_title:'Season Cup',placement:1,points_awarded:100,finalized_at:'2026-11-01T12:00:00Z',is_qualifier:0}],
+      transactions:[{id:1,team_id:10,team_name:'MERCY PRIME',tournament_title:'Season Cup',transaction_type:'placement_award',points_delta:100,reason:'Итоговое место: 1',created_at:'2026-11-01T12:00:00Z'}]
+    }}));
+    await page.goto('/#/circuit-history');
+    await expect(page.locator('#circuitAchievements')).toContainText('MERCY PRIME');
+    await expect(page.locator('#circuitAchievements')).toContainText('ЧЕМПИОНСТВА');
+    await expect(page.locator('#circuitHistoryResults')).toContainText('Season Cup');
+    await expect(page.locator('#circuitHistoryResults')).toContainText('#1');
+    await expect(page.locator('#circuitHistoryLedger')).toContainText('+100');
+  });
+
 });
