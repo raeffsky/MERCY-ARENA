@@ -131,26 +131,63 @@ export async function onRequestPost({ request, env }) {
       }
     } else if (tournament.format === "single_elimination") {
       const size = 2 ** Math.ceil(Math.log2(teams.length));
-      if (size > 32 || size !== teams.length) return json({ error: { code: "BRACKET_TEAM_COUNT", message: "Для сетки Single Elimination сейчас нужно 2, 4, 8, 16 или 32 команды. Добавь команды или выбери Round Robin." } }, 409);
+      if (size > 32) return json({ error: { code: "BRACKET_TEAM_LIMIT", message: "Сетка Single Elimination поддерживает максимум 32 команды." } }, 409);
+
+      // Seed teams into a standard bracket. Empty seeds are byes and are
+      // placed directly into the next round instead of creating fake matches.
+      let seedOrder = [1];
+      for (let bracketSize = 2; bracketSize <= size; bracketSize *= 2) {
+        seedOrder = seedOrder.flatMap((seed) => [seed, bracketSize + 1 - seed]);
+      }
+      const firstRoundSlots = seedOrder.map((seed) => seed <= teams.length ? teams[seed - 1].id : null);
       const rounds = Math.log2(size);
       const roundMatches = [];
+
       for (let round = 1; round <= rounds; round++) {
         const count = size / (2 ** round), ids = [];
         for (let index = 0; index < count; index++) {
-          const a = round === 1 ? teams[index * 2].id : null;
-          const b = round === 1 ? teams[index * 2 + 1].id : null;
-          const row = await env.DB.prepare("INSERT INTO matches (tournament_id,round_number,bracket,match_number,status,team_a_id,team_b_id,created_at,updated_at) VALUES (?,?,'main',?,'scheduled',?,?,?,?)").bind(tournamentId, round, index + 1, a, b, now, now).run();
-          const id = Number(row.meta?.last_row_id);
-          if (!Number.isSafeInteger(id) || id < 1) throw new Error("Match ID was not returned");
-          ids.push(id); created.push(id);
+          if (round === 1) {
+            const teamA = firstRoundSlots[index * 2];
+            const teamB = firstRoundSlots[index * 2 + 1];
+            if (teamA == null || teamB == null) {
+              ids.push(null);
+              continue;
+            }
+            const row = await env.DB.prepare("INSERT INTO matches (tournament_id,round_number,bracket,match_number,status,team_a_id,team_b_id,created_at,updated_at) VALUES (?,?,'main',?,'scheduled',?,?,?,?)").bind(tournamentId, round, index + 1, teamA, teamB, now, now).run();
+            const id = Number(row.meta?.last_row_id);
+            if (!Number.isSafeInteger(id) || id < 1) throw new Error("Match ID was not returned");
+            ids.push(id); created.push(id);
+          } else {
+            const row = await env.DB.prepare("INSERT INTO matches (tournament_id,round_number,bracket,match_number,status,team_a_id,team_b_id,created_at,updated_at) VALUES (?,?,'main',?,'scheduled',NULL,NULL,?,?)").bind(tournamentId, round, index + 1, now, now).run();
+            const id = Number(row.meta?.last_row_id);
+            if (!Number.isSafeInteger(id) || id < 1) throw new Error("Match ID was not returned");
+            ids.push(id); created.push(id);
+          }
         }
         roundMatches.push(ids);
       }
-      for (let round = 0; round < roundMatches.length - 1; round++) {
+
+      if (roundMatches.length > 1) {
+        for (let index = 0; index < roundMatches[0].length; index++) {
+          const nextId = roundMatches[1][Math.floor(index / 2)];
+          const slot = index % 2 === 0 ? "team_a_id" : "team_b_id";
+          const sourceMatchId = roundMatches[0][index];
+          if (sourceMatchId != null) {
+            await env.DB.prepare("INSERT INTO match_progression (match_id,next_match_id,next_slot) VALUES (?,?,?)").bind(sourceMatchId, nextId, slot).run();
+          } else {
+            const byeTeamId = firstRoundSlots[index * 2] ?? firstRoundSlots[index * 2 + 1];
+            if (byeTeamId == null) throw new Error("A first-round bracket slot has no team or match");
+            await env.DB.prepare("UPDATE matches SET " + slot + "=?,updated_at=? WHERE id=? AND " + slot + " IS NULL").bind(byeTeamId, now, nextId).run();
+          }
+        }
+      }
+
+      for (let round = 1; round < roundMatches.length - 1; round++) {
         for (let index = 0; index < roundMatches[round].length; index++) {
+          const sourceMatchId = roundMatches[round][index];
           const nextId = roundMatches[round + 1][Math.floor(index / 2)];
           const slot = index % 2 === 0 ? "team_a_id" : "team_b_id";
-          await env.DB.prepare("INSERT INTO match_progression (match_id,next_match_id,next_slot) VALUES (?,?,?)").bind(roundMatches[round][index], nextId, slot).run();
+          await env.DB.prepare("INSERT INTO match_progression (match_id,next_match_id,next_slot) VALUES (?,?,?)").bind(sourceMatchId, nextId, slot).run();
         }
       }
     } else if (tournament.format === "double_elimination") {
