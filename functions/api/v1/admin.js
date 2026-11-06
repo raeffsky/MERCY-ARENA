@@ -77,7 +77,8 @@ export async function onRequestGet({ request, env }) {
   }
   const config = TABLES[resource];
   if (!config) return bad("Неизвестный раздел.");
-  const { results } = await env.DB.prepare("SELECT * FROM " + config.table + (resource === "seasons" ? " ORDER BY season_number DESC,id DESC" : " ORDER BY id DESC") + " LIMIT 200").all();
+  const activeFilter = resource === "teams" || resource === "players" ? " WHERE archived_at IS NULL" : "";
+  const { results } = await env.DB.prepare("SELECT * FROM " + config.table + activeFilter + (resource === "seasons" ? " ORDER BY season_number DESC,id DESC" : " ORDER BY id DESC") + " LIMIT 200").all();
   return json({ data: results || [] });
   } catch (error) {
     console.error("MERCY ARENA admin GET failed:", error);
@@ -153,6 +154,29 @@ export async function onRequestPost({ request, env }) {
     if (!recordId) return bad("Некорректный ID.");
     const before = await getById(env.DB, config.table, recordId);
     if (!before) return bad("Запись не найдена.", 404);
+    // Teams and players are referenced by match and tournament history.
+    // Archive them instead of physically deleting rows and breaking foreign keys.
+    if (resource === "teams") {
+      const archivedAt = now();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE teams SET status='dissolved',archived_at=?,updated_at=? WHERE id=?").bind(archivedAt,archivedAt,recordId),
+        env.DB.prepare("UPDATE players SET team_id=NULL,updated_at=? WHERE team_id=?").bind(archivedAt,recordId),
+        env.DB.prepare("UPDATE team_roster SET left_at=? WHERE team_id=? AND left_at IS NULL").bind(archivedAt,recordId)
+      ]);
+      const after = await getById(env.DB, config.table, recordId);
+      await audit(env.DB, auth.user.id, "teams_archived", resource, recordId, before, after);
+      return json({ ok: true, archived: true, id: recordId, message: "Команда архивирована. История турниров и матчей сохранена." });
+    }
+    if (resource === "players") {
+      const archivedAt = now();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE players SET archived_at=?,profile_status='rejected',team_id=NULL,updated_at=? WHERE id=?").bind(archivedAt,archivedAt,recordId),
+        env.DB.prepare("UPDATE team_roster SET left_at=? WHERE player_id=? AND left_at IS NULL").bind(archivedAt,recordId)
+      ]);
+      const after = await getById(env.DB, config.table, recordId);
+      await audit(env.DB, auth.user.id, "players_archived", resource, recordId, before, after);
+      return json({ ok: true, archived: true, id: recordId, message: "Игрок архивирован. История участия и матчей сохранена." });
+    }
     await env.DB.prepare("DELETE FROM " + config.table + " WHERE id=?").bind(recordId).run();
     await audit(env.DB, auth.user.id, resource + "_deleted", resource, recordId, before, null);
     return json({ ok: true, id: recordId });
