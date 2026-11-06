@@ -41,7 +41,7 @@ export async function onRequestGet({ request, env }) {
     ).bind(seasonId).all();
     const ranking = buildCircuitRanking(results || [], rankingMatches || []);
     const { results: entries } = await env.DB.prepare(
-      "SELECT team_id,qualification_source,source_id,seed,status FROM circuit_championship_entries WHERE season_id=? ORDER BY seed"
+      "SELECT e.team_id,e.qualification_source,e.source_id,e.seed,e.status,t.name AS team_name,t.tag AS team_tag,t.logo_url AS team_logo FROM circuit_championship_entries e JOIN teams t ON t.id=e.team_id WHERE e.season_id=? ORDER BY e.seed"
     ).bind(seasonId).all();
     const { results: qualifiers } = await env.DB.prepare(
       "SELECT id,tournament_id,qualifier_number,status,winner_team_id,finalized_at FROM circuit_qualifiers WHERE season_id=? ORDER BY qualifier_number"
@@ -53,7 +53,7 @@ export async function onRequestGet({ request, env }) {
       qualifiers: qualifiers || [],
       championship: (entries || []).map((entry) => ({
         ...entry,
-        team: ranking.find((team) => String(team.team_id) === String(entry.team_id)) || null
+        team: { team_id: entry.team_id, team_name: entry.team_name, team_tag: entry.team_tag, team_logo: entry.team_logo }
       })),
       meta: { scoring: "placement", season_reset: true, qualification_slots: "6+2", ranking_scope: "teams" }
     });
