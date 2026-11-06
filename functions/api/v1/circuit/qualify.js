@@ -1,5 +1,5 @@
 import { json, databaseUnavailable } from "../_lib/http.js";
-import { getSessionUser, sameOrigin } from "../_lib/session-auth.js";
+import { getSessionUser, isOwnerAccount, sameOrigin } from "../_lib/session-auth.js";
 import { createAuditEventId } from "../_lib/audit.js";
 import { buildCircuitRanking } from "../_lib/circuit-scoring.mjs";
 
@@ -32,7 +32,7 @@ export async function onRequestPost({ request, env }) {
   if (!request.headers.get("origin") || !sameOrigin(request, env)) return fail("ORIGIN_REJECTED", "Запрос отклонён.", 403);
   const auth = await getSessionUser(request, env);
   if (auth.error) return auth.error;
-  if (!auth.user || !auth.user.roles.includes("administrator")) return fail("FORBIDDEN", "Требуются права администратора.", 403);
+  if (!auth.user || !auth.user.roles.includes("administrator") || !isOwnerAccount(auth.user, env)) return fail("FORBIDDEN", "Доступ к управлению MERCY CIRCUIT закрыт.", 403);
 
   let body;
   try { body = await request.json(); } catch { return fail("INVALID_JSON", "Некорректный JSON."); }
