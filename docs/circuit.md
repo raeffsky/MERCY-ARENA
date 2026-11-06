@@ -68,3 +68,18 @@ Migration `0018_mercy_circuit.sql` adds the Circuit scoring, result ledger, qual
 `GET /api/v1/circuit/ranking?season_id=<id>`
 
 Returns the season metadata, team ranking, and any frozen championship entries. It requires migration 0018.
+
+## Public team history
+
+`GET /api/v1/circuit/history?season_id=<id>` returns season placements, the points ledger, and derived team achievements. Use `team_id=<id>` to filter a team's results and transactions.
+
+Achievements are derived from immutable tournament placement records:
+- tournament appearances;
+- first-place finishes;
+- runner-up finishes;
+- top-four finishes;
+- placement points.
+
+## Public championship page
+
+`GET /api/v1/circuit/championship?season_id=<id>` returns eight seeded slots, their qualification source, current status, and the two qualifier tournament states. Empty slots remain visible as pending instead of disappearing from the page.
