@@ -82,10 +82,12 @@ export async function onRequestPut({ request, env }) {
   if (!invite) return json({ error: { code: "INVITE_NOT_FOUND", message: "Приглашение не найдено или уже обработано." } }, 404);
   const now = new Date().toISOString();
   if (action === "decline") {
-    await env.DB.batch([
-      env.DB.prepare("UPDATE team_invites SET status='declined',responded_at=? WHERE id=? AND status='pending'").bind(now, inviteId),
-      env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'team_invite_declined','Приглашение отклонено',?,?, 'team',?)").bind(invite.captain_id,"Игрок "+player.nickname+" отклонил приглашение в команду "+invite.team_name+".","#/teams",invite.team_id)
+    const writes = await env.DB.batch([
+      env.DB.prepare("UPDATE team_invites SET status='declined',responded_at=? WHERE id=? AND player_id=? AND status='pending'").bind(now, inviteId, player.id),
+      env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) SELECT ?,'team_invite_declined','Приглашение отклонено',?,?, 'team',? WHERE EXISTS (SELECT 1 FROM team_invites WHERE id=? AND player_id=? AND status='declined' AND responded_at=?)")
+        .bind(invite.captain_id,"Игрок "+player.nickname+" отклонил приглашение в команду "+invite.team_name+".","#/teams",invite.team_id,inviteId,player.id,now)
     ]);
+    if (!writes[0]?.meta?.changes) return json({ error: { code: "INVITE_NOT_FOUND", message: "Приглашение уже обработано." } }, 409);
     return json({ data: { status: "declined" } });
   }
   if (player.team_id) return json({ error: { code: "ALREADY_IN_TEAM", message: "Ты уже состоишь в команде." } }, 409);
