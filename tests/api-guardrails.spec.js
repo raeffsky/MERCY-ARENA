@@ -35,6 +35,12 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(tournaments).toContain("tm.status='active'");
   });
 
+  test('declining a team invite is conditional and does not notify after a competing acceptance', () => {
+    const members = source('functions/api/v1/team-members.js');
+    expect(members).toContain("status='declined' AND responded_at=?");
+    expect(members).toContain("if (!writes[0]?.meta?.changes) return json({ error: { code: \"INVITE_NOT_FOUND\"");
+  });
+
   test('public match and ranking APIs exclude unpublished tournaments', () => {
     expect(source('functions/api/v1/matches.js')).toContain("visible_tournament.published_at IS NOT NULL");
     const rankings = source('functions/api/v1/rankings.js');
