@@ -2,7 +2,7 @@
 
 Endpoint: `POST /api/v1/brackets`
 
-Requires a logged-in user with the `administrator` or `organizer` role. Organizers can generate a bracket only for their own tournament.
+Requires a logged-in user. An `organizer` can generate a bracket only for a tournament assigned to their account. The `administrator` permission is accepted only for the platform owner account configured by `BOOTSTRAP_ADMIN_EMAIL`.
 
 Body:
 
