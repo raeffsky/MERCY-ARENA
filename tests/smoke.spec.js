@@ -256,6 +256,32 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#notificationsRoot')).toBeVisible();
   });
 
+  test('notifications remain visible after marking them read and unread count updates', async ({ page }) => {
+    const writes = [];
+    await page.route('**/api/v1/notifications', async route => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({ json: { data: [
+          { id: 10, type: 'team_invite', title: 'Новое приглашение', message: 'Тебя пригласили в команду.', link: '#/teams', read_at: null, created_at: '2026-11-06T10:00:00Z' },
+          { id: 11, type: 'application_submitted', title: 'Заявка отправлена', message: 'Заявка принята к рассмотрению.', link: '#/tournaments', read_at: null, created_at: '2026-11-06T09:00:00Z' }
+        ], meta: { unread: 2, limit: 50 } } });
+      }
+      const body = route.request().postDataJSON();
+      writes.push(body);
+      await route.fulfill({ json: { data: body.action === 'read_all' ? { status: 'read_all' } : { id: body.id, read_at: '2026-11-06T11:00:00Z' } } });
+    });
+
+    await page.goto('/#/notifications');
+    await expect(page.locator('#notificationsRoot')).toContainText('2 НЕПРОЧИТАННЫХ');
+    await page.locator('[data-read-notification="10"]').click();
+    await expect(page.locator('#notificationsRoot')).toContainText('1 НЕПРОЧИТАННЫХ');
+    await expect(page.locator('#notificationsRoot')).toContainText('Новое приглашение');
+    await expect(page.locator('#notificationsRoot article').first()).toContainText('Прочитано');
+    await page.getByRole('button', { name: 'Прочитать все' }).click();
+    await expect(page.locator('#notificationsRoot')).toContainText('0 НЕПРОЧИТАННЫХ');
+    await expect(page.locator('[data-read-notification]')).toHaveCount(0);
+    expect(writes).toEqual([{ id: '10' }, { action: 'read_all' }]);
+  });
+
   test('mobile menu opens, navigates and closes', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
