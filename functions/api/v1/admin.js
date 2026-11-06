@@ -55,6 +55,10 @@ async function audit(db, actor, action, entity, id, before, after) {
 async function getById(db, table, id) {
   return db.prepare("SELECT * FROM " + table + " WHERE id=?").bind(id).first();
 }
+async function hasColumn(db, table, column) {
+  const { results = [] } = await db.prepare("PRAGMA table_info(" + table + ")").all();
+  return results.some(item => item.name === column);
+}
 
 export async function onRequestGet({ request, env }) {
   try {
@@ -77,7 +81,8 @@ export async function onRequestGet({ request, env }) {
   }
   const config = TABLES[resource];
   if (!config) return bad("Неизвестный раздел.");
-  const activeFilter = resource === "teams" || resource === "players" ? " WHERE archived_at IS NULL" : "";
+  const supportsArchive = (resource === "teams" || resource === "players") ? await hasColumn(env.DB, config.table, "archived_at") : false;
+  const activeFilter = supportsArchive ? " WHERE archived_at IS NULL" : "";
   const { results } = await env.DB.prepare("SELECT * FROM " + config.table + activeFilter + (resource === "seasons" ? " ORDER BY season_number DESC,id DESC" : " ORDER BY id DESC") + " LIMIT 200").all();
   return json({ data: results || [] });
   } catch (error) {
@@ -156,6 +161,9 @@ export async function onRequestPost({ request, env }) {
     if (!before) return bad("Запись не найдена.", 404);
     // Teams and players are referenced by match and tournament history.
     // Archive them instead of physically deleting rows and breaking foreign keys.
+    if ((resource === "teams" || resource === "players") && !(await hasColumn(env.DB, config.table, "archived_at"))) {
+      return json({ error: { code: "ARCHIVE_MIGRATION_REQUIRED", message: "Для безопасного удаления команд и игроков примени миграцию 0019_archive_teams_players.sql в D1." } }, 503);
+    }
     if (resource === "teams") {
       const archivedAt = now();
       await env.DB.batch([
