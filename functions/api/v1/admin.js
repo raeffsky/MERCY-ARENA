@@ -277,6 +277,15 @@ export async function onRequestPost({ request, env }) {
     payload.organizer_id = auth.user.id;
   }
   if (resource === "tournaments" && (payload.status === "published" || payload.status === "active") && action !== "update") payload.published_at = now();
+  if (resource === "matches" && action === "update") {
+    const existing = await env.DB.prepare("SELECT team_a_id,team_b_id,status FROM matches WHERE id=? LIMIT 1").bind(String(id || "")).first();
+    if (!existing) return bad("Матч не найден.", 404);
+    const teamA = payload.team_a_id ?? existing.team_a_id;
+    const teamB = payload.team_b_id ?? existing.team_b_id;
+    if (teamA != null && teamB != null && String(teamA) === String(teamB)) return bad("Одна команда не может играть сама с собой.");
+    if (payload.status === "in_progress" && (teamA == null || teamB == null)) return bad("Нельзя начать матч, пока не назначены обе команды.");
+    if (existing.status === "completed" && payload.status && payload.status !== "completed") return bad("Завершённый матч нельзя отменить или перенести.");
+  }
   if (resource === "matches" && payload.status === "completed") {
     if (payload.score_a == null || payload.score_b == null || payload.team_a_id == null || payload.team_b_id == null || payload.score_a === payload.score_b) return bad("Для завершённого матча нужны две команды и победный счёт.");
     if (payload.winner_team_id == null) payload.winner_team_id = payload.score_a > payload.score_b ? payload.team_a_id : payload.team_b_id;
