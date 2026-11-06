@@ -81,4 +81,19 @@ test.describe("MERCY CIRCUIT placement scoring", () => {
     }
   });
 
+  test("Double Elimination reset final decides the champion when the lower finalist wins game one", () => {
+    const matches = [
+      {bracket:"upper",round_number:1,status:"completed",team_a_id:1,team_b_id:2,winner_team_id:1},
+      {bracket:"upper",round_number:1,status:"completed",team_a_id:3,team_b_id:4,winner_team_id:3},
+      {bracket:"upper",round_number:2,status:"completed",team_a_id:1,team_b_id:3,winner_team_id:1},
+      {bracket:"lower",round_number:1,status:"completed",team_a_id:2,team_b_id:4,winner_team_id:2},
+      {bracket:"lower",round_number:2,status:"completed",team_a_id:2,team_b_id:3,winner_team_id:2},
+      {bracket:"final",round_number:1,status:"completed",team_a_id:1,team_b_id:2,winner_team_id:2},
+      {bracket:"final",round_number:2,status:"completed",team_a_id:1,team_b_id:2,winner_team_id:2}
+    ];
+    expect(scoring.deriveTournamentPlacements("double_elimination",matches).slice(0,2)).toEqual([
+      {team_id:"2",placement:1},{team_id:"1",placement:2}
+    ]);
+  });
+
 });
