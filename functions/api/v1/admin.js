@@ -1,7 +1,7 @@
 import { createAuditEventId } from "./_lib/audit.js";
 import { json, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
-import { advanceWinner } from "./_lib/match-progression.js";
+import { advanceWinner, finalizeCircuitTournament } from "./_lib/match-progression.js";
 
 const TABLES = {
   tournaments: { table: "tournaments", fields: ["title","description","game","region","format","status","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","prize_pool","poster_url"] },
@@ -244,6 +244,15 @@ export async function onRequestPost({ request, env }) {
     .bind(...fields.map((field) => payload[field]), recordId).run();
   const after = await getById(env.DB, config.table, recordId);
   await audit(env.DB, auth.user.id, resource + "_updated", resource, recordId, before, after);
+  if (resource === "seasons" && after.status === "active") {
+    const { results: completedTournaments } = await env.DB.prepare(
+      "SELECT id FROM tournaments WHERE season_id=? AND status='completed'"
+    ).bind(recordId).all();
+    for (const tournament of completedTournaments || []) {
+      try { await finalizeCircuitTournament(env.DB, tournament.id); }
+      catch (error) { console.error("Circuit backfill after season activation failed:", error); }
+    }
+  }
   if (resource === "matches" && after.status === "completed" && after.winner_team_id != null) {
     try {
       const progression = await advanceWinner(env.DB, recordId, after.winner_team_id);
