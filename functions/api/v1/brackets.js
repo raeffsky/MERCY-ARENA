@@ -1,6 +1,6 @@
 import { createAuditEventId } from "./_lib/audit.js";
 import { json, databaseUnavailable, methodNotAllowed } from "./_lib/http.js";
-import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
+import { getSessionUser, isOwnerAccount, sameOrigin } from "./_lib/session-auth.js";
 
 async function createMatch(db, tournamentId, bracket, round, number, teamA, teamB, status, now) {
   const result = await db.prepare(
@@ -97,14 +97,14 @@ export async function onRequestPost({ request, env }) {
   const auth = await getSessionUser(request, env);
   if (auth.error) return auth.error;
   if (!auth.user) return json({ error: { code: "UNAUTHORIZED", message: "Войди в аккаунт организатора." } }, 401);
-  if (!auth.user.roles.includes("administrator") && !auth.user.roles.includes("organizer")) return json({ error: { code: "FORBIDDEN", message: "Создавать сетку может только организатор." } }, 403);
+  if (!auth.user.roles.includes("organizer") && !(auth.user.roles.includes("administrator") && isOwnerAccount(auth.user, env))) return json({ error: { code: "FORBIDDEN", message: "Создавать сетку может только организатор турнира или владелец платформы." } }, 403);
   let body;
   try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректный запрос." } }, 400); }
   const tournamentId = String(body.tournament_id || "").trim();
   if (!tournamentId) return json({ error: { code: "INVALID_TOURNAMENT", message: "Укажи турнир." } }, 400);
   const tournament = await env.DB.prepare("SELECT id,title,format,status,organizer_id FROM tournaments WHERE id=?").bind(tournamentId).first();
   if (!tournament) return json({ error: { code: "TOURNAMENT_NOT_FOUND", message: "Турнир не найден." } }, 404);
-  if (!auth.user.roles.includes("administrator") && String(tournament.organizer_id) !== String(auth.user.id)) return json({ error: { code: "FORBIDDEN", message: "У тебя нет доступа к этому турниру." } }, 403);
+  if (!(auth.user.roles.includes("administrator") && isOwnerAccount(auth.user, env)) && String(tournament.organizer_id) !== String(auth.user.id)) return json({ error: { code: "FORBIDDEN", message: "У тебя нет доступа к этому турниру." } }, 403);
   if (!["published","active"].includes(tournament.status)) return json({ error: { code: "TOURNAMENT_NOT_OPEN", message: "Сначала опубликуй турнир." } }, 409);
   const existing = await env.DB.prepare("SELECT COUNT(*) AS total FROM matches WHERE tournament_id=?").bind(tournamentId).first();
   if ((existing?.total || 0) > 0) return json({ error: { code: "BRACKET_EXISTS", message: "Сетка уже создана. Удалять существующие матчи автоматически небезопасно." } }, 409);
