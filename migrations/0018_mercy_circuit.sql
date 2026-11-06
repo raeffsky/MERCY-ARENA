@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS circuit_tournament_results (
   placement INTEGER NOT NULL CHECK (placement > 0),
   placement_group TEXT NOT NULL,
   points_awarded INTEGER NOT NULL CHECK (points_awarded >= 0),
+  is_qualifier INTEGER NOT NULL DEFAULT 0 CHECK (is_qualifier IN (0,1)),
   finalized_at TEXT NOT NULL,
   finalized_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
