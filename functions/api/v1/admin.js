@@ -178,6 +178,34 @@ export async function onRequestPost({ request, env }) {
     const season = await env.DB.prepare("SELECT id FROM seasons WHERE id=?").bind(payload.season_id).first();
     if (!season) return bad("Сезон с ID " + payload.season_id + " не найден. Сначала создайте сезон во вкладке «Сезоны» и укажите его реальный ID.");
   }
+  // Validate every admin-supplied foreign key before writing. D1 may report
+  // trigger-backed FK failures without identifying which submitted ID is invalid.
+  async function requireRelated(table, value, label) {
+    if (value == null || value === "") return null;
+    const related = await env.DB.prepare("SELECT id FROM " + table + " WHERE id=? LIMIT 1").bind(value).first();
+    return related ? null : bad(label + " с ID " + value + " не найден. Обнови список и выбери существующую запись.", 409);
+  }
+  if (resource === "players") {
+    const userError = await requireRelated("users", payload.user_id, "Аккаунт пользователя");
+    if (userError) return userError;
+    const teamError = await requireRelated("teams", payload.team_id, "Команда");
+    if (teamError) return teamError;
+  }
+  if (resource === "teams") {
+    const captainError = await requireRelated("users", payload.captain_id, "Аккаунт капитана");
+    if (captainError) return captainError;
+  }
+  if (resource === "matches") {
+    for (const [field, table, label] of [
+      ["tournament_id", "tournaments", "Турнир"],
+      ["team_a_id", "teams", "Команда A"],
+      ["team_b_id", "teams", "Команда B"],
+      ["winner_team_id", "teams", "Команда-победитель"]
+    ]) {
+      const relatedError = await requireRelated(table, payload[field], label);
+      if (relatedError) return relatedError;
+    }
+  }
   if (resource === "tournaments" && payload.format && !FORMATS.has(payload.format)) return bad("Недопустимый формат турнира.");
   if (payload.status && STATUSES[resource] && !STATUSES[resource].has(payload.status)) return bad("Недопустимый статус.");
   if (resource === "players" && payload.role && !["EXP","JUNGLE","MID","GOLD","ROAM","FLEX"].includes(payload.role)) return bad("Недопустимая игровая роль.");
