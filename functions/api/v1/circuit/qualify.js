@@ -22,7 +22,10 @@ async function getRanking(db, seasonId) {
       AND (EXISTS (SELECT 1 FROM circuit_point_transactions tx WHERE tx.team_id=t.id AND tx.season_id=?)
         OR EXISTS (SELECT 1 FROM circuit_tournament_results r WHERE r.team_id=t.id AND r.season_id=?))
   `).bind(seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId).all();
-  return buildCircuitRanking(results || []);
+  const { results: matches } = await db.prepare(
+    "SELECT m.team_a_id,m.team_b_id,m.winner_team_id FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE t.season_id=? AND m.status='completed' AND m.result_verified_at IS NOT NULL"
+  ).bind(seasonId).all();
+  return buildCircuitRanking(results || [], matches || []);
 }
 
 export async function onRequestPost({ request, env }) {
