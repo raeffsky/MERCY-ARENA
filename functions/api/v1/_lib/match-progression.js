@@ -1,4 +1,4 @@
-import { buildCircuitRanking, deriveTournamentPlacements, placementGroup, pointsForPlacement } from "./circuit-scoring.js";
+import { deriveTournamentPlacements, placementGroup, pointsForPlacement } from "./circuit-scoring.js";
 import { createAuditEventId } from "./audit.js";
 
 export async function finalizeCircuitTournament(db, tournamentId) {
@@ -77,12 +77,10 @@ async function completeTournamentIfReady(db, tournamentId) {
   const updated = await db.prepare(
     "UPDATE tournaments SET status='completed',updated_at=? WHERE id=? AND status IN ('published','active')"
   ).bind(new Date().toISOString(), tournamentId).run();
-  if (updated.meta?.changes) {
-    try {
-      await finalizeCircuitTournament(db, tournamentId);
-    } catch (error) {
-      console.error("MERCY CIRCUIT finalization pending:", error);
-    }
+  try {
+    await finalizeCircuitTournament(db, tournamentId);
+  } catch (error) {
+    console.error("MERCY CIRCUIT finalization pending:", error);
   }
   return Boolean(updated.meta?.changes);
 }
