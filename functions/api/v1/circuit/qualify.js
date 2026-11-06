@@ -103,7 +103,7 @@ export async function onRequestPost({ request, env }) {
       if (season.status !== "active" && season.status !== "completed") return fail("SEASON_NOT_READY", "Зафиксировать рейтинг можно только активного или завершённого сезона.",409);
       const existing = await env.DB.prepare("SELECT COUNT(*) AS total FROM circuit_championship_entries WHERE season_id=?").bind(seasonId).first();
       if (Number(existing?.total || 0) > 0) return fail("RANKING_ALREADY_LOCKED", "Квалификационный состав уже начал фиксироваться.",409);
-      const configuredQualifiers = await env.DB.prepare("SELECT COUNT(*) AS total FROM circuit_qualifiers WHERE season_id=?").bind(seasonId).first();
+      const configuredQualifiers = await env.DB.prepare("SELECT COUNT(*) AS total FROM circuit_qualifiers WHERE season_id=? AND status IN ('open','completed')").bind(seasonId).first();
       if (Number(configuredQualifiers?.total || 0) !== 2) return fail("QUALIFIERS_NOT_CONFIGURED", "Сначала подключи оба квалификационных турнира: Qualifier 1 и Qualifier 2.",409);
       const ranking = await getRanking(env.DB,seasonId);
       if (ranking.length < 6) return fail("NOT_ENOUGH_RANKED_TEAMS", "Для фиксации шести мест нужны минимум шесть команд с начисленными очками.",409);
