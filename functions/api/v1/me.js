@@ -1,5 +1,5 @@
 import { json } from "./_lib/http.js";
-import { getSessionUser } from "./_lib/session-auth.js";
+import { getSessionUser, isOwnerAccount } from "./_lib/session-auth.js";
 
 export async function onRequestGet({ request, env }) {
   const result = await getSessionUser(request, env);
@@ -19,6 +19,7 @@ export async function onRequestGet({ request, env }) {
     authenticated: true,
     account: { id: user.id, email: user.email, name: user.display_name },
     roles: user.roles,
+    is_owner: isOwnerAccount(user, env),
     access: user.roles.includes("administrator") ? "administrator" : user.roles.includes("organizer") ? "organizer" : "user",
     profile: profile || null,
     notifications: { unread_count: unreadCount }
