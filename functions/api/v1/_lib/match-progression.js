@@ -14,6 +14,13 @@ export async function finalizeCircuitTournament(db, tournamentId) {
     return { finalized: false, reason: "season_not_active" };
   }
 
+  const qualifier = await db.prepare(
+    "SELECT awards_points FROM circuit_qualifiers WHERE tournament_id=? LIMIT 1"
+  ).bind(tournamentId).first().catch((error) => {
+    if (/no such table/i.test(String(error?.message || error))) return null;
+    throw error;
+  });
+  const awardPoints = !qualifier || Number(qualifier.awards_points) === 1;
   const { results: matches } = await db.prepare(
     "SELECT id,bracket,round_number,status,team_a_id,team_b_id,score_a,score_b,winner_team_id FROM matches WHERE tournament_id=? ORDER BY bracket,round_number,match_number"
   ).bind(tournamentId).all();
@@ -50,19 +57,22 @@ export async function finalizeCircuitTournament(db, tournamentId) {
     statements.push(db.prepare(
       "INSERT OR IGNORE INTO circuit_tournament_results (season_id,tournament_id,team_id,placement,placement_group,points_awarded,finalized_at) VALUES (?,?,?,?,?,?,?)"
     ).bind(tournament.season_id, tournamentId, result.team_id, placement, group, points, now));
-    statements.push(db.prepare(
-      "INSERT INTO circuit_point_transactions (season_id,team_id,tournament_id,result_id,points_delta,transaction_type,reason) " +
-      "SELECT ?,?,?,r.id,?,'placement_award',? FROM circuit_tournament_results r " +
-      "WHERE r.season_id=? AND r.tournament_id=? AND r.team_id=? " +
-      "AND NOT EXISTS (SELECT 1 FROM circuit_point_transactions tx WHERE tx.result_id=r.id AND tx.transaction_type='placement_award')"
-    ).bind(tournament.season_id, result.team_id, tournamentId, points,
-      "Итоговое место: " + placement, tournament.season_id, tournamentId, result.team_id));
+    if (awardPoints) {
+      statements.push(db.prepare(
+        "INSERT INTO circuit_point_transactions (season_id,team_id,tournament_id,result_id,points_delta,transaction_type,reason) " +
+        "SELECT ?,?,?,r.id,?,'placement_award',? FROM circuit_tournament_results r " +
+        "WHERE r.season_id=? AND r.tournament_id=? AND r.team_id=? " +
+        "AND NOT EXISTS (SELECT 1 FROM circuit_point_transactions tx WHERE tx.result_id=r.id AND tx.transaction_type='placement_award')"
+      ).bind(tournament.season_id, result.team_id, tournamentId, points,
+        "Итоговое место: " + placement, tournament.season_id, tournamentId, result.team_id));
+    }
   }
   statements.push(db.prepare(
     "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,NULL,'circuit_tournament_finalized','tournament',?,?)"
   ).bind(await createAuditEventId(db), String(tournamentId), JSON.stringify({
     season_id: tournament.season_id,
     format: tournament.format,
+    points_awarded: awardPoints,
     placements: placements.map((row) => ({ team_id: row.team_id, placement: row.placement, points: pointsForPlacement(row.placement, rules) }))
   })));
   await db.batch(statements);
