@@ -1,7 +1,7 @@
 const { test } = require("@playwright/test");
 const { expect } = require("@playwright/test");
 let scoring;
-test.beforeAll(async () => { scoring = await import("../functions/api/v1/_lib/circuit-scoring.js"); });
+test.beforeAll(async () => { scoring = await import("../functions/api/v1/_lib/circuit-scoring.mjs"); });
 
 test.describe("MERCY CIRCUIT placement scoring", () => {
   test("applies the fixed placement bands", () => {
