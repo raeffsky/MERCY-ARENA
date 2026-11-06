@@ -47,4 +47,27 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(rankings).toContain("tour.published_at IS NOT NULL");
     expect(rankings).toContain("tour.status!='draft'");
   });
+
+  test('manual match results cannot be created as completed and completion is atomic', () => {
+    const admin = source('functions/api/v1/admin.js');
+    expect(admin).toContain('action === "create" && payload.status === "completed"');
+    expect(admin).toContain('const completingMatch = resource === "matches" && before.status !== "completed" && payload.status === "completed"');
+    expect(admin).toContain('completingMatch ? " AND status!=\'completed\'" : ""');
+    expect(admin).toContain('if (completingMatch && !updateResult.meta?.changes)');
+    expect(admin).toContain('Одна команда не может играть сама с собой.');
+  });
+
+  test('organizer match list includes tournament, team names and schedule', () => {
+    const admin = source('functions/api/v1/admin.js');
+    expect(admin).toContain('t.title AS tournament_title,ta.name AS team_a_name,tb.name AS team_b_name');
+    const page = source('index.html');
+    expect(page).toContain("x.scheduled_at?dateLabel(x.scheduled_at):'Не назначено'");
+    expect(page).toContain("x.team_a_name||('Команда #'+(x.team_a_id||'—'))");
+  });
+
+  test('application launch allows uneven Single Elimination brackets up to 32 teams', () => {
+    const page = source('index.html');
+    expect(page).toContain("(t.format==='single_elimination'&&approved>=2&&approved<=32)");
+    expect(page).toContain("(t.format==='double_elimination'&&approved>=4&&approved<=32&&(approved&(approved-1))===0)");
+  });
 });
