@@ -55,8 +55,8 @@ export async function finalizeCircuitTournament(db, tournamentId) {
     const points = pointsForPlacement(placement, rules);
     const group = placementGroup(placement);
     statements.push(db.prepare(
-      "INSERT OR IGNORE INTO circuit_tournament_results (season_id,tournament_id,team_id,placement,placement_group,points_awarded,finalized_at) VALUES (?,?,?,?,?,?,?)"
-    ).bind(tournament.season_id, tournamentId, result.team_id, placement, group, points, now));
+      "INSERT OR IGNORE INTO circuit_tournament_results (season_id,tournament_id,team_id,placement,placement_group,points_awarded,is_qualifier,finalized_at) VALUES (?,?,?,?,?,?,?,?)"
+    ).bind(tournament.season_id, tournamentId, result.team_id, placement, group, points, qualifier ? 1 : 0, now));
     if (awardPoints) {
       statements.push(db.prepare(
         "INSERT INTO circuit_point_transactions (season_id,team_id,tournament_id,result_id,points_delta,transaction_type,reason) " +
