@@ -36,7 +36,10 @@ export async function onRequestGet({ request, env }) {
           OR EXISTS (SELECT 1 FROM circuit_tournament_results r WHERE r.team_id=t.id AND r.season_id=?))
     `).bind(seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId).all();
 
-    const ranking = buildCircuitRanking(results || []);
+    const { results: rankingMatches } = await env.DB.prepare(
+      "SELECT m.team_a_id,m.team_b_id,m.winner_team_id FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE t.season_id=? AND m.status='completed' AND m.result_verified_at IS NOT NULL"
+    ).bind(seasonId).all();
+    const ranking = buildCircuitRanking(results || [], rankingMatches || []);
     const { results: entries } = await env.DB.prepare(
       "SELECT team_id,qualification_source,source_id,seed,status FROM circuit_championship_entries WHERE season_id=? ORDER BY seed"
     ).bind(seasonId).all();
