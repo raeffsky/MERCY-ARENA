@@ -17,21 +17,24 @@ export async function onRequestGet({ request, env }) {
 
     const { results } = await env.DB.prepare(`
       SELECT t.id AS team_id,t.name AS team_name,t.tag AS team_tag,t.logo_url AS team_logo,
-        COALESCE(SUM(tx.points_delta),0) AS points,
-        COUNT(DISTINCT r.tournament_id) AS tournaments_played,
-        COALESCE(SUM(CASE WHEN r.placement=1 THEN 1 ELSE 0 END),0) AS first_places,
-        COALESCE(SUM(CASE WHEN r.placement=2 THEN 1 ELSE 0 END),0) AS second_places,
-        COALESCE(SUM(CASE WHEN r.placement<=4 THEN 1 ELSE 0 END),0) AS top_four_finishes,
+        COALESCE((SELECT SUM(tx.points_delta) FROM circuit_point_transactions tx
+          WHERE tx.team_id=t.id AND tx.season_id=?),0) AS points,
+        (SELECT COUNT(*) FROM circuit_tournament_results r
+          WHERE r.team_id=t.id AND r.season_id=?) AS tournaments_played,
+        (SELECT COUNT(*) FROM circuit_tournament_results r
+          WHERE r.team_id=t.id AND r.season_id=? AND r.placement=1) AS first_places,
+        (SELECT COUNT(*) FROM circuit_tournament_results r
+          WHERE r.team_id=t.id AND r.season_id=? AND r.placement=2) AS second_places,
+        (SELECT COUNT(*) FROM circuit_tournament_results r
+          WHERE r.team_id=t.id AND r.season_id=? AND r.placement<=4) AS top_four_finishes,
         (SELECT COUNT(*) FROM matches m JOIN tournaments mt ON mt.id=m.tournament_id
           WHERE mt.season_id=? AND m.status='completed' AND m.result_verified_at IS NOT NULL
           AND m.winner_team_id=t.id) AS verified_wins
       FROM teams t
-      LEFT JOIN circuit_point_transactions tx ON tx.team_id=t.id AND tx.season_id=?
-      LEFT JOIN circuit_tournament_results r ON r.team_id=t.id AND r.season_id=?
       WHERE t.status='active'
-      GROUP BY t.id
-      HAVING points>0 OR tournaments_played>0
-    `).bind(seasonId,seasonId,seasonId).all();
+        AND (EXISTS (SELECT 1 FROM circuit_point_transactions tx WHERE tx.team_id=t.id AND tx.season_id=?)
+          OR EXISTS (SELECT 1 FROM circuit_tournament_results r WHERE r.team_id=t.id AND r.season_id=?))
+    `).bind(seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId).all();
 
     const ranking = buildCircuitRanking(results || []);
     const { results: entries } = await env.DB.prepare(
