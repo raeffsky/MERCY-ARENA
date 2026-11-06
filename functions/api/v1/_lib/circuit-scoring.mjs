@@ -21,17 +21,32 @@ export function pointsForPlacement(placement, rules = []) {
   return rule ? Number(rule.points) : defaultPlacementPoints(place);
 }
 
-export function compareCircuitTeams(a, b) {
-  const fields = ["points", "first_places", "second_places", "top_four_finishes", "verified_wins"];
+export function compareCircuitTeams(a, b, headToHead = new Map()) {
+  const fields = ["points", "first_places", "second_places", "top_four_finishes"];
   for (const field of fields) {
     const difference = Number(b[field] || 0) - Number(a[field] || 0);
     if (difference) return difference;
   }
-  return String(a.team_name || "").localeCompare(String(b.team_name || ""), "ru");
+  const aWins = headToHead.get(String(a.team_id) + ":" + String(b.team_id)) || 0;
+  const bWins = headToHead.get(String(b.team_id) + ":" + String(a.team_id)) || 0;
+  if (aWins !== bWins) return bWins - aWins;
+  const matchWins = Number(b.verified_wins || 0) - Number(a.verified_wins || 0);
+  if (matchWins) return matchWins;
+  return String(a.team_id).localeCompare(String(b.team_id), undefined, { numeric: true });
 }
 
-export function buildCircuitRanking(rows) {
-  return [...rows].sort(compareCircuitTeams).map((row, index) => ({ ...row, rank: index + 1 }));
+export function buildCircuitRanking(rows, matches = []) {
+  const headToHead = new Map();
+  for (const match of matches) {
+    if (match.winner_team_id == null || match.team_a_id == null || match.team_b_id == null) continue;
+    const winner = String(match.winner_team_id);
+    const loser = winner === String(match.team_a_id) ? String(match.team_b_id) :
+      winner === String(match.team_b_id) ? String(match.team_a_id) : null;
+    if (loser == null) continue;
+    const key = winner + ":" + loser;
+    headToHead.set(key, (headToHead.get(key) || 0) + 1);
+  }
+  return [...rows].sort((a,b)=>compareCircuitTeams(a,b,headToHead)).map((row,index)=>({...row,rank:index+1}));
 }
 
 function loserFromMatch(match) {
