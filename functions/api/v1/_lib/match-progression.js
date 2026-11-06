@@ -1,3 +1,74 @@
+import { buildCircuitRanking, deriveTournamentPlacements, placementGroup, pointsForPlacement } from "./circuit-scoring.js";
+import { createAuditEventId } from "./audit.js";
+
+export async function finalizeCircuitTournament(db, tournamentId) {
+  const tournament = await db.prepare(
+    "SELECT id,title,format,season_id,status FROM tournaments WHERE id=? LIMIT 1"
+  ).bind(tournamentId).first();
+  if (!tournament || tournament.status !== "completed" || tournament.season_id == null) {
+    return { finalized: false, reason: "not_circuit_tournament" };
+  }
+
+  const season = await db.prepare("SELECT id,status FROM seasons WHERE id=? LIMIT 1").bind(tournament.season_id).first();
+  if (!season || !["active","completed"].includes(season.status)) {
+    return { finalized: false, reason: "season_not_active" };
+  }
+
+  const { results: matches } = await db.prepare(
+    "SELECT id,bracket,round_number,status,team_a_id,team_b_id,score_a,score_b,winner_team_id FROM matches WHERE tournament_id=? ORDER BY bracket,round_number,match_number"
+  ).bind(tournamentId).all();
+  const { results: registrations } = await db.prepare(
+    "SELECT team_id FROM tournament_registrations WHERE tournament_id=? AND status='approved' ORDER BY team_id"
+  ).bind(tournamentId).all();
+  const approvedTeams = new Set((registrations || []).map((row) => String(row.team_id)));
+  const placements = deriveTournamentPlacements(tournament.format, matches || []);
+  const placedTeams = new Set(placements.map((row) => String(row.team_id)));
+  if (approvedTeams.size < 2 || approvedTeams.size !== placedTeams.size ||
+      [...approvedTeams].some((teamId) => !placedTeams.has(teamId))) {
+    throw new Error("Final placements do not match approved tournament registrations");
+  }
+
+  let rules = [];
+  try {
+    const result = await db.prepare(
+      "SELECT place_from,place_to,points FROM circuit_scoring_rules WHERE season_id=? ORDER BY place_from"
+    ).bind(tournament.season_id).all();
+    rules = result.results || [];
+  } catch (error) {
+    if (/no such table/i.test(String(error?.message || error))) {
+      return { finalized: false, reason: "circuit_migration_required" };
+    }
+    throw error;
+  }
+
+  const now = new Date().toISOString();
+  const statements = [];
+  for (const result of placements) {
+    const placement = Number(result.placement);
+    const points = pointsForPlacement(placement, rules);
+    const group = placementGroup(placement);
+    statements.push(db.prepare(
+      "INSERT OR IGNORE INTO circuit_tournament_results (season_id,tournament_id,team_id,placement,placement_group,points_awarded,finalized_at) VALUES (?,?,?,?,?,?,?)"
+    ).bind(tournament.season_id, tournamentId, result.team_id, placement, group, points, now));
+    statements.push(db.prepare(
+      "INSERT INTO circuit_point_transactions (season_id,team_id,tournament_id,result_id,points_delta,transaction_type,reason) " +
+      "SELECT ?,?,?,r.id,?,'placement_award',? FROM circuit_tournament_results r " +
+      "WHERE r.season_id=? AND r.tournament_id=? AND r.team_id=? " +
+      "AND NOT EXISTS (SELECT 1 FROM circuit_point_transactions tx WHERE tx.result_id=r.id AND tx.transaction_type='placement_award')"
+    ).bind(tournament.season_id, result.team_id, tournamentId, points,
+      "Итоговое место: " + placement, tournament.season_id, tournamentId, result.team_id));
+  }
+  statements.push(db.prepare(
+    "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,NULL,'circuit_tournament_finalized','tournament',?,?)"
+  ).bind(await createAuditEventId(db), String(tournamentId), JSON.stringify({
+    season_id: tournament.season_id,
+    format: tournament.format,
+    placements: placements.map((row) => ({ team_id: row.team_id, placement: row.placement, points: pointsForPlacement(row.placement, rules) }))
+  })));
+  await db.batch(statements);
+  return { finalized: true, teams: placements.length };
+}
+
 async function completeTournamentIfReady(db, tournamentId) {
   const pending = await db.prepare(
     "SELECT COUNT(*) AS total FROM matches WHERE tournament_id=? AND status NOT IN ('completed','cancelled')"
@@ -6,6 +77,13 @@ async function completeTournamentIfReady(db, tournamentId) {
   const updated = await db.prepare(
     "UPDATE tournaments SET status='completed',updated_at=? WHERE id=? AND status IN ('published','active')"
   ).bind(new Date().toISOString(), tournamentId).run();
+  if (updated.meta?.changes) {
+    try {
+      await finalizeCircuitTournament(db, tournamentId);
+    } catch (error) {
+      console.error("MERCY CIRCUIT finalization pending:", error);
+    }
+  }
   return Boolean(updated.meta?.changes);
 }
 
