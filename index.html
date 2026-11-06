@@ -906,6 +906,36 @@ th{background:var(--panel)!important}
  #tResults .tournament-list-apply,#tResults .tournament-list-link{justify-self:start}
 }
 
+
+/* Tournament description: dark branded reading surface */
+.tournament-tab-content .tournament-text-panel{
+  background:linear-gradient(145deg,#11151a 0%,#0c0f13 100%);
+  color:#c7cdd0;
+  border:1px solid #29312f;
+  border-left:2px solid #d7ff5e;
+  padding:clamp(18px,3vw,28px);
+  margin:0 0 28px;
+  font:400 14px/1.85 'Inter',sans-serif;
+  letter-spacing:0;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  box-shadow:inset 0 1px #ffffff05;
+}
+.tournament-tab-content .tournament-text-panel::first-line{
+  color:#f2f5ef;
+}
+.tournament-tab-content .tournament-text-panel a{
+  color:#d7ff5e;
+}
+@media(max-width:650px){
+ .tournament-tab-content .tournament-text-panel{
+   padding:19px 17px;
+   font-size:13px;
+   line-height:1.8;
+   margin-bottom:20px;
+ }
+}
+
 </style>
 </head>
 <body>
