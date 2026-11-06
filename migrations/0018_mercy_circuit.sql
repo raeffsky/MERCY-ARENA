@@ -15,6 +15,20 @@ CREATE TABLE IF NOT EXISTS circuit_scoring_rules (
   UNIQUE (season_id, place_to)
 );
 
+-- Seed the default placement ladder for every existing season.
+INSERT OR IGNORE INTO circuit_scoring_rules (season_id,place_from,place_to,points)
+SELECT id,1,1,100 FROM seasons;
+INSERT OR IGNORE INTO circuit_scoring_rules (season_id,place_from,place_to,points)
+SELECT id,2,2,75 FROM seasons;
+INSERT OR IGNORE INTO circuit_scoring_rules (season_id,place_from,place_to,points)
+SELECT id,3,4,55 FROM seasons;
+INSERT OR IGNORE INTO circuit_scoring_rules (season_id,place_from,place_to,points)
+SELECT id,5,8,25 FROM seasons;
+INSERT OR IGNORE INTO circuit_scoring_rules (season_id,place_from,place_to,points)
+SELECT id,9,16,10 FROM seasons;
+INSERT OR IGNORE INTO circuit_scoring_rules (season_id,place_from,place_to,points)
+SELECT id,17,2147483647,5 FROM seasons;
+
 CREATE TABLE IF NOT EXISTS circuit_tournament_results (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   season_id INTEGER NOT NULL REFERENCES seasons(id) ON DELETE RESTRICT,
