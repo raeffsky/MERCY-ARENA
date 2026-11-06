@@ -59,7 +59,8 @@ export async function onRequestGet({ request, env }) {
     return json({
       data: ranking,
       season,
-      qualifiers: qualifiers || [],\n      scoring_rules: scoringRules,
+      qualifiers: qualifiers || [],
+      scoring_rules: scoringRules,
       championship: (entries || []).map((entry) => ({
         ...entry,
         team: { team_id: entry.team_id, team_name: entry.team_name, team_tag: entry.team_tag, team_logo: entry.team_logo }
