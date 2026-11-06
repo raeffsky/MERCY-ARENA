@@ -258,7 +258,7 @@ test.describe('MERCY ARENA public shell', () => {
 
   test('notifications remain visible after marking them read and unread count updates', async ({ page }) => {
     const writes = [];
-    await page.route('**/api/v1/notifications', async route => {
+    await page.route('**/api/v1/notifications**', async route => {
       if (route.request().method() === 'GET') {
         return route.fulfill({ json: { data: [
           { id: 10, type: 'team_invite', title: 'Новое приглашение', message: 'Тебя пригласили в команду.', link: '#/teams', read_at: null, created_at: '2026-11-06T10:00:00Z' },
