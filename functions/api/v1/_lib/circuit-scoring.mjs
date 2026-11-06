@@ -34,7 +34,7 @@ export function buildCircuitRanking(rows) {
   return [...rows].sort(compareCircuitTeams).map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
-export function deriveSingleEliminationPlacements(matches) {
+function loserFromMatch(match) {\n  const winner = String(match.winner_team_id);\n  if (match.team_a_id == null || match.team_b_id == null) throw new Error("Completed match has an unresolved participant");\n  if (String(match.team_a_id) === winner) return String(match.team_b_id);\n  if (String(match.team_b_id) === winner) return String(match.team_a_id);\n  throw new Error("Match winner is not a participant");\n}\n\nexport function deriveSingleEliminationPlacements(matches) {
   const completed = matches.filter((match) => match.status === "completed" && match.winner_team_id != null);
   if (!completed.length) throw new Error("Tournament has no completed matches");
   const rounds = [...new Set(completed.filter((m) => m.bracket === "main").map((m) => Number(m.round_number)))].sort((a,b)=>a-b);
@@ -48,8 +48,7 @@ export function deriveSingleEliminationPlacements(matches) {
   for (let round = finalRound - 1; round >= 1; round--) {
     const eliminated = completed.filter((m) => m.bracket === "main" && Number(m.round_number) === round)
       .map((m) => {
-        if (m.team_a_id == null || m.team_b_id == null) throw new Error("Single Elimination contains an unresolved match");
-        return String(String(m.team_a_id) === String(m.winner_team_id) ? m.team_b_id : m.team_a_id);
+        return loserFromMatch(m);
       });
     if (!eliminated.length) continue;
     const first = placements.length + 1;
@@ -76,11 +75,27 @@ export function deriveRoundRobinPlacements(matches) {
     else if (String(match.winner_team_id) === String(match.team_b_id)) { b.wins++; a.losses++; b.head_to_head_wins++; }
     else throw new Error("Round Robin winner is not a participant");
   }
-  return [...teams.values()].sort((a,b) =>
-    b.wins-a.wins || b.head_to_head_wins-a.head_to_head_wins ||
-    (b.score_for-b.score_against)-(a.score_for-a.score_against) ||
-    b.score_for-a.score_for || String(a.team_id).localeCompare(String(b.team_id),undefined,{numeric:true})
-  ).map((team,index)=>({team_id:team.team_id,placement:index+1}));
+  const winGroups = new Map();
+  for (const team of teams.values()) {
+    if (!winGroups.has(team.wins)) winGroups.set(team.wins, []);
+    winGroups.get(team.wins).push(team);
+  }
+  const ordered = [];
+  for (const group of [...winGroups.keys()].sort((a,b)=>b-a)) {
+    const groupIds = new Set(group === undefined ? [] : winGroups.get(group).map((team)=>team.team_id));
+    const miniTableWins = new Map([...groupIds].map((id)=>[id,0]));
+    for (const match of completed) {
+      const a = String(match.team_a_id), b = String(match.team_b_id);
+      if (groupIds.has(a) && groupIds.has(b)) miniTableWins.set(String(match.winner_team_id), miniTableWins.get(String(match.winner_team_id))+1);
+    }
+    const sorted = winGroups.get(group).sort((a,b) =>
+      miniTableWins.get(b.team_id)-miniTableWins.get(a.team_id) ||
+      (b.score_for-b.score_against)-(a.score_for-a.score_against) ||
+      b.score_for-a.score_for || String(a.team_id).localeCompare(String(b.team_id),undefined,{numeric:true})
+    );
+    ordered.push(...sorted);
+  }
+  return ordered.map((team,index)=>({team_id:team.team_id,placement:index+1}));
 }
 
 export function deriveDoubleEliminationPlacements(matches) {
@@ -97,8 +112,7 @@ export function deriveDoubleEliminationPlacements(matches) {
   let eliminatedCount = 0;
   for (const round of lowerRounds) {
     const eliminated = completed.filter((m)=>m.bracket==="lower" && Number(m.round_number)===round).map((m)=>{
-      if(m.team_a_id==null||m.team_b_id==null) throw new Error("Double Elimination contains an unresolved lower-bracket match");
-      return String(String(m.team_a_id)===String(m.winner_team_id)?m.team_b_id:m.team_a_id);
+      return loserFromMatch(m);
     });
     if(!eliminated.length) continue;
     const first = 3 + eliminatedCount;
