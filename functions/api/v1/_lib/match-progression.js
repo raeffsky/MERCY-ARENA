@@ -53,10 +53,11 @@ export async function finalizeCircuitTournament(db, tournamentId) {
   for (const result of placements) {
     const placement = Number(result.placement);
     const points = pointsForPlacement(placement, rules);
+    const pointsAwarded = awardPoints ? points : 0;
     const group = placementGroup(placement);
     statements.push(db.prepare(
       "INSERT OR IGNORE INTO circuit_tournament_results (season_id,tournament_id,team_id,placement,placement_group,points_awarded,is_qualifier,finalized_at) VALUES (?,?,?,?,?,?,?,?)"
-    ).bind(tournament.season_id, tournamentId, result.team_id, placement, group, points, qualifier ? 1 : 0, now));
+    ).bind(tournament.season_id, tournamentId, result.team_id, placement, group, pointsAwarded, qualifier ? 1 : 0, now));
     if (awardPoints) {
       statements.push(db.prepare(
         "INSERT INTO circuit_point_transactions (season_id,team_id,tournament_id,result_id,points_delta,transaction_type,reason) " +
@@ -73,7 +74,7 @@ export async function finalizeCircuitTournament(db, tournamentId) {
     season_id: tournament.season_id,
     format: tournament.format,
     points_awarded: awardPoints,
-    placements: placements.map((row) => ({ team_id: row.team_id, placement: row.placement, points: pointsForPlacement(row.placement, rules) }))
+    placements: placements.map((row) => ({ team_id: row.team_id, placement: row.placement, points: awardPoints ? pointsForPlacement(row.placement, rules) : 0 }))
   })));
   await db.batch(statements);
   return { finalized: true, teams: placements.length };
