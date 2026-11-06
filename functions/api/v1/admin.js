@@ -254,6 +254,15 @@ export async function onRequestPost({ request, env }) {
   if (resource === "players" && payload.role && !["EXP","JUNGLE","MID","GOLD","ROAM","FLEX"].includes(payload.role)) return bad("Недопустимая игровая роль.");
   if (resource === "players" && payload.profile_status && !["pending","approved","rejected"].includes(payload.profile_status)) return bad("Недопустимый статус проверки профиля.");
   if (resource === "matches" && payload.bracket && !["main","upper","lower","group","final"].includes(payload.bracket)) return bad("Недопустимая сетка.");
+  if (resource === "matches") {
+    const teamA = payload.team_a_id;
+    const teamB = payload.team_b_id;
+    if (teamA != null && teamB != null && String(teamA) === String(teamB)) return bad("Одна команда не может играть сама с собой.");
+    for (const field of ["score_a", "score_b"]) {
+      if (payload[field] != null && (!Number.isSafeInteger(payload[field]) || payload[field] < 0)) return bad("Счёт матча должен быть целым неотрицательным числом.");
+    }
+    if (action === "create" && payload.status === "completed") return bad("Создай матч в расписании, затем внеси результат через редактирование матча.");
+  }
   if (resource === "tournaments" && action === "create") {
     payload.game = payload.game || "Mobile Legends: Bang Bang";
     payload.organizer_id = auth.user.id;
@@ -311,8 +320,13 @@ export async function onRequestPost({ request, env }) {
   }
   payload.updated_at = now();
   const fields = Object.keys(payload);
-  await env.DB.prepare("UPDATE " + config.table + " SET " + fields.map((field) => field + "=?").join(",") + " WHERE id=?")
-    .bind(...fields.map((field) => payload[field]), recordId).run();
+  const completingMatch = resource === "matches" && before.status !== "completed" && payload.status === "completed";
+  const updateSql = "UPDATE " + config.table + " SET " + fields.map((field) => field + "=?").join(",") +
+    " WHERE id=?" + (completingMatch ? " AND status!='completed'" : "");
+  const updateResult = await env.DB.prepare(updateSql).bind(...fields.map((field) => payload[field]), recordId).run();
+  if (completingMatch && !updateResult.meta?.changes) {
+    return bad("Результат этого матча уже сохранён другим запросом. Обнови список матчей.", 409);
+  }
   const after = await getById(env.DB, config.table, recordId);
   await audit(env.DB, auth.user.id, resource + "_updated", resource, recordId, before, after);
   if (resource === "seasons" && after.status === "active") {
