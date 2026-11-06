@@ -1,6 +1,6 @@
 import { createAuditEventId } from "./_lib/audit.js";
 import { json, methodNotAllowed } from "./_lib/http.js";
-import { getSessionUser, sameOrigin } from "./_lib/session-auth.js";
+import { getSessionUser, isOwnerAccount, sameOrigin } from "./_lib/session-auth.js";
 import { advanceWinner, finalizeCircuitTournament } from "./_lib/match-progression.js";
 
 const TABLES = {
@@ -24,7 +24,7 @@ async function authorize(request, env) {
   if (!env.DB) return { response: json({ error: { code: "DATABASE_NOT_CONFIGURED", message: "База данных не подключена." } }, 503) };
   const session = await getSessionUser(request, env);
   if (session.error) return { response: session.error };
-  if (!session.user || !session.user.roles.includes("administrator")) {
+  if (!session.user || !session.user.roles.includes("administrator") || !isOwnerAccount(session.user, env)) {
     return { response: json({ error: { code: "FORBIDDEN", message: "Требуются права администратора." } }, 403) };
   }
   return { user: session.user };
