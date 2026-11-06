@@ -34,7 +34,15 @@ export function buildCircuitRanking(rows) {
   return [...rows].sort(compareCircuitTeams).map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
-function loserFromMatch(match) {\n  const winner = String(match.winner_team_id);\n  if (match.team_a_id == null || match.team_b_id == null) throw new Error("Completed match has an unresolved participant");\n  if (String(match.team_a_id) === winner) return String(match.team_b_id);\n  if (String(match.team_b_id) === winner) return String(match.team_a_id);\n  throw new Error("Match winner is not a participant");\n}\n\nexport function deriveSingleEliminationPlacements(matches) {
+function loserFromMatch(match) {
+  const winner = String(match.winner_team_id);
+  if (match.team_a_id == null || match.team_b_id == null) throw new Error("Completed match has an unresolved participant");
+  if (String(match.team_a_id) === winner) return String(match.team_b_id);
+  if (String(match.team_b_id) === winner) return String(match.team_a_id);
+  throw new Error("Match winner is not a participant");
+}
+
+export function deriveSingleEliminationPlacements(matches) {
   const completed = matches.filter((match) => match.status === "completed" && match.winner_team_id != null);
   if (!completed.length) throw new Error("Tournament has no completed matches");
   const rounds = [...new Set(completed.filter((m) => m.bracket === "main").map((m) => Number(m.round_number)))].sort((a,b)=>a-b);
