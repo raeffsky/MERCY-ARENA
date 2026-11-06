@@ -70,6 +70,47 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#playerCreateMessage')).toContainText('отправлен на ручную проверку');
   });
 
+  test('existing account without a game profile can complete it from My Profile', async ({ page }) => {
+    let savedPayload = null;
+    await page.route('**/api/v1/me', route => route.fulfill({ json: {
+      authenticated: true,
+      account: { id: 'user-3', email: 'incomplete@example.com', name: 'Incomplete' },
+      profile: null, roles: [], access: 'user'
+    } }));
+    await page.route('**/api/v1/team-members', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/players', async route => {
+      if (route.request().method() !== 'PUT') return route.fulfill({ json: { data: [] } });
+      savedPayload = route.request().postDataJSON();
+      await route.fulfill({ json: { data: {
+        id: 31, nickname: 'RecoveredPlayer', game_id: '123456789',
+        server_id: '1234', profile_status: 'approved'
+      } } });
+    });
+
+    await page.goto('/#/my-profile');
+    await expect(page.locator('#myProfileContent')).toContainText('ИГРОВОЙ ПРОФИЛЬ НЕ СОЗДАН');
+    await page.locator('#myGameId').fill('123456789');
+    await page.locator('#myServerId').fill('1234');
+    await page.locator('#myRole').selectOption('MID');
+    await page.getByRole('button', { name: 'Создать игровой профиль' }).click();
+
+    await expect.poll(() => savedPayload).toMatchObject({
+      game_id: '123456789', server_id: '1234', role: 'MID', manual_review: false
+    });
+    await expect(page.locator('#myProfileMessage')).toContainText('Игровой аккаунт подтверждён');
+  });
+
+  test('home join panel is hidden for an account that already has a game profile', async ({ page }) => {
+    await page.route('**/api/v1/me', route => route.fulfill({ json: {
+      authenticated: true,
+      account: { id: 'user-4', email: 'ready@example.com', name: 'Ready' },
+      profile: { id: 41, nickname: 'ReadyPlayer', profile_status: 'approved' },
+      roles: ['player'], access: 'user'
+    } }));
+    await page.goto('/');
+    await expect(page.locator('#homeJoin')).toHaveCount(0);
+  });
+
   test('player account exposes logout and clears the session', async ({ page }) => {
     let meCalls = 0;
     let logoutCalls = 0;
