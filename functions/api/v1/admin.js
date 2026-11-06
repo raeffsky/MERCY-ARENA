@@ -77,6 +77,15 @@ export async function onRequestGet({ request, env }) {
   }
   const config = TABLES[resource];
   if (!config) return bad("Неизвестный раздел.");
+  if (resource === "matches") {
+    const { results } = await env.DB.prepare(
+      "SELECT m.*,t.title AS tournament_title,ta.name AS team_a_name,tb.name AS team_b_name " +
+      "FROM matches m JOIN tournaments t ON t.id=m.tournament_id " +
+      "LEFT JOIN teams ta ON ta.id=m.team_a_id LEFT JOIN teams tb ON tb.id=m.team_b_id " +
+      "ORDER BY m.scheduled_at IS NULL,m.scheduled_at ASC,m.tournament_id,m.round_number,m.match_number LIMIT 200"
+    ).all();
+    return json({ data: results || [] });
+  }
   const { results } = await env.DB.prepare("SELECT * FROM " + config.table + (resource === "seasons" ? " ORDER BY season_number DESC,id DESC" : " ORDER BY id DESC") + " LIMIT 200").all();
   return json({ data: results || [] });
   } catch (error) {
