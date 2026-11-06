@@ -39,11 +39,12 @@ export async function onRequestPost({ request, env }) {
     const member = await env.DB.prepare("SELECT p.id,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL AND p.profile_status='approved'").bind(teamId, nextPlayerId).first();
     if (!member) return json({ error: { code: "MEMBER_NOT_FOUND", message: "Новый капитан должен состоять в команде." } }, 404);
     const now = new Date().toISOString();
-    await env.DB.batch([
+    const transferWrites = await env.DB.batch([
       env.DB.prepare("UPDATE teams SET captain_id=?,updated_at=? WHERE id=? AND captain_id=?").bind(member.user_id, now, teamId, auth.user.id),
-      env.DB.prepare("UPDATE team_roster SET roster_role=CASE WHEN player_id=? THEN 'captain' WHEN roster_role='captain' THEN 'player' ELSE roster_role END WHERE team_id=? AND left_at IS NULL").bind(nextPlayerId, teamId),
-      env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'team_captain_transferred','team',?,?)").bind(await createAuditEventId(env.DB), auth.user.id, teamId, JSON.stringify({ new_captain_player_id: nextPlayerId, new_captain_user_id: member.user_id, nickname: member.nickname }))
+      env.DB.prepare("UPDATE team_roster SET roster_role=CASE WHEN player_id=? THEN 'captain' WHEN roster_role='captain' THEN 'player' ELSE roster_role END WHERE team_id=? AND left_at IS NULL AND EXISTS (SELECT 1 FROM teams WHERE id=? AND captain_id=?)").bind(nextPlayerId, teamId, teamId, member.user_id),
+      env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,'team_captain_transferred','team',?,? WHERE EXISTS (SELECT 1 FROM teams WHERE id=? AND captain_id=?)").bind(await createAuditEventId(env.DB), auth.user.id, teamId, JSON.stringify({ new_captain_player_id: nextPlayerId, new_captain_user_id: member.user_id, nickname: member.nickname }), teamId, member.user_id)
     ]);
+    if (!transferWrites[0]?.meta?.changes) return json({ error: { code: "CAPTAINSHIP_CHANGED", message: "Капитан команды уже изменился. Обнови страницу." } }, 409);
     return json({ data: { team_id: teamId, captain_player_id: nextPlayerId, captain_name: member.nickname, status: "transferred" } });
   }
   const teamId = String(body.team_id || "").trim(), playerId = String(body.player_id || "").trim();
