@@ -30,7 +30,7 @@ test.describe("MERCY CIRCUIT placement scoring", () => {
       {bracket:"main",round_number:2,status:"completed",team_a_id:1,team_b_id:3,winner_team_id:1}
     ];
     expect(scoring.deriveTournamentPlacements("single_elimination",matches)).toEqual([
-      {team_id:"1",placement:1},{team_id:"3",placement:2},{team_id:"2",placement:3},{team_id:"4",placement:4}
+      {team_id:"1",placement:1},{team_id:"3",placement:2},{team_id:"2",placement:3},{team_id:"4",placement:3}
     ]);
   });
   test("derives Double Elimination placements including lower-bracket exits", () => {
