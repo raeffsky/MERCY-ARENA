@@ -967,7 +967,7 @@ th{background:var(--panel)!important}
 <a href="#/seasons" data-route="seasons"><iconify-icon icon="mdi:calendar-star-outline"></iconify-icon>Сезоны</a>
 <a href="#/my-profile" data-route="my-profile"><iconify-icon icon="mdi:account-circle-outline"></iconify-icon>Мой профиль</a>
 <a href="#/notifications" data-route="notifications"><iconify-icon icon="mdi:bell-outline"></iconify-icon>Уведомления</a>
-<a href="#/organizer" data-route="organizer"><iconify-icon icon="mdi:shield-crown-outline"></iconify-icon>Кабинет организатора</a>
+<a href="#/organizer" data-route="organizer" hidden><iconify-icon icon="mdi:shield-crown-outline"></iconify-icon>Кабинет организатора</a>
 <a href="#/rules" data-route="rules"><iconify-icon icon="mdi:scale-balance"></iconify-icon>Правила</a>
 <a href="#/about" data-route="about"><iconify-icon icon="mdi:information-outline"></iconify-icon>О платформе</a>
 </nav></aside>
@@ -1112,6 +1112,15 @@ document.querySelectorAll('[data-route]').forEach(function(a){a.classList.toggle
 menu(false);window.scrollTo(0,0);document.title=(key==='home'?'MERCY ARENA':key.toUpperCase()+' — MERCY ARENA');
 wireFilters(key);
 wireAuth(key);
+refreshOrganizerNav();
+}
+function refreshOrganizerNav(){
+var link=document.querySelector('[data-route="organizer"]');
+if(!link)return;
+fetch('/api/v1/me',{credentials:'same-origin',cache:'no-store'})
+.then(function(response){return response.json()})
+.then(function(me){link.hidden=!me.is_owner;})
+.catch(function(){link.hidden=true;});
 }
 function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]})}
 function dateLabel(value){if(!value)return 'Дата уточняется';var d=new Date(value);return Number.isNaN(d.getTime())?'Дата уточняется':new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short'}).format(d)}
@@ -1268,14 +1277,14 @@ function showStatus(text){if(message)message.textContent=text}
 async function loadSession(){
 var response=await fetch('/api/v1/me',{cache:'no-store',credentials:'same-origin'});
 var me=await response.json();
-if(me.authenticated && (me.roles||[]).includes('administrator')){
-showStatus('Доступ подтверждён. Роль: administrator');
+if(me.authenticated && me.is_owner && (me.roles||[]).includes('administrator')){
+showStatus('Доступ подтверждён. Владелец MERCY ARENA.');
 form.hidden=true;
 window.__mercyAdminEmail=me.account.email;
 var dashboard=document.getElementById('adminDashboard');
 if(dashboard){dashboard.hidden=false;dashboard.innerHTML=adminDashboardMarkup(me.account.email);initAdminDashboard();}
-}else if(me.authenticated){showStatus('У аккаунта нет прав администратора.');}
-else{showStatus('Введите email администратора и пароль.')}
+}else if(me.authenticated){form.hidden=true;showStatus('Доступ закрыт. Кабинет организатора доступен только владельцу MERCY ARENA.');}
+else{showStatus('Введите email владельца и пароль.')}
 }
 try{await loadSession()}catch(e){showStatus('Не удалось проверить сессию. Попробуйте обновить страницу.')}
 form.addEventListener('submit',async function(event){
