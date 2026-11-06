@@ -34,7 +34,7 @@ A tournament is eligible only when it:
 Supported placement derivation:
 - Single Elimination: final winner/runner-up, then teams eliminated in each preceding round share the corresponding placement band.
 - Double Elimination: grand final winner/runner-up, then lower-bracket eliminations in reverse round order.
-- Round Robin: wins, head-to-head wins, score difference, score-for, then stable team ID.
+- Round Robin: match wins, mini-table head-to-head wins among tied teams, score difference, score-for, then stable team ID.\n\nCircuit Ranking ties are resolved by first places, second places, top-four finishes, head-to-head wins between the tied teams, verified match wins, then stable team ID.
 
 The finalizer runs from the existing tournament-completion path. It is idempotent: one placement result and one `placement_award` transaction per team/tournament. A failed finalization can be retried by invoking the completion path again.
 
@@ -55,7 +55,7 @@ The finalizer runs from the existing tournament-completion path. It is idempoten
 5. If a team declines or is disqualified, fill the vacancy using the published season regulation and record the decision in the audit log.
 6. Freeze eight unique team IDs and seeds before the championship begins.
 
-Qualifier tournaments do not award Circuit points by default. This prevents an extra qualification event from changing the season ranking unless the season rules explicitly enable it.
+Qualifier tournaments do not award Circuit points by default and their placement records are excluded from the regular Circuit Ranking. This prevents an extra qualification event from changing the season ranking.
 
 ## Existing platform integration
 
