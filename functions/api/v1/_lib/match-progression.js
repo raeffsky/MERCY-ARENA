@@ -1,4 +1,4 @@
-import { deriveTournamentPlacements, placementGroup, pointsForPlacement } from "./circuit-scoring.js";
+import { deriveTournamentPlacements, placementGroup, pointsForPlacement } from "./circuit-scoring.mjs";
 import { createAuditEventId } from "./audit.js";
 
 export async function finalizeCircuitTournament(db, tournamentId) {
