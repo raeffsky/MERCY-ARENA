@@ -944,7 +944,7 @@ th{background:var(--panel)!important}
 @media(max-width:850px){.rules-shell{grid-template-columns:1fr}.rules-index{position:relative;top:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0}.rules-index-title{grid-column:1/-1}.rules-index button{font-size:9px}}
 @media(max-width:560px){.rules-hero .wrap{padding-left:18px;padding-right:18px}.rules-shell{padding-top:18px}.rules-index{grid-template-columns:1fr 1fr;padding:12px}.rules-index button{padding:9px 5px;gap:6px;font-size:8px}.rules-tools{align-items:stretch;flex-direction:column}.rules-search{width:100%}.rules-card summary{font-size:18px;padding:14px}.rules-card-body{padding:0 15px 17px;font-size:11px}.rules-card summary:before{width:25px;height:25px}.rules-table{min-width:460px}}
 
-</style>
+.championship-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:20px}.championship-slot{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}.championship-seed{font-size:10px;letter-spacing:.12em;color:var(--muted);white-space:nowrap}.championship-seed b{display:block;color:var(--lime);font-size:22px}.championship-team{display:flex;align-items:center;gap:12px;min-width:0;flex:1}.championship-team img,.championship-team-mark{width:42px;height:42px;object-fit:cover;border-radius:10px;background:var(--panel2);display:grid;place-items:center;flex:none}.championship-team b,.championship-team small{display:block;overflow:hidden;text-overflow:ellipsis}.championship-team small{color:var(--muted);font-size:10px;margin-top:4px}.championship-status{font-size:9px;letter-spacing:.1em;color:var(--lime);white-space:nowrap}.is-pending .championship-status{color:var(--muted)}.circuit-achievement h3{font-size:20px;margin:8px 0 0}.positive{color:var(--lime)}.negative{color:#ff6d78}@media(max-width:680px){.championship-slots{grid-template-columns:1fr}.championship-slot{padding:12px}.championship-status{font-size:8px}}</style>
 </head>
 <body>
 <div class="topline"></div>
@@ -1549,6 +1549,43 @@ entries.innerHTML=championship.length?championship.map(function(entry){var team=
 }
 rankingSeason.addEventListener('change',showCircuitRanking);
 if(rankingSeason.value)showCircuitRanking();
+}
+if(key==='championship'||key==='circuit-history'){
+var selector=document.getElementById(key==='championship'?'championshipSeason':'historySeason');
+if(selector){
+try{
+var options=await apiList('seasons?limit=50');
+selector.innerHTML='<option value="">Выбери сезон</option>'+options.map(function(item){return '<option value="'+esc(item.id)+'">'+esc(item.title)+' · SEASON '+esc(item.season_number||'—')+'</option>'}).join('');
+var active=options.find(function(item){return item.status==='active'})||options[0];
+if(active)selector.value=String(active.id);
+}catch(error){selector.innerHTML='<option value="">Не удалось загрузить сезоны</option>'}
+}
+async function loadCircuitPublicPage(){
+if(!selector||!selector.value)return;
+var seasonId=selector.value;
+try{
+if(key==='championship'){
+var response=await fetch('/api/v1/circuit/championship?season_id='+encodeURIComponent(seasonId),{credentials:'same-origin',cache:'no-store'}),payload=await response.json();
+if(!response.ok)throw new Error(payload.error&&payload.error.message||'Не удалось загрузить чемпионат');
+var season=payload.season||{},slots=payload.slots||[],qualifiers=payload.qualifiers||[];
+document.getElementById('championshipHero').innerHTML='<div class="kicker">MERCY CIRCUIT / SEASON '+esc(season.season_number||'—')+'</div><h2 class="panel-title">'+esc(season.title||'MERCY CHAMPIONSHIP')+'</h2><div class="admin-stats"><div class="admin-stat"><span>УЧАСТНИКОВ</span><b>'+Number(payload.qualified_count||0)+'/8</b></div><div class="admin-stat"><span>КВАЛИФИКАЦИЯ</span><b>6 + 2</b></div><div class="admin-stat"><span>СТАТУС</span><b>'+(payload.championship_ready?'ГОТОВ':'ФОРМИРУЕТСЯ')+'</b></div></div><p class="muted">'+(payload.championship_ready?'Состав чемпионата зафиксирован.':'Слоты заполняются по итогам Circuit Ranking и двух квалификаций.')+'</p>';
+document.getElementById('championshipSlots').innerHTML=slots.map(function(slot){var team=slot.team||{};var source=slot.qualification_source==='ranking'?'CIRCUIT RANKING':'QUALIFIER';return '<article class="championship-slot '+(team.id?'is-qualified':'is-pending')+'"><div class="championship-seed">SEED <b>'+String(slot.seed).padStart(2,'0')+'</b></div><div class="championship-team">'+(team.logo_url?'<img src="'+esc(team.logo_url)+'" alt="" loading="lazy">':'<span class="championship-team-mark"><iconify-icon icon="mdi:shield-outline"></iconify-icon></span>')+'<div><b>'+(team.name?esc(team.name):'МЕСТО ОЖИДАЕТ УЧАСТНИКА')+'</b><small>'+(team.tag?'['+esc(team.tag)+'] · ':'')+source+'</small></div></div><span class="championship-status">'+(team.id?esc(slot.status):'PENDING')+'</span></article>'}).join('');
+document.getElementById('championshipQualifiers').innerHTML=qualifiers.map(function(q){return '<article class="panel"><div class="kicker">QUALIFIER '+Number(q.qualifier_number)+'</div><h3 class="panel-title">'+esc(q.tournament_title||('Турнир #'+q.tournament_id))+'</h3><p class="muted">'+(q.status==='completed'?'Победитель: команда #'+esc(q.winner_team_id):q.status==='open'?'Турнир проводится':'Ожидает запуска')+'</p><a class="home-all-link" href="#/tournament/'+encodeURIComponent(q.tournament_id)+'">Открыть турнир →</a></article>'}).join('')||'<div class="muted">Квалификационные турниры ещё не подключены.</div>';
+}else{
+var response=await fetch('/api/v1/circuit/history?season_id='+encodeURIComponent(seasonId),{credentials:'same-origin',cache:'no-store'}),payload=await response.json();
+if(!response.ok)throw new Error(payload.error&&payload.error.message||'Не удалось загрузить историю');
+var achievements=payload.achievements||[],results=payload.results||[],ledger=payload.transactions||[];
+document.getElementById('circuitAchievements').innerHTML=achievements.length?achievements.map(function(item){return '<article class="panel circuit-achievement"><div class="kicker">TEAM LEGACY</div><h3>'+esc(item.team_name)+'</h3><p class="muted">'+esc(item.team_tag||'')+'</p><div class="admin-stats"><div class="admin-stat"><span>ТУРНИРЫ</span><b>'+Number(item.tournaments)+'</b></div><div class="admin-stat"><span>ЧЕМПИОНСТВА</span><b>'+Number(item.championships)+'</b></div><div class="admin-stat"><span>TOP 4</span><b>'+Number(item.top_four)+'</b></div><div class="admin-stat"><span>ОЧКИ</span><b>'+Number(item.points)+'</b></div></div></article>'}).join(''):'<div class="panel muted">Достижения появятся после завершения рейтинговых турниров.</div>';
+document.getElementById('circuitHistoryResults').innerHTML=results.length?results.map(function(row){return '<tr><td>'+esc(row.team_name)+' <span class="muted">'+esc(row.team_tag||'')+'</span></td><td>'+esc(row.tournament_title)+(Number(row.is_qualifier)?' <small>· QUALIFIER</small>':'')+'</td><td><b>#'+Number(row.placement)+'</b></td><td>'+Number(row.points_awarded||0)+'</td><td>'+esc(dateLabel(row.finalized_at))+'</td></tr>'}).join(''):'<tr><td colspan="5" class="muted">Записей пока нет.</td></tr>';
+document.getElementById('circuitHistoryLedger').innerHTML=ledger.length?ledger.map(function(row){return '<tr><td>'+esc(row.team_name)+'</td><td>'+esc(row.transaction_type)+'</td><td><b class="'+(Number(row.points_delta)>=0?'positive':'negative')+'">'+(Number(row.points_delta)>0?'+':'')+Number(row.points_delta)+'</b></td><td>'+esc(row.tournament_title)+(row.reason?' · '+esc(row.reason):'')+'</td><td>'+esc(dateLabel(row.created_at))+'</td></tr>'}).join(''):'<tr><td colspan="5" class="muted">Начислений пока нет.</td></tr>';
+}
+}catch(error){
+var target=key==='championship'?document.getElementById('championshipHero'):document.getElementById('circuitAchievements');
+if(target)target.innerHTML='<div class="panel">'+esc(error.message||'Не удалось загрузить данные.')+'</div>';
+}
+}
+selector.addEventListener('change',loadCircuitPublicPage);
+if(selector.value)loadCircuitPublicPage();
 }
 if(key==='seasons'){var seasons=await apiList('seasons');var target=document.getElementById('seasonResults');if(target)target.innerHTML=seasons.length?seasons.map(function(item){return '<a class="season-list-card" href="#/season/'+encodeURIComponent(item.id)+'"><div><div class="kicker">MERCY CIRCUIT / СЕЗОН '+esc(item.season_number||'—')+'</div><h3>'+esc(item.title)+'</h3><p>'+esc(dateLabel(item.starts_at))+' · Открыть турниры сезона</p></div><iconify-icon icon="mdi:arrow-right" style="font-size:22px;color:var(--lime)"></iconify-icon></a>'}).join(''):'<div class="empty"><b>Сезоны ещё не запущены</b><p>После объявления первого сезона здесь появится его календарь и каталог турниров.</p></div>'}
 }catch(error){console.warn('MERCY ARENA API unavailable:',error.message)}
