@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS circuit_qualifiers (
   tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE RESTRICT,
   qualifier_number INTEGER NOT NULL CHECK (qualifier_number IN (1,2)),
   status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned','open','completed','cancelled')),
+  awards_points INTEGER NOT NULL DEFAULT 0 CHECK (awards_points IN (0,1)),
   winner_team_id INTEGER REFERENCES teams(id),
   finalized_at TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
