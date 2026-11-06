@@ -75,7 +75,7 @@ export function deriveSingleEliminationPlacements(matches) {
       });
     if (!eliminated.length) continue;
     const first = placements.length + 1;
-    eliminated.forEach((team_id, index) => placements.push({ team_id, placement: first + index }));
+    eliminated.forEach((team_id) => placements.push({ team_id, placement: first }));
   }
   return placements;
 }
@@ -139,7 +139,7 @@ export function deriveDoubleEliminationPlacements(matches) {
     });
     if(!eliminated.length) continue;
     const first = 3 + eliminatedCount;
-    eliminated.forEach((team_id,index)=>placements.push({team_id,placement:first+index}));
+    eliminated.forEach((team_id)=>placements.push({team_id,placement:first}));
     eliminatedCount += eliminated.length;
   }
   const expected = new Set(matches.flatMap((m)=>[m.team_a_id,m.team_b_id]).filter((id)=>id!=null).map(String));
