@@ -37,7 +37,7 @@ export async function onRequestGet({ request, env }) {
     `).bind(seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId).all();
 
     const { results: rankingMatches } = await env.DB.prepare(
-      "SELECT m.team_a_id,m.team_b_id,m.winner_team_id FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE t.season_id=? AND m.status='completed' AND m.result_verified_at IS NOT NULL"
+      "SELECT m.team_a_id,m.team_b_id,m.winner_team_id FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE t.season_id=? AND m.status='completed' AND m.result_verified_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM circuit_qualifiers cq WHERE cq.tournament_id=m.tournament_id)"
     ).bind(seasonId).all();
     const ranking = buildCircuitRanking(results || [], rankingMatches || []);
     const { results: seasonRules } = await env.DB.prepare(
