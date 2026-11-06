@@ -759,6 +759,62 @@ th{background:var(--panel)!important}
 .profile-match-info span{color:var(--muted);font-size:10px;line-height:1.5}
 .profile-match-row>strong{font:800 21px 'Barlow Condensed';white-space:nowrap}
 @media(max-width:480px){.profile-match-row{grid-template-columns:1fr auto;gap:8px}.profile-match-result{grid-column:1/-1}.profile-match-info b{font-size:17px}}
+
+/* Tournament directory refresh */
+.tournaments-page-head{padding-top:clamp(34px,5vw,62px);padding-bottom:clamp(22px,3vw,38px);position:relative}
+.tournaments-page-head>.kicker{color:var(--lime);font-size:10px;letter-spacing:3px}
+.tournaments-heading-row{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:16px}
+.tournaments-heading-row .page-title{font-size:clamp(54px,8vw,88px);line-height:.88;letter-spacing:-1px;margin:0}
+.tournaments-heading-row p{margin:13px 0 0;color:#9da4ad;font-size:12px;line-height:1.7}
+.tournaments-heading-mark{width:104px;height:104px;flex:none;border:1px solid #d7ff5e3b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--lime);transform:skew(-7deg);background:linear-gradient(145deg,#d7ff5e0c,transparent)}
+.tournaments-heading-mark iconify-icon{font-size:36px}
+.tournaments-heading-mark span{font-size:7px;line-height:1.2;font-weight:900;letter-spacing:2px;text-align:center}
+.tournaments-content{padding-top:12px;padding-bottom:clamp(48px,8vw,92px)}
+.tournaments-content-head{display:flex;align-items:center;gap:13px;margin-bottom:17px;color:#dce1d5;font-size:9px;font-weight:900;letter-spacing:1.7px}
+.tournaments-content-head i{height:1px;flex:1;background:linear-gradient(90deg,#d7ff5e55,transparent)}
+.tournaments-content-head small{color:#707987;font-size:8px;letter-spacing:1.3px}
+#tResults .grid.two{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.tournament-list-card{display:flex;flex-direction:column;min-width:0;min-height:0;background:#0d1014;border:1px solid #252c2a;transition:transform .22s,border-color .22s,box-shadow .22s}
+.tournament-list-card:hover{transform:translateY(-4px);border-color:#d7ff5e99;box-shadow:0 16px 38px #0008,0 0 25px #d7ff5e0a}
+.tournament-list-art{width:100%;min-height:0;height:auto;aspect-ratio:16/9;padding:15px 17px;display:flex;justify-content:flex-start;gap:8px;background:#111713;overflow:hidden}
+.tournament-list-art:before{background:linear-gradient(180deg,#05080699 0%,transparent 36%,transparent 58%,#05080666 100%)}
+.tournament-list-art:after{display:none}
+.tournament-list-art>span{display:inline-flex;align-items:center;align-self:flex-start;padding:7px 9px;border:1px solid #d7ff5e77;background:#080b08b8;color:var(--lime);font-size:8px;letter-spacing:2px}
+.tournament-list-art>b{display:none}
+.tournament-list-art>small{margin-top:auto;align-self:flex-start;padding:6px 8px;background:#080b08b8;color:#f4f6ed;font-size:8px;letter-spacing:1.4px}
+.tournament-list-poster-image{object-fit:cover;object-position:center 42%;transition:transform .45s}
+.tournament-list-card:hover .tournament-list-poster-image{transform:scale(1.025)}
+.tournament-list-info{width:100%;padding:19px 20px 20px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px 14px}
+.tournament-list-info .statusbar{grid-column:1/-1;font-size:9px;color:#aeb6ae}
+.tournament-list-info h3{grid-column:1/-1;font:800 clamp(25px,3vw,34px)/.98 'Barlow Condensed';letter-spacing:.2px;margin:0;color:#f5f7f2;text-transform:uppercase;overflow-wrap:anywhere}
+.tournament-list-meta{grid-column:1;display:flex;gap:8px 14px;align-items:center;color:#9da69e;font-size:10px;line-height:1.5}
+.tournament-list-meta span:first-child{color:#d7ff5e}
+.tournament-list-apply,.tournament-list-link{grid-column:2;grid-row:4;margin:0;white-space:nowrap}
+.tournament-list-apply{min-height:43px;padding:0 16px;font-size:9px;clip-path:polygon(5% 0,100% 0,95% 100%,0 100%)}
+.tournament-list-link{display:inline-flex;align-items:center;gap:8px;color:var(--lime);font-size:9px;font-weight:900;letter-spacing:1px}
+@media(max-width:700px){
+ .tournaments-page-head{padding-top:34px;padding-bottom:22px}
+ .tournaments-heading-row{margin-top:13px}
+ .tournaments-heading-row .page-title{font-size:clamp(52px,14vw,72px)}
+ .tournaments-heading-row p{max-width:270px;font-size:11px}
+ .tournaments-heading-mark{width:76px;height:76px}
+ .tournaments-heading-mark iconify-icon{font-size:28px}
+ .tournaments-content{padding-top:9px;padding-bottom:58px}
+ #tResults .grid.two{grid-template-columns:minmax(0,1fr);gap:15px}
+ .tournament-list-card{width:100%}
+ .tournament-list-art{aspect-ratio:1.58/1;padding:12px}
+ .tournament-list-info{padding:16px;gap:9px 10px}
+ .tournament-list-info h3{font-size:29px}
+ .tournament-list-meta{font-size:9px;gap:7px 12px}
+ .tournament-list-apply{min-height:42px;padding:0 13px;font-size:8px;gap:7px}
+}
+@media(max-width:380px){
+ .tournaments-heading-mark{width:64px;height:64px}
+ .tournament-list-info{grid-template-columns:1fr}
+ .tournament-list-meta,.tournament-list-apply,.tournament-list-link{grid-column:1;grid-row:auto}
+ .tournament-list-apply{justify-self:start;margin-top:3px}
+}
+
 </style>
 </head>
 <body>
@@ -805,8 +861,7 @@ home:function(){return [
 '<section class="wrap home-section"><div class="home-section-top"><div><div class="kicker">COMPETITIVE LADDER / VERIFIED DATA</div><h2>РЕЙТИНГ КОМАНД</h2><p>Позиции на основе результатов завершённых и проверенных матчей.</p></div><a class="home-all-link" href="#/rankings">Полный рейтинг <iconify-icon icon="mdi:arrow-top-right"></iconify-icon></a></div><div class="home-ranking" id="homeRankings"><div class="home-loading">Загружаем рейтинг…</div></div></section>',
 '<section class="wrap home-section home-quick-links"><a href="#/tournaments"><iconify-icon icon="mdi:trophy-outline"></iconify-icon><span><b>Турниры</b><small>Все соревнования</small></span><iconify-icon icon="mdi:arrow-up-right"></iconify-icon></a><a href="#/teams"><iconify-icon icon="mdi:shield-account-outline"></iconify-icon><span><b>Команды</b><small>Составы и капитаны</small></span><iconify-icon icon="mdi:arrow-up-right"></iconify-icon></a><a href="#/players"><iconify-icon icon="mdi:account-group-outline"></iconify-icon><span><b>Игроки</b><small>Каталог участников</small></span><iconify-icon icon="mdi:arrow-up-right"></iconify-icon></a></section>'+'<dialog id="playerCreateDialog" class="player-dialog"><form id="playerCreateForm" class="player-dialog-card"><div class="player-dialog-head"><div><span class="kicker">PLAYER REGISTRATION</span><h2>СОЗДАТЬ ПРОФИЛЬ</h2></div><button type="button" class="player-dialog-close" id="closePlayerCreate" aria-label="Закрыть">×</button></div><p class="muted">Введи данные аккаунта MLBB. Мы проверим ID и сервер, получим игровой ник и автоматически подтвердим профиль.</p><div class="player-form-grid"><label>EMAIL<input class="field" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="you@example.com"></label><label>ПАРОЛЬ<input class="field" name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="128" placeholder="Минимум 12 символов"></label><label>MLBB ID<input class="field" name="game_id" required maxlength="15" inputmode="numeric" pattern="[0-9]{5,15}" placeholder="Например, 123456789"></label><label>SERVER / ZONE ID<input class="field" name="server_id" required maxlength="6" inputmode="numeric" pattern="[0-9]{1,6}" placeholder="Число в скобках, например 1234"></label><label id="manualNicknameWrap" hidden>ИГРОВОЙ НИК ДЛЯ РУЧНОЙ ПРОВЕРКИ<input class="field" name="nickname" maxlength="32" autocomplete="nickname" placeholder="Точный ник из игры"></label><label>ОСНОВНАЯ РОЛЬ<select class="field" name="role" required><option value="">Выбери роль</option><option value="EXP">EXP Lane</option><option value="JUNGLE">Jungle</option><option value="MID">Mid Lane</option><option value="GOLD">Gold Lane</option><option value="ROAM">Roam</option><option value="FLEX">Flex</option></select></label><label>РЕГИОН<input class="field" name="region" maxlength="80" placeholder="Страна или регион"></label></div><button class="btn secondary player-submit" type="button" id="verifyMlbbAccount">Проверить игровой аккаунт</button><div class="profile-card" id="mlbbLookupResult" hidden aria-live="polite"></div><button class="btn secondary player-submit" type="button" id="manualReviewButton" hidden>Отправить на ручную проверку</button><p class="player-form-message" id="playerCreateMessage" role="status"></p><button class="btn primary player-submit" type="submit" id="submitPlayerRegistration" disabled>Создать аккаунт и профиль</button><p class="player-form-legal">Если автоматический сервис не найдёт аккаунт, можно отправить профиль на ручную проверку. До решения организатора профиль не появится в публичном каталоге.</p></form></dialog><dialog id="playerLoginDialog" class="player-dialog"><form id="playerLoginForm" class="player-dialog-card" method="dialog"><div class="player-dialog-head"><div><span class="kicker">PLAYER ACCOUNT</span><h2>ВОЙТИ В АККАУНТ</h2></div><button type="button" class="player-dialog-close" id="closePlayerLogin" aria-label="Закрыть">×</button></div><p class="muted">Введи email и пароль, указанные при регистрации MERCY ARENA.</p><div class="player-form-grid"><label>EMAIL<input class="field" name="email" type="email" autocomplete="username" required maxlength="254" placeholder="you@example.com"></label><label>ПАРОЛЬ<input class="field" name="password" type="password" autocomplete="current-password" required maxlength="256" placeholder="Пароль аккаунта"></label></div><p class="player-form-message" id="playerLoginMessage" role="status" aria-live="polite"></p><button class="btn primary player-submit" type="submit" id="submitPlayerLogin">Войти</button><button class="btn secondary player-submit" type="button" id="switchToRegistration">Создать новый аккаунт</button></form></dialog></section>'].join('')},
 season:function(){return pageHead('MERCY CIRCUIT / SEASON','СЕЗОН','Календарь, статистика и турниры выбранного сезона MERCY CIRCUIT.')+'<section class="wrap section"><div id="seasonTournaments"><div class="home-loading">Загружаем сезон MERCY CIRCUIT…</div></div></section>'},
-tournaments:function(){return pageHead('MERCY CIRCUIT / COMPETE','ТУРНИРЫ','Каталог соревнований Mobile Legends: Bang Bang. Выбирай турнир, изучай условия, следи за сеткой и составами.')+
-'<section class="wrap section"><div id="tResults">'+empty('mdi:trophy-outline','Пока нет опубликованных турниров','Список заполнится после того, как организатор создаст и опубликует первое соревнование.')+'</div></section>'},
+tournaments:function(){return '<section class="wrap tournaments-page-head"><div class="kicker">MERCY CIRCUIT / COMPETE</div><div class="tournaments-heading-row"><div><h1 class="page-title">ТУРНИРЫ</h1><p>Выбирай соревнование, собирай состав и выходи на арену.</p></div><div class="tournaments-heading-mark"><iconify-icon icon="mdi:trophy-variant-outline"></iconify-icon><span>PLAY<br>TO WIN</span></div></div></section><section class="wrap tournaments-content"><div class="tournaments-content-head"><span>АКТУАЛЬНЫЕ СОРЕВНОВАНИЯ</span><i></i><small>MERCY CIRCUIT</small></div><div id="tResults">'+empty('mdi:trophy-outline','Пока нет опубликованных турниров','Опубликованные соревнования появятся здесь.')+'</div></section>'},
 tournament:function(){return '<section class="wrap section tournament-detail" id="tournamentDetail"><div class="empty"><b>Загружаем турнир…</b></div></section>'},
 teams:function(){return pageHead('COMMUNITY / SQUADS','КОМАНДЫ','Создавай состав, собирай игроков и выходи на турнирную сцену MERCY CIRCUIT.')+
 '<section class="wrap section"><div id="teamWorkspace"><div class="empty"><b>Загружаем команды…</b></div></div></section><section class="wrap section"><div class="section-head"><div><div class="kicker">COMMUNITY / DIRECTORY</div><h2>КОМАНДЫ MERCY</h2></div></div><div id="teamResults">'+empty('mdi:account-group-outline','Команд пока нет','Стань первым капитаном MERCY ARENA.')+'</div></section>'},
