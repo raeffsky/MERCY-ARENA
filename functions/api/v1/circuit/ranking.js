@@ -40,10 +40,14 @@ export async function onRequestGet({ request, env }) {
     const { results: entries } = await env.DB.prepare(
       "SELECT team_id,qualification_source,source_id,seed,status FROM circuit_championship_entries WHERE season_id=? ORDER BY seed"
     ).bind(seasonId).all();
+    const { results: qualifiers } = await env.DB.prepare(
+      "SELECT id,tournament_id,qualifier_number,status,winner_team_id,finalized_at FROM circuit_qualifiers WHERE season_id=? ORDER BY qualifier_number"
+    ).bind(seasonId).all();
 
     return json({
       data: ranking,
       season,
+      qualifiers: qualifiers || [],
       championship: (entries || []).map((entry) => ({
         ...entry,
         team: ranking.find((team) => String(team.team_id) === String(entry.team_id)) || null
