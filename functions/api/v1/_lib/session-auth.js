@@ -30,6 +30,11 @@ export function sameOrigin(request, env) {
   try { return new URL(origin).origin === new URL(env.APP_BASE_URL || request.url).origin; } catch { return false; }
 }
 
+export function isOwnerAccount(user, env) {
+  const ownerEmail = normalizedEmail(env && env.BOOTSTRAP_ADMIN_EMAIL);
+  return !!(user && ownerEmail && normalizedEmail(user.email) === ownerEmail);
+}
+
 export async function getSessionUser(request, env) {
   if (!env.DB) return { error: json({ error: { code: "DATABASE_NOT_CONFIGURED", message: "База данных не подключена." } }, 503) };
   const token = cookieValue(request, "mercy_session");
