@@ -81,10 +81,13 @@ export async function finalizeCircuitTournament(db, tournamentId) {
 }
 
 async function completeTournamentIfReady(db, tournamentId) {
-  const pending = await db.prepare(
-    "SELECT COUNT(*) AS total FROM matches WHERE tournament_id=? AND status NOT IN ('completed','cancelled')"
+  const state = await db.prepare(
+    "SELECT COUNT(*) AS total, SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) AS completed " +
+    "FROM matches WHERE tournament_id=?"
   ).bind(tournamentId).first();
-  if (Number(pending?.total || 0) > 0) return false;
+  // Cancelled matches are not played results. A tournament with cancelled or
+  // postponed fixtures must never be finalized as if every match had finished.
+  if (Number(state?.total || 0) === 0 || Number(state?.completed || 0) !== Number(state?.total || 0)) return false;
   const updated = await db.prepare(
     "UPDATE tournaments SET status='completed',updated_at=? WHERE id=? AND status IN ('published','active')"
   ).bind(new Date().toISOString(), tournamentId).run();
