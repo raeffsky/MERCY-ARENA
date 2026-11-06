@@ -8,9 +8,8 @@ export async function onRequestGet({ request, env }) {
   if (scope === "teams") {
     // Apply the season constraint inside the LEFT JOIN. Filtering the joined
     // tournament in WHERE accidentally removed teams with no matches in a season.
-    const seasonMatchFilter = seasonId
-      ? " AND EXISTS (SELECT 1 FROM tournaments tour WHERE tour.id=m.tournament_id AND tour.season_id=?)"
-      : "";
+    const seasonMatchFilter = " AND EXISTS (SELECT 1 FROM tournaments tour WHERE tour.id=m.tournament_id AND tour.published_at IS NOT NULL AND tour.status!='draft'" +
+      (seasonId ? " AND tour.season_id=?" : "") + ")";
     const sql = `
       SELECT t.id,t.name,t.tag,
         COUNT(m.id) AS matches_played,
@@ -43,7 +42,7 @@ export async function onRequestGet({ request, env }) {
             AND (m.team_a_id=r.team_id OR m.team_b_id=r.team_id)
             AND m.status='completed' AND m.result_verified_at IS NOT NULL
           JOIN tournaments tour ON tour.id=m.tournament_id
-          WHERE rr.roster_role='starter' ${seasonFilter}
+          WHERE rr.roster_role='starter' AND tour.published_at IS NOT NULL AND tour.status!='draft' ${seasonFilter}
         )
         SELECT p.id,p.nickname,p.role,p.team_id,p.avatar_url,p.region,
           COUNT(pm.match_id) AS matches_played,
