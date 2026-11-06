@@ -24,6 +24,11 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(brackets).toContain('String(tournament.organizer_id) !== String(auth.user.id)');
   });
 
+  test('public match schedule hides placeholder matches without assigned teams', () => {
+    const matches = source('functions/api/v1/matches.js');
+    expect(matches).toContain('(m.team_a_id IS NOT NULL OR m.team_b_id IS NOT NULL)');
+  });
+
   test('public match and ranking APIs exclude unpublished tournaments', () => {
     expect(source('functions/api/v1/matches.js')).toContain("visible_tournament.published_at IS NOT NULL");
     const rankings = source('functions/api/v1/rankings.js');
