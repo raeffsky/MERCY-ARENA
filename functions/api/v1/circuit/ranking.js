@@ -40,6 +40,15 @@ export async function onRequestGet({ request, env }) {
       "SELECT m.team_a_id,m.team_b_id,m.winner_team_id FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE t.season_id=? AND m.status='completed' AND m.result_verified_at IS NOT NULL"
     ).bind(seasonId).all();
     const ranking = buildCircuitRanking(results || [], rankingMatches || []);
+    const { results: seasonRules } = await env.DB.prepare(
+      "SELECT place_from,place_to,points FROM circuit_scoring_rules WHERE season_id=? ORDER BY place_from"
+    ).bind(seasonId).all();
+    const scoringRules = seasonRules?.length ? seasonRules : [
+      {place_from:1,place_to:1,points:100},{place_from:2,place_to:2,points:75},
+      {place_from:3,place_to:4,points:55},{place_from:5,place_to:8,points:25},
+      {place_from:9,place_to:16,points:10},{place_from:17,place_to:2147483647,points:5}
+    ];
+
     const { results: entries } = await env.DB.prepare(
       "SELECT e.team_id,e.qualification_source,e.source_id,e.seed,e.status,t.name AS team_name,t.tag AS team_tag,t.logo_url AS team_logo FROM circuit_championship_entries e JOIN teams t ON t.id=e.team_id WHERE e.season_id=? ORDER BY e.seed"
     ).bind(seasonId).all();
@@ -50,7 +59,7 @@ export async function onRequestGet({ request, env }) {
     return json({
       data: ranking,
       season,
-      qualifiers: qualifiers || [],
+      qualifiers: qualifiers || [],\n      scoring_rules: scoringRules,
       championship: (entries || []).map((entry) => ({
         ...entry,
         team: { team_id: entry.team_id, team_name: entry.team_name, team_tag: entry.team_tag, team_logo: entry.team_logo }
