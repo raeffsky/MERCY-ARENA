@@ -29,7 +29,7 @@ export async function onRequestGet({ request, env }) {
           WHERE r.team_id=t.id AND r.season_id=? AND r.is_qualifier=0 AND r.placement<=4) AS top_four_finishes,
         (SELECT COUNT(*) FROM matches m JOIN tournaments mt ON mt.id=m.tournament_id
           WHERE mt.season_id=? AND m.status='completed' AND m.result_verified_at IS NOT NULL
-          AND m.winner_team_id=t.id) AS verified_wins
+          AND m.winner_team_id=t.id AND NOT EXISTS (SELECT 1 FROM circuit_qualifiers cq WHERE cq.tournament_id=m.tournament_id)) AS verified_wins
       FROM teams t
       WHERE t.status='active'
         AND (EXISTS (SELECT 1 FROM circuit_point_transactions tx WHERE tx.team_id=t.id AND tx.season_id=?)
