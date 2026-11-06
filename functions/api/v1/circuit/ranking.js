@@ -1,5 +1,5 @@
 import { json, databaseUnavailable } from "../_lib/http.js";
-import { buildCircuitRanking } from "../_lib/circuit-scoring.js";
+import { buildCircuitRanking } from "../_lib/circuit-scoring.mjs";
 
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return databaseUnavailable();
