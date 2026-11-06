@@ -29,6 +29,12 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(matches).toContain('(m.team_a_id IS NOT NULL OR m.team_b_id IS NOT NULL)');
   });
 
+  test('public tournament details count only active registered teams', () => {
+    const tournaments = source('functions/api/v1/tournaments.js');
+    expect(tournaments).toContain("registered_team.status='active'");
+    expect(tournaments).toContain("tm.status='active'");
+  });
+
   test('public match and ranking APIs exclude unpublished tournaments', () => {
     expect(source('functions/api/v1/matches.js')).toContain("visible_tournament.published_at IS NOT NULL");
     const rankings = source('functions/api/v1/rankings.js');
