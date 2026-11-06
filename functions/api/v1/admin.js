@@ -93,6 +93,27 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return bad("Некорректный JSON."); }
   const { resource, action = "create", id, data = {} } = body || {};
+  if (resource === "players" && action === "purge_demo") {
+    const { results = [] } = await env.DB.prepare(
+      "SELECT p.id,p.nickname,p.game_id FROM players p WHERE UPPER(p.nickname) LIKE 'DEMO %' AND UPPER(p.game_id) LIKE 'DEMO-%' ORDER BY p.id"
+    ).all();
+    if (!results.length) return json({ ok: true, deleted: 0, message: "Демо-игроки не найдены." });
+    const ids = results.map(player => player.id);
+    const placeholders = ids.map(() => "?").join(",");
+    const { results: used = [] } = await env.DB.prepare(
+      "SELECT DISTINCT player_id FROM tournament_registration_roster WHERE player_id IN (" + placeholders + ")"
+    ).bind(...ids).all();
+    const usedIds = new Set(used.map(row => String(row.player_id)));
+    const blocked = results.filter(player => usedIds.has(String(player.id)));
+    if (blocked.length) {
+      return json({ error: { code: "DEMO_PLAYERS_IN_HISTORY", message: "Некоторые демо-профили уже входят в историю заявок. Удаление остановлено, чтобы не повредить историю.", players: blocked.map(player => ({id:player.id,nickname:player.nickname})) } }, 409);
+    }
+    await env.DB.batch(results.map(player => env.DB.prepare(
+      "DELETE FROM players WHERE id=? AND UPPER(nickname) LIKE 'DEMO %' AND UPPER(game_id) LIKE 'DEMO-%'"
+    ).bind(player.id)));
+    await audit(env.DB, auth.user.id, "demo_players_purged", "players", "bulk", null, { deleted: results.map(player => ({id:player.id,nickname:player.nickname,game_id:player.game_id})) });
+    return json({ ok: true, deleted: results.length, players: results.map(player => ({id:player.id,nickname:player.nickname})) });
+  }
   if (resource === "applications" && action === "review") {
     const registrationId = String(id || "").trim();
     const status = data.status;
