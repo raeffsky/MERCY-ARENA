@@ -58,7 +58,7 @@ export async function finalizeCircuitTournament(db, tournamentId) {
     statements.push(db.prepare(
       "INSERT OR IGNORE INTO circuit_tournament_results (season_id,tournament_id,team_id,placement,placement_group,points_awarded,is_qualifier,finalized_at) VALUES (?,?,?,?,?,?,?,?)"
     ).bind(tournament.season_id, tournamentId, result.team_id, placement, group, pointsAwarded, qualifier ? 1 : 0, now));
-    if (awardPoints) {
+    if (awardPoints && points > 0) {
       statements.push(db.prepare(
         "INSERT INTO circuit_point_transactions (season_id,team_id,tournament_id,result_id,points_delta,transaction_type,reason) " +
         "SELECT ?,?,?,r.id,?,'placement_award',? FROM circuit_tournament_results r " +
