@@ -142,7 +142,7 @@ export async function prepareFinalizedCircuitCorrection(db, tournamentId, actorI
   ).bind(tournament.season_id, tournamentId).all();
   const ledgerByResult = new Map((ledger || []).map((row) => [String(row.result_id), Number(row.balance || 0)]));
   for (const row of existing || []) {
-    if (ledgerByResult.has(String(row.id)) && ledgerByResult.get(String(row.id)) !== Number(row.points_awarded || 0)) {
+    if ((ledgerByResult.get(String(row.id)) || 0) !== Number(row.points_awarded || 0)) {
       throw new Error("Баланс журнала Circuit не совпадает с итоговой записью. Нужна ручная сверка.");
     }
   }
