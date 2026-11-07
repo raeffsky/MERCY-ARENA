@@ -78,6 +78,12 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
   const queue = [];
   const processed = new Set();
   const changedSlots = new Map();
+  const routeDestinations = new Set();
+  const claimRouteDestination = (targetId, slot) => {
+    const key = String(targetId) + ":" + slot;
+    if (routeDestinations.has(key)) throw new Error("В сетке два маршрута ведут в один слот. Каскадная корректировка остановлена.");
+    routeDestinations.add(key);
+  };
   const current = (matchId) => {
     const key = String(matchId);
     if (!mutable.has(key)) {
@@ -115,6 +121,7 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
     if (oldEntrant === newEntrant) continue;
     const target = matches.get(String(route.next_match_id));
     assertSupportedTarget(target);
+    claimRouteDestination(target.id, route.next_slot);
     const slotValue = target[route.next_slot];
     if ((hasPlayedResult(target) && String(slotValue ?? "") !== oldEntrant) ||
         (slotValue != null && String(slotValue) !== oldEntrant)) {
@@ -139,6 +146,7 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
       const expectedEntrant = route.outcome === "winner" ? winner : loser;
       const target = matches.get(String(route.next_match_id));
       assertSupportedTarget(target);
+      claimRouteDestination(target.id, route.next_slot);
       const slotValue = target[route.next_slot];
       if (expectedEntrant == null) {
         if (slotValue != null || hasPlayedResult(target)) {
