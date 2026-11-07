@@ -109,4 +109,13 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(admin).toContain('t.status AS tournament_status');
     expect(admin).toContain('Расписание завершённого матча нельзя менять');
   });
+
+  test('corrected final results re-evaluate tournament and Circuit completion', () => {
+    const admin = source('functions/api/v1/admin.js');
+    expect(admin).toContain('completeTournamentIfReady(env.DB, before.tournament_id)');
+    expect(admin).toContain('const matchId = String(id ?? "").trim()');
+    expect(admin).toContain('guardSuccessfulWrite');
+    const progression = source('functions/api/v1/_lib/match-progression.js');
+    expect(progression).toContain('export async function completeTournamentIfReady');
+  });
 });
