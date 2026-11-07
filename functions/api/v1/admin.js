@@ -441,6 +441,9 @@ export async function onRequestPost({ request, env }) {
   if (resource === "matches" && (payload.status === "completed" || before.status === "completed")) {
     if (before.status === "completed") {
       if (payload.status && payload.status !== "completed") return bad("Завершённый матч нельзя вернуть в активное расписание.", 409);
+      if (payload.scheduled_at != null && String(payload.scheduled_at) !== String(before.scheduled_at ?? "")) {
+        return bad("Расписание завершённого матча нельзя менять. Для исправления счёта используй отдельную корректировку результата.", 409);
+      }
       if ((payload.team_a_id != null && String(payload.team_a_id) !== String(before.team_a_id)) ||
           (payload.team_b_id != null && String(payload.team_b_id) !== String(before.team_b_id))) {
         return bad("Нельзя менять участников уже завершённого матча.", 409);
