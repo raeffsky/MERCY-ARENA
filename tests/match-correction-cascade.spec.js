@@ -40,6 +40,7 @@ test.describe("Safe downstream result correction cascade", () => {
       completed(2, "main", 2, 10, 12, 10),
       completed(3, "main", 3, 10, 13, 10)
     ];
+    matches[0].tournament_format = "single_elimination";
     const db = makeDb({
       matches,
       progression: [
@@ -63,6 +64,7 @@ test.describe("Safe downstream result correction cascade", () => {
       completed(1, "main", 1, 10, 11, 10),
       { id: 2, bracket: "main", round_number: 2, status: "scheduled", team_a_id: 10, team_b_id: 12, score_a: null, score_b: null, winner_team_id: null }
     ];
+    matches[0].tournament_format = "single_elimination";
     const db = makeDb({
       matches,
       progression: [{ match_id: 1, next_match_id: 2, next_slot: "team_a_id" }]
@@ -81,20 +83,23 @@ test.describe("Safe downstream result correction cascade", () => {
       completed(1, "upper", 1, 10, 11, 10),
       completed(2, "upper", 2, 10, 12, 10),
       completed(3, "lower", 1, 13, 11, 11),
-      completed(4, "final", 1, 10, 11, 10)
+      completed(4, "final", 1, 10, 11, 10),
+      { id: 5, bracket: "lower", round_number: 2, status: "scheduled", team_a_id: 14, team_b_id: 12, score_a: null, score_b: null, winner_team_id: null }
     ];
+    matches[0].tournament_format = "double_elimination";
     const db = makeDb({
       matches,
       advancement: [
         { match_id: 1, outcome: "winner", next_match_id: 2, next_slot: "team_a_id" },
         { match_id: 1, outcome: "loser", next_match_id: 3, next_slot: "team_b_id" },
         { match_id: 2, outcome: "winner", next_match_id: 4, next_slot: "team_a_id" },
+        { match_id: 2, outcome: "loser", next_match_id: 5, next_slot: "team_b_id" },
         { match_id: 3, outcome: "winner", next_match_id: 4, next_slot: "team_b_id" }
       ]
     });
     const result = await prepareMatchCorrectionCascade(db, 9, matches[0], 11, "2026-11-07T00:00:00.000Z");
     expect(result.summary.reset_matches).toEqual([2, 3, 4]);
-    expect(result.summary.updated_slots).toBe(4);
+    expect(result.summary.updated_slots).toBe(5);
     const finalReset = db.prepared.find(statement =>
       statement.sql.startsWith("UPDATE matches SET team_a_id=?,team_b_id=?") && statement.values[3] === "4"
     );
@@ -131,6 +136,8 @@ test.describe("Safe downstream result correction cascade", () => {
       completed(1, "main", 1, 10, 11, 10),
       { id: 2, bracket: "main", round_number: 2, status: "scheduled", team_a_id: 99, team_b_id: 12, score_a: null, score_b: null, winner_team_id: null }
     ];
+    matches[0].tournament_format = "single_elimination";
+    matches[0].tournament_format = "single_elimination";
     const db = makeDb({
       matches,
       progression: [{ match_id: 1, next_match_id: 2, next_slot: "team_a_id" }]
