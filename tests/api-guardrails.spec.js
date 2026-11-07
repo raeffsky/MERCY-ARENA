@@ -94,6 +94,7 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(admin).toContain('target.status !== "scheduled"');
     expect(admin).toContain('match_advancement WHERE match_id=?');
     expect(admin).toContain('match_progression WHERE match_id=?');
+    expect(admin).toContain('Корректировка остановлена, чтобы не повредить сетку.');
     expect(admin).toContain("match_result_corrected");
     const page = source('index.html');
     expect(page).toContain('data-correct-result');
