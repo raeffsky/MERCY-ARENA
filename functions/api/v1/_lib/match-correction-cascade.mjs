@@ -202,7 +202,6 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
         resetRow.team_a_id = null;
         resetRow.team_b_id = null;
         changedSlots.set(String(reset.id), new Set(["team_a_id", "team_b_id"]));
-        resetIds.add(String(reset.id));
         cancelledResetIds.add(String(reset.id));
       }
     }
@@ -252,7 +251,8 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
       route_count: directRoutes.length,
       route_outcomes: directRoutes.map((route) => route.outcome),
       updated_slots: [...changedSlots.values()].reduce((sum, slots) => sum + slots.size, 0),
-      reset_matches: [...resetIds].map((id) => Number.isNaN(Number(id)) ? id : Number(id))
+      reset_matches: [...resetIds].map((id) => Number.isNaN(Number(id)) ? id : Number(id)),
+      cancelled_matches: [...cancelledResetIds].map((id) => Number.isNaN(Number(id)) ? id : Number(id))
     }
   };
 }
