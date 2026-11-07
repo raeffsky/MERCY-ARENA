@@ -94,6 +94,8 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(admin).toContain('prepareMatchCorrectionCascade');
     expect(admin).toContain("Superseded by manual result correction");
     expect(admin).toContain('cascade_reset_matches');
+    expect(admin).toContain('reopenedTournament');
+    expect(admin).toContain("UPDATE tournaments SET status='active'");
     expect(admin).toContain('Каскад потребует переиграть зависимые матчи');
     const cascade = source('functions/api/v1/_lib/match-correction-cascade.mjs');
     expect(cascade).toContain("validation_status='reviewed'");
@@ -102,6 +104,7 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(admin).toContain("match_result_corrected");
     const page = source('index.html');
     expect(page).toContain('data-correct-result');
+    expect(page).toContain('затронутые матчи уже начаты или завершены');
     expect(page).toContain("action:'correct_result'");
     expect(page).toContain('КОРРЕКТИРОВКА РЕЗУЛЬТАТА');
   });
