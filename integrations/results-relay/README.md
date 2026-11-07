@@ -42,17 +42,17 @@ From the repository root, install Wrangler if it is not already available in the
 
 ```bash
 npm install --save-dev wrangler
-npx wrangler deploy --config integrations/results-relay/wrangler.toml
+npx wrangler@latest deploy --config integrations/results-relay/wrangler.toml
 ```
 
 Configure secrets without committing them:
 
 ```bash
-npx wrangler secret put SOURCE_WEBHOOK_TOKEN --config integrations/results-relay/wrangler.toml
-npx wrangler secret put MATCH_RESULTS_WEBHOOK_SECRET --config integrations/results-relay/wrangler.toml
+npx wrangler@latest secret put SOURCE_WEBHOOK_TOKEN --config integrations/results-relay/wrangler.toml
+npx wrangler@latest secret put MATCH_RESULTS_WEBHOOK_SECRET --config integrations/results-relay/wrangler.toml
 ```
 
-Set `MERCY_ARENA_URL` as a Worker variable in Cloudflare to the HTTPS origin only, for example `https://mercy-arena.pages.dev`. The relay deliberately rejects URLs with credentials, a custom path, query, fragment, or non-HTTPS protocol.
+The production origin `https://mercy-arena.pages.dev` is set as a non-secret variable in `wrangler.toml`. Change that value before deployment if the Pages production domain changes. The relay deliberately rejects URLs with credentials, a custom path, query, fragment, or non-HTTPS protocol.
 
 The `MATCH_RESULTS_WEBHOOK_SECRET` value must be identical to the Cloudflare Pages secret with the same name. Use a separately generated high-entropy `SOURCE_WEBHOOK_TOKEN` and share it only with the selected provider/collector.
 
