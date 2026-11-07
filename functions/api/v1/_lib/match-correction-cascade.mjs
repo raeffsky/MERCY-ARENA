@@ -75,6 +75,7 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
 
   const mutable = new Map();
   const resetIds = new Set();
+  const cancelledResetIds = new Set();
   const queue = [];
   const processed = new Set();
   const changedSlots = new Map();
@@ -111,6 +112,27 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
   };
 
   const directRoutes = routesByMatch.get(sourceId) || [];
+  const format = sourceMatch.tournament_format;
+  const maxMainRound = Math.max(0, ...[...matches.values()]
+    .filter((match) => match.bracket === "main")
+    .map((match) => Number(match.round_number) || 0));
+  const validateRouteShape = (match, routes) => {
+    if (format === "single_elimination" && match.bracket === "main" &&
+        Number(match.round_number) < maxMainRound &&
+        (routes.length !== 1 || routes[0].outcome !== "winner")) {
+      throw new Error("В Single Elimination отсутствует корректный маршрут победителя из зависимого раунда.");
+    }
+    if (format === "double_elimination" && match.bracket === "upper" &&
+        (routes.length !== 2 || !routes.some((route) => route.outcome === "winner") ||
+         !routes.some((route) => route.outcome === "loser"))) {
+      throw new Error("В Upper Bracket отсутствует маршрут победителя или проигравшего.");
+    }
+    if (format === "double_elimination" && match.bracket === "lower" &&
+        (routes.length !== 1 || routes[0].outcome !== "winner")) {
+      throw new Error("В Lower Bracket отсутствует корректный маршрут победителя.");
+    }
+  };
+  validateRouteShape(sourceMatch, directRoutes);
   for (const route of directRoutes) {
     if (!["winner", "loser"].includes(route.outcome) ||
         !["team_a_id", "team_b_id"].includes(route.next_slot)) {
@@ -136,9 +158,11 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
     if (processed.has(matchId)) continue;
     processed.add(matchId);
     const invalidated = matches.get(matchId);
+    const outgoingRoutes = routesByMatch.get(matchId) || [];
+    validateRouteShape(invalidated, outgoingRoutes);
     const winner = invalidated.winner_team_id == null ? null : String(invalidated.winner_team_id);
     const loser = winner == null ? null : loserOf(invalidated);
-    for (const route of routesByMatch.get(matchId) || []) {
+    for (const route of outgoingRoutes) {
       if (!["winner", "loser"].includes(route.outcome) ||
           !["team_a_id", "team_b_id"].includes(route.next_slot)) {
         throw new Error("В маршруте зависимого матча обнаружена некорректная конфигурация.");
@@ -163,6 +187,25 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
         if (hasPlayedResult(target)) markReset(target);
       }
     }
+
+    if (format === "double_elimination" && invalidated.bracket === "final" &&
+        Number(invalidated.round_number) === 1) {
+      const reset = [...matches.values()].find((match) =>
+        match.bracket === "final" && Number(match.round_number) === 2
+      );
+      if (reset && (reset.status !== "cancelled" || reset.team_a_id != null || reset.team_b_id != null ||
+          reset.score_a != null || reset.score_b != null || reset.winner_team_id != null)) {
+        if (!["scheduled", "in_progress", "completed", "cancelled"].includes(reset.status)) {
+          throw new Error("Reset Final перенесён или отменён нестандартно. Каскадная корректировка остановлена.");
+        }
+        const resetRow = current(reset.id);
+        resetRow.team_a_id = null;
+        resetRow.team_b_id = null;
+        changedSlots.set(String(reset.id), new Set(["team_a_id", "team_b_id"]));
+        resetIds.add(String(reset.id));
+        cancelledResetIds.add(String(reset.id));
+      }
+    }
   }
 
   const statements = [];
@@ -170,7 +213,17 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
     const row = mutable.get(matchId);
     const original = matches.get(matchId);
     const shouldReset = resetIds.has(matchId);
-    if (shouldReset) {
+    if (cancelledResetIds.has(matchId)) {
+      statements.push(db.prepare(
+        "UPDATE matches SET team_a_id=NULL,team_b_id=NULL,status='cancelled',score_a=NULL,score_b=NULL,winner_team_id=NULL,result_source=NULL,result_verified_at=NULL,updated_at=? WHERE id=? AND status=? AND team_a_id IS ? AND team_b_id IS ? AND score_a IS ? AND score_b IS ? AND winner_team_id IS ?"
+      ).bind(timestamp,matchId,original.status,original.team_a_id,original.team_b_id,original.score_a,original.score_b,original.winner_team_id));
+      statements.push(db.prepare(
+        "INSERT INTO audit_events (action,entity_type,entity_id) SELECT NULL,'match','0' WHERE changes()=0"
+      ));
+      statements.push(db.prepare(
+        "UPDATE result_events SET validation_status='reviewed',decision_reason=?,reviewed_at=? WHERE match_id=? AND validation_status='valid'"
+      ).bind("Superseded by cascading result correction",timestamp,matchId));
+    } else if (shouldReset) {
       statements.push(db.prepare(
         "UPDATE matches SET team_a_id=?,team_b_id=?,status='scheduled',score_a=NULL,score_b=NULL,winner_team_id=NULL,result_source=NULL,result_verified_at=NULL,updated_at=? WHERE id=? AND status=? AND team_a_id IS ? AND team_b_id IS ? AND score_a IS ? AND score_b IS ? AND winner_team_id IS ?"
       ).bind(row.team_a_id,row.team_b_id,timestamp,matchId,original.status,original.team_a_id,original.team_b_id,
