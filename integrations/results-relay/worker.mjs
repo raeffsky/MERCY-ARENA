@@ -99,6 +99,10 @@ export default {
     const responseText = await upstream.text();
     let responseBody;
     try { responseBody = JSON.parse(responseText); } catch { responseBody = { message: responseText.slice(0, 1000) }; }
-    return json({ forwarded: upstream.ok, status: upstream.status, response: responseBody }, upstream.ok ? 200 : 502);
+    // Preserve upstream 4xx/5xx semantics so providers can distinguish a
+    // rejected event from a transient relay/network failure.
+    const responseStatus = upstream.ok ? 200 :
+      (upstream.status >= 400 && upstream.status <= 599 ? upstream.status : 502);
+    return json({ forwarded: upstream.ok, status: upstream.status, response: responseBody }, responseStatus);
   }
 };
