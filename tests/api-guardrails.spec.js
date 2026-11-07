@@ -97,6 +97,7 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(admin).toContain("Первый Grand Final завершённого MERCY CIRCUIT");
     expect(admin).toContain("status=?,score_a=NULL,score_b=NULL,winner_team_id=NULL");
     expect(admin).toContain('cascade_reset_matches');
+    expect(admin).toContain('cascade_cancelled_matches: cascade.summary.cancelled_matches');
     expect(admin).toContain('reopenedTournament');
     expect(admin).toContain('tournament_reopened: reopenedTournament');
     expect(admin).toContain("UPDATE tournaments SET status='active'");
@@ -109,6 +110,7 @@ test.describe('MERCY ARENA API guardrails', () => {
     const page = source('index.html');
     expect(page).toContain('data-correct-result');
     expect(page).toContain('затронутые матчи уже начаты или завершены');
+    expect(page).toContain('Матчей для переигровки: ');
     expect(page).toContain("action:'correct_result'");
     expect(page).toContain('КОРРЕКТИРОВКА РЕЗУЛЬТАТА');
   });
