@@ -1,5 +1,8 @@
 const { test, expect } = require("@playwright/test");
-const { prepareMatchCorrectionCascade } = require("../functions/api/v1/_lib/match-correction-cascade.mjs");
+let prepareMatchCorrectionCascade;
+test.beforeAll(async () => {
+  ({ prepareMatchCorrectionCascade } = await import("../functions/api/v1/_lib/match-correction-cascade.mjs"));
+});
 
 function makeDb({ matches, advancement = [], progression = [] }) {
   const prepared = [];
