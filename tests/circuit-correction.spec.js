@@ -117,16 +117,14 @@ test.describe("MERCY CIRCUIT finalized result reconciliation", () => {
     expect(transactionStatements(db).every(row => row.sql.includes("'correction'"))).toBeTruthy();
   });
 
-  test("appends a negative correction without rewriting historical ledger rows", async () => {
+  test("does not append ledger transactions when a score correction leaves placements unchanged", async () => {
     const db = singleEliminationFixture();
     const result = await prepareFinalizedCircuitCorrection(db, 7, 99, 501, {
-      score_a: 1, score_b: 2, winner_team_id: 2
+      score_a: 3, score_b: 1, winner_team_id: 1
     });
-    const writes = transactionStatements(db);
-    expect(writes).toHaveLength(2);
-    expect(writes.map(row => row.values[4])).toContain(-25);
-    expect(writes.every(row => !/UPDATE|DELETE/i.test(row.sql))).toBeTruthy();
-    expect(result.summary.points_delta).toBe(0);
+    expect(result.summary.teams_updated).toBe(0);
+    expect(transactionStatements(db)).toHaveLength(0);
+    expect(db.prepared.some(row => row.sql.includes("UPDATE circuit_tournament_results SET placement="))).toBeFalsy();
   });
 
   test("updates placements without creating ledger transactions when the scoring band is unchanged", async () => {
@@ -146,6 +144,19 @@ test.describe("MERCY CIRCUIT finalized result reconciliation", () => {
     await expect(prepareFinalizedCircuitCorrection(db, 7, 99, 501, {
       score_a: 1, score_b: 2, winner_team_id: 2
     })).rejects.toThrow("Баланс журнала Circuit не совпадает");
+  });
+
+  test("blocks reconciliation when orphaned ledger transactions exist", async () => {
+    const db = singleEliminationFixture({
+      ledger: [
+        { result_id: 11, balance: 100 },
+        { result_id: 12, balance: 75 },
+        { result_id: 999, balance: 10 }
+      ]
+    });
+    await expect(prepareFinalizedCircuitCorrection(db, 7, 99, 501, {
+      score_a: 1, score_b: 2, winner_team_id: 2
+    })).rejects.toThrow("транзакции без итоговой записи");
   });
 
   test("blocks reconciliation when approved registrations and derived placements differ", async () => {
