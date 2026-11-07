@@ -112,7 +112,7 @@ export async function onRequestPost({ request, env }) {
       return bad("Укажи корректный ID матча и победный счёт из целых неотрицательных чисел.");
     }
     const before = await env.DB.prepare(
-      "SELECT m.*,t.status AS tournament_status,t.format AS tournament_format FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=? LIMIT 1"
+      "SELECT m.*,t.status AS tournament_status,t.format AS tournament_format,t.season_id AS tournament_season_id FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=? LIMIT 1"
     ).bind(matchId).first();
     if (!before) return bad("Матч не найден.", 404);
     if (before.status !== "completed") return bad("Корректировать можно только завершённый матч.", 409);
@@ -216,7 +216,7 @@ export async function onRequestPost({ request, env }) {
     ).bind(scoreA,scoreB,newWinner,timestamp,timestamp,matchId,before.score_a,before.score_b,before.winner_team_id));
     guardSuccessfulWrite();
     let circuitReconciliation = null;
-    if (finalizedTournament && before.season_id != null) {
+    if (finalizedTournament && before.tournament_season_id != null) {
       try {
         const prepared = await prepareFinalizedCircuitCorrection(
           env.DB, before.tournament_id, auth.user.id, matchId,
