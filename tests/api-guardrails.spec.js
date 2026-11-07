@@ -59,7 +59,7 @@ test.describe('MERCY ARENA API guardrails', () => {
 
   test('organizer match list includes tournament, team names and schedule', () => {
     const admin = source('functions/api/v1/admin.js');
-    expect(admin).toContain('t.title AS tournament_title,ta.name AS team_a_name,tb.name AS team_b_name');
+    expect(admin).toContain('t.title AS tournament_title,t.status AS tournament_status,ta.name AS team_a_name,tb.name AS team_b_name');
     const page = source('index.html');
     expect(page).toContain("x.scheduled_at?dateLabel(x.scheduled_at):'Не назначено'");
     expect(page).toContain("x.team_a_name||('Команда #'+(x.team_a_id||'—'))");
@@ -73,7 +73,7 @@ test.describe('MERCY ARENA API guardrails', () => {
 
   test('cancelled and postponed matches cannot complete a tournament', () => {
     const progression = source('functions/api/v1/_lib/match-progression.js');
-    expect(progression).toContain("SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) AS completed");
+    expect(progression).toContain("SUM(CASE WHEN m.status='completed' THEN 1 ELSE 0 END) AS completed");
     expect(progression).toContain('Number(state?.completed || 0) !== Number(state?.total || 0)');
     expect(progression).toContain('Cancelled matches are not played results');
   });
