@@ -261,6 +261,7 @@ export async function onRequestPost({ request, env }) {
       corrected: true,
       downstream_updates: cascade.summary.updated_slots,
       cascade_reset_matches: cascade.summary.reset_matches,
+      tournament_reopened: reopenedTournament,
       tournament_completed: tournamentCompleted,
       circuit_reconciliation: circuitReconciliation
     });
