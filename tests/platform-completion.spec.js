@@ -99,9 +99,9 @@ test.describe('MERCY ARENA completion flows', () => {
     await expect(page.locator('#matchBracket')).toContainText('Ожидает команду');
     await expect(page.locator('#matchBracket')).not.toContainText('Команда #null');
     await expect(page.locator('#matchBracket .match-round-title')).toHaveText([
-      'ВЕРХНЯЯ СЕТКА · РАУНД 1',
-      'НИЖНЯЯ СЕТКА · РАУНД 1',
-      'ФИНАЛ · РАУНД 1'
+      'Верхняя сетка · РАУНД 1',
+      'Нижняя сетка · РАУНД 1',
+      'Финал · РАУНД 1'
     ]);
     await page.locator('[data-match-view="schedule"]').click();
     await expect(page.locator('#matchSchedule')).toContainText('MERCY Test Cup');
