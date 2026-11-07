@@ -93,6 +93,9 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(admin).toContain('before.tournament_status === "completed"');
     expect(admin).toContain('prepareMatchCorrectionCascade');
     expect(admin).toContain("Superseded by manual result correction");
+    expect(admin).toContain("Superseded by corrected Grand Final result");
+    expect(admin).toContain("Первый Grand Final завершённого MERCY CIRCUIT");
+    expect(admin).toContain("status=?,score_a=NULL,score_b=NULL,winner_team_id=NULL");
     expect(admin).toContain('cascade_reset_matches');
     expect(admin).toContain('reopenedTournament');
     expect(admin).toContain("UPDATE tournaments SET status='active'");
