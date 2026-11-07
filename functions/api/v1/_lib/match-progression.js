@@ -141,6 +141,10 @@ export async function prepareFinalizedCircuitCorrection(db, tournamentId, actorI
     "SELECT result_id,SUM(points_delta) AS balance FROM circuit_point_transactions WHERE season_id=? AND tournament_id=? AND result_id IS NOT NULL GROUP BY result_id"
   ).bind(tournament.season_id, tournamentId).all();
   const ledgerByResult = new Map((ledger || []).map((row) => [String(row.result_id), Number(row.balance || 0)]));
+  const existingResultIds = new Set((existing || []).map((row) => String(row.id)));
+  if ([...ledgerByResult.keys()].some((resultId) => !existingResultIds.has(resultId))) {
+    throw new Error("В журнале Circuit найдены транзакции без итоговой записи турнира. Нужна ручная сверка.");
+  }
   for (const row of existing || []) {
     if ((ledgerByResult.get(String(row.id)) || 0) !== Number(row.points_awarded || 0)) {
       throw new Error("Баланс журнала Circuit не совпадает с итоговой записью. Нужна ручная сверка.");
