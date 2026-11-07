@@ -1164,9 +1164,9 @@ matches:[['tournament_id','ID турнира','number',true],['round_number','Р
 var labels={seasons:'Сезоны',tournaments:'Турниры',teams:'Команды',players:'Игроки',matches:'Матчи',applications:'Заявки',circuit:'MERCY CIRCUIT',engine:'Auto Result Engine',overview:'Обзор системы',account:'Аккаунт'};
 function val(v){return v==null?'':String(v)}
 function dt(v){if(!v)return '';var d=new Date(v);if(Number.isNaN(d.getTime()))return String(v).slice(0,16);var p=function(n){return String(n).padStart(2,'0')};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}
-async function request(resource,body){
+async function request(resource,body,includeEnvelope){
 var response=await fetch('/api/v1/admin'+(body?'':'?resource='+encodeURIComponent(resource)),body?{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store',credentials:'same-origin'});
-var raw=await response.text(),result;try{result=JSON.parse(raw)}catch(parseError){var detail=raw.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,220);throw new Error('Сервер вернул HTML вместо JSON (HTTP '+response.status+'). '+(detail||'Проверьте deployment Functions в Cloudflare.'))}if(!response.ok)throw new Error(result.error&&result.error.message||'Ошибка API '+response.status);return result.data;
+var raw=await response.text(),result;try{result=JSON.parse(raw)}catch(parseError){var detail=raw.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,220);throw new Error('Сервер вернул HTML вместо JSON (HTTP '+response.status+'). '+(detail||'Проверьте deployment Functions в Cloudflare.'))}if(!response.ok)throw new Error(result.error&&result.error.message||'Ошибка API '+response.status);return includeEnvelope?result:result.data;
 }
 function fieldMarkup(f,users,seasons){
 var key=f[0],label=f[1],type=f[2],required=f[3],opts=f[4],value='';
@@ -1238,8 +1238,9 @@ var button=document.getElementById('saveMatchCorrection'),scoreA=Number(correcti
 if(!Number.isSafeInteger(scoreA)||!Number.isSafeInteger(scoreB)||scoreA<0||scoreB<0||scoreA===scoreB){correctionMessage.textContent='Нужен целый неотрицательный счёт с разными значениями.';return}
 button.disabled=true;correctionMessage.textContent='Проверяем сетку и сохраняем корректировку…';
 try{
-await request('matches',{resource:'matches',action:'correct_result',id:correctionForm.dataset.matchId,data:{score_a:scoreA,score_b:scoreB}});
+var correctionResult=await request('matches',{resource:'matches',action:'correct_result',id:correctionForm.dataset.matchId,data:{score_a:scoreA,score_b:scoreB}},true);
 cache={};correctionDialog.close();await render('matches');
+if(correctionResult.cascade_reset_matches&&correctionResult.cascade_reset_matches.length){alert('Результат исправлен. Сброшено зависимых матчей: '+correctionResult.cascade_reset_matches.length+'. Турнир возвращён в активный статус. Эти матчи нужно провести заново.');}
 }catch(error){correctionMessage.textContent=error.message}
 finally{button.disabled=false}
 });
