@@ -197,6 +197,9 @@ export async function onRequestPost({ request, env }) {
             "UPDATE matches SET team_a_id=?,team_b_id=?,status='scheduled',updated_at=? WHERE id=? AND status='cancelled' AND team_a_id IS ? AND team_b_id IS ? AND score_a IS NULL AND score_b IS NULL AND winner_team_id IS NULL"
           ).bind(before.team_a_id,before.team_b_id,timestamp,reset.id,reset.team_a_id,reset.team_b_id));
           guardSuccessfulWrite();
+          writes.push(env.DB.prepare(
+            "UPDATE result_events SET validation_status='reviewed',decision_reason=?,reviewed_at=? WHERE match_id=? AND validation_status='valid'"
+          ).bind("Superseded by corrected Grand Final result",timestamp,reset.id));
           appendCascadeMatch("reset_matches", reset.id);
           cascade.summary.updated_slots += 2;
         } else if (newWinner === teamA && reset.status === "scheduled") {
@@ -207,6 +210,9 @@ export async function onRequestPost({ request, env }) {
             "UPDATE matches SET team_a_id=NULL,team_b_id=NULL,status='cancelled',updated_at=? WHERE id=? AND status='scheduled' AND team_a_id=? AND team_b_id=? AND score_a IS NULL AND score_b IS NULL AND winner_team_id IS NULL"
           ).bind(timestamp,reset.id,before.team_a_id,before.team_b_id));
           guardSuccessfulWrite();
+          writes.push(env.DB.prepare(
+            "UPDATE result_events SET validation_status='reviewed',decision_reason=?,reviewed_at=? WHERE match_id=? AND validation_status='valid'"
+          ).bind("Superseded by corrected Grand Final result",timestamp,reset.id));
           appendCascadeMatch("cancelled_matches", reset.id);
           cascade.summary.updated_slots += 2;
         } else if (newWinner === teamA && reset.status !== "cancelled") {
