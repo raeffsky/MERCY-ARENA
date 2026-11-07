@@ -188,9 +188,13 @@ export async function onRequestGet({ request, env }) {
     ).bind(await createAuditEventId(env.DB),auth.user.id,String(matchId),
       JSON.stringify({score_a:before.score_a,score_b:before.score_b,winner_team_id:before.winner_team_id}),
       JSON.stringify({score_a:scoreA,score_b:scoreB,winner_team_id:newWinner,downstream_updates:routes.length,tournament_id:before.tournament_id})));
-    const results = await env.DB.batch(writes);
-    if (results.some((result) => result.meta?.changes === 0)) {
-      return bad("Матч или связанные слоты изменились параллельно. Обнови данные и повтори корректировку.", 409);
+    try {
+      await env.DB.batch(writes);
+    } catch (error) {
+      if (/NOT NULL constraint failed: audit_events.action/i.test(String(error?.message || error))) {
+        return bad("Матч или связанные слоты изменились параллельно. Ничего не сохранено, обнови данные и повтори корректировку.", 409);
+      }
+      throw error;
     }
     const after = await getById(env.DB, "matches", matchId);
     return json({ data: after, corrected: true, downstream_updates: routes.length });
