@@ -1238,7 +1238,7 @@ var button=document.getElementById('saveMatchCorrection'),scoreA=Number(correcti
 if(!Number.isSafeInteger(scoreA)||!Number.isSafeInteger(scoreB)||scoreA<0||scoreB<0||scoreA===scoreB){correctionMessage.textContent='Нужен целый неотрицательный счёт с разными значениями.';return}
 button.disabled=true;correctionMessage.textContent='Проверяем сетку и сохраняем корректировку…';
 try{
-await request('matches',{resource:'matches',action:'correct_result',id:Number(correctionForm.dataset.matchId),data:{score_a:scoreA,score_b:scoreB}});
+await request('matches',{resource:'matches',action:'correct_result',id:correctionForm.dataset.matchId,data:{score_a:scoreA,score_b:scoreB}});
 cache={};correctionDialog.close();await render('matches');
 }catch(error){correctionMessage.textContent=error.message}
 finally{button.disabled=false}
