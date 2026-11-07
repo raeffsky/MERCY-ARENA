@@ -140,11 +140,15 @@ export async function onRequestPost({ request, env }) {
       } catch (error) {
         return bad(error.message || "Не удалось безопасно пересчитать зависимые матчи.", 409);
       }
-      if (before.tournament_format === "double_elimination" &&
-          ["upper","lower"].includes(before.bracket) &&
+      const invalidDoubleEliminationRoutes =
+        before.tournament_format === "double_elimination" &&
+        ((before.bracket === "upper" &&
           (cascade.summary.route_count !== 2 ||
            !cascade.summary.route_outcomes.includes("winner") ||
-           !cascade.summary.route_outcomes.includes("loser"))) {
+           !cascade.summary.route_outcomes.includes("loser"))) ||
+         (before.bracket === "lower" &&
+          (cascade.summary.route_count !== 1 || cascade.summary.route_outcomes[0] !== "winner")));
+      if (invalidDoubleEliminationRoutes) {
         return bad("Для этого матча не найдены маршруты Double Elimination. Корректировка остановлена, чтобы не повредить сетку.", 409);
       }
       if (finalizedTournament && before.tournament_season_id != null &&
