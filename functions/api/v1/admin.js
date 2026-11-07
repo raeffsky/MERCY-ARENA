@@ -157,6 +157,9 @@ export async function onRequestGet({ request, env }) {
             "UPDATE matches SET team_a_id=?,team_b_id=?,status='scheduled',updated_at=? WHERE id=? AND status='cancelled'"
           ).bind(before.team_a_id,before.team_b_id,timestamp,reset.id));
         } else if (newWinner === teamA && reset.status === "scheduled") {
+          if (String(reset.team_a_id ?? "") !== teamA || String(reset.team_b_id ?? "") !== teamB) {
+            return bad("У Reset Final изменились участники. Корректировка остановлена.", 409);
+          }
           writes.push(env.DB.prepare(
             "UPDATE matches SET team_a_id=NULL,team_b_id=NULL,status='cancelled',updated_at=? WHERE id=? AND status='scheduled' AND team_a_id=? AND team_b_id=?"
           ).bind(timestamp,reset.id,before.team_a_id,before.team_b_id));
@@ -187,7 +190,7 @@ export async function onRequestGet({ request, env }) {
   if (!config) return bad("Неизвестный раздел.");
   if (resource === "matches") {
     const { results } = await env.DB.prepare(
-      "SELECT m.*,t.title AS tournament_title,ta.name AS team_a_name,tb.name AS team_b_name " +
+      "SELECT m.*,t.title AS tournament_title,t.status AS tournament_status,ta.name AS team_a_name,tb.name AS team_b_name " +
       "FROM matches m JOIN tournaments t ON t.id=m.tournament_id " +
       "LEFT JOIN teams ta ON ta.id=m.team_a_id LEFT JOIN teams tb ON tb.id=m.team_b_id " +
       "ORDER BY m.scheduled_at IS NULL,m.scheduled_at ASC,m.tournament_id,m.round_number,m.match_number LIMIT 200"
