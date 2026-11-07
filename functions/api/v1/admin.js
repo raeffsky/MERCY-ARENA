@@ -203,7 +203,11 @@ export async function onRequestPost({ request, env }) {
           guardSuccessfulWrite();
         } else if (newWinner === teamA && reset.status !== "cancelled") {
           return bad("Состояние Reset Final не соответствует первому финалу. Корректировка остановлена.", 409);
-        } else if (newWinner === teamB && reset.status !== "scheduled") {
+        } else if (newWinner === teamB && reset.status === "scheduled") {
+          if (String(reset.team_a_id ?? "") !== teamA || String(reset.team_b_id ?? "") !== teamB) {
+            return bad("У Reset Final изменились участники. Корректировка остановлена.", 409);
+          }
+        } else if (newWinner === teamB) {
           return bad("Нельзя безопасно активировать Reset Final в текущем состоянии.", 409);
         }
       }
