@@ -1,7 +1,7 @@
 import { createAuditEventId } from "./_lib/audit.js";
 import { json, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, isOwnerAccount, sameOrigin } from "./_lib/session-auth.js";
-import { advanceWinner, completeTournamentIfReady, finalizeCircuitTournament } from "./_lib/match-progression.js";
+import { advanceWinner, completeTournamentIfReady, finalizeCircuitTournament, prepareFinalizedCircuitCorrection } from "./_lib/match-progression.js";
 
 const TABLES = {
   tournaments: { table: "tournaments", fields: ["title","description","game","region","format","status","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","prize_pool","poster_url"] },
@@ -75,7 +75,34 @@ export async function onRequestGet({ request, env }) {
     const { results } = await env.DB.prepare("SELECT id,email,display_name FROM users ORDER BY email COLLATE NOCASE LIMIT 200").all();
     return json({ data: results || [] });
   }
-  if (resource === "matches" && action === "correct_result") {
+  const config = TABLES[resource];
+  if (!config) return bad("Неизвестный раздел.");
+  if (resource === "matches") {
+    const { results } = await env.DB.prepare(
+      "SELECT m.*,t.title AS tournament_title,t.status AS tournament_status,ta.name AS team_a_name,tb.name AS team_b_name " +
+      "FROM matches m JOIN tournaments t ON t.id=m.tournament_id " +
+      "LEFT JOIN teams ta ON ta.id=m.team_a_id LEFT JOIN teams tb ON tb.id=m.team_b_id " +
+      "ORDER BY m.scheduled_at IS NULL,m.scheduled_at ASC,m.tournament_id,m.round_number,m.match_number LIMIT 200"
+    ).all();
+    return json({ data: results || [] });
+  }
+  const { results } = await env.DB.prepare("SELECT * FROM " + config.table + (resource === "seasons" ? " ORDER BY season_number DESC,id DESC" : " ORDER BY id DESC") + " LIMIT 200").all();
+  return json({ data: results || [] });
+  } catch (error) {
+    console.error("MERCY ARENA admin GET failed:", error);
+    return json({ error: { code: "ADMIN_READ_FAILED", message: "Не удалось загрузить данные. Проверьте схему базы и журнал Functions." } }, 500);
+  }
+}
+
+export async function onRequestPost({ request, env }) {
+  try {
+  if (!request.headers.get("origin") || !sameOrigin(request, env)) return json({ error: { code: "ORIGIN_REJECTED", message: "Запрос отклонён." } }, 403);
+  const auth = await authorize(request, env);
+  if (auth.response) return auth.response;
+  let body;
+  try { body = await request.json(); } catch { return bad("Некорректный JSON."); }
+  const { resource, action = "create", id, data = {} } = body || {};
+    if (resource === "matches" && action === "correct_result") {
     const matchId = String(id ?? "").trim();
     const scoreA = Number(data.score_a);
     const scoreB = Number(data.score_b);
@@ -89,9 +116,7 @@ export async function onRequestGet({ request, env }) {
     ).bind(matchId).first();
     if (!before) return bad("Матч не найден.", 404);
     if (before.status !== "completed") return bad("Корректировать можно только завершённый матч.", 409);
-    if (before.tournament_status === "completed") {
-      return bad("Турнир уже завершён. Корректировка заблокирована, чтобы не повредить итоговые места и Circuit-очки.", 409);
-    }
+    const finalizedTournament = before.tournament_status === "completed";
     if (before.team_a_id == null || before.team_b_id == null) return bad("У матча должны быть назначены обе команды.", 409);
     const oldWinner = String(before.winner_team_id || "");
     const teamA = String(before.team_a_id), teamB = String(before.team_b_id);
@@ -158,6 +183,9 @@ export async function onRequestGet({ request, env }) {
         "SELECT id,status,team_a_id,team_b_id,score_a,score_b,winner_team_id FROM matches WHERE tournament_id=? AND bracket='final' AND round_number=2 LIMIT 1"
       ).bind(before.tournament_id).first();
       if (reset) {
+        if (finalizedTournament) {
+          return bad("Первый Grand Final завершённого Double Elimination нельзя менять отдельно от Reset Final. Для этого нужна каскадная корректировка всей финальной серии.", 409);
+        }
         if (reset.status === "completed" || reset.status === "in_progress" ||
             reset.score_a != null || reset.score_b != null || reset.winner_team_id != null) {
           return bad("Reset Final уже начат или завершён. Его результат нельзя затронуть корректировкой первого финала.", 409);
@@ -187,6 +215,19 @@ export async function onRequestGet({ request, env }) {
       "UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,result_source='admin_correction',result_verified_at=?,updated_at=? WHERE id=? AND status='completed' AND score_a=? AND score_b=? AND winner_team_id=?"
     ).bind(scoreA,scoreB,newWinner,timestamp,timestamp,matchId,before.score_a,before.score_b,before.winner_team_id));
     guardSuccessfulWrite();
+    let circuitReconciliation = null;
+    if (finalizedTournament && before.season_id != null) {
+      try {
+        const prepared = await prepareFinalizedCircuitCorrection(
+          env.DB, before.tournament_id, auth.user.id, matchId,
+          { score_a: scoreA, score_b: scoreB, winner_team_id: newWinner }
+        );
+        writes.push(...prepared.statements);
+        circuitReconciliation = prepared.summary;
+      } catch (error) {
+        return bad(error.message || "Не удалось безопасно пересчитать MERCY CIRCUIT.", 409);
+      }
+    }
     writes.push(env.DB.prepare(
       "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?, 'match_result_corrected','matches',?,?,?)"
     ).bind(await createAuditEventId(env.DB),auth.user.id,String(matchId),
@@ -201,36 +242,15 @@ export async function onRequestGet({ request, env }) {
       throw error;
     }
     const after = await getById(env.DB, "matches", matchId);
-    const tournamentCompleted = await completeTournamentIfReady(env.DB, before.tournament_id);
-    return json({ data: after, corrected: true, downstream_updates: routes.length, tournament_completed: tournamentCompleted });
+    const tournamentCompleted = finalizedTournament ? true : await completeTournamentIfReady(env.DB, before.tournament_id);
+    return json({
+      data: after,
+      corrected: true,
+      downstream_updates: routes.length,
+      tournament_completed: tournamentCompleted,
+      circuit_reconciliation: circuitReconciliation
+    });
   }
-  const config = TABLES[resource];
-  if (!config) return bad("Неизвестный раздел.");
-  if (resource === "matches") {
-    const { results } = await env.DB.prepare(
-      "SELECT m.*,t.title AS tournament_title,t.status AS tournament_status,ta.name AS team_a_name,tb.name AS team_b_name " +
-      "FROM matches m JOIN tournaments t ON t.id=m.tournament_id " +
-      "LEFT JOIN teams ta ON ta.id=m.team_a_id LEFT JOIN teams tb ON tb.id=m.team_b_id " +
-      "ORDER BY m.scheduled_at IS NULL,m.scheduled_at ASC,m.tournament_id,m.round_number,m.match_number LIMIT 200"
-    ).all();
-    return json({ data: results || [] });
-  }
-  const { results } = await env.DB.prepare("SELECT * FROM " + config.table + (resource === "seasons" ? " ORDER BY season_number DESC,id DESC" : " ORDER BY id DESC") + " LIMIT 200").all();
-  return json({ data: results || [] });
-  } catch (error) {
-    console.error("MERCY ARENA admin GET failed:", error);
-    return json({ error: { code: "ADMIN_READ_FAILED", message: "Не удалось загрузить данные. Проверьте схему базы и журнал Functions." } }, 500);
-  }
-}
-
-export async function onRequestPost({ request, env }) {
-  try {
-  if (!request.headers.get("origin") || !sameOrigin(request, env)) return json({ error: { code: "ORIGIN_REJECTED", message: "Запрос отклонён." } }, 403);
-  const auth = await authorize(request, env);
-  if (auth.response) return auth.response;
-  let body;
-  try { body = await request.json(); } catch { return bad("Некорректный JSON."); }
-  const { resource, action = "create", id, data = {} } = body || {};
   if (resource === "players" && action === "purge_demo") {
     const { results = [] } = await env.DB.prepare(
       "SELECT p.id,p.nickname,p.game_id FROM players p WHERE UPPER(p.nickname) LIKE 'DEMO %' AND UPPER(p.game_id) LIKE 'DEMO-%' ORDER BY p.id"
