@@ -1,5 +1,8 @@
 const { test, expect } = require("@playwright/test");
-const { prepareFinalizedCircuitCorrection } = require("../functions/api/v1/_lib/match-progression.js");
+let prepareFinalizedCircuitCorrection;
+test.beforeAll(async () => {
+  ({ prepareFinalizedCircuitCorrection } = await import("../functions/api/v1/_lib/match-progression.js"));
+});
 
 function singleEliminationFixture(overrides = {}) {
   const state = {
