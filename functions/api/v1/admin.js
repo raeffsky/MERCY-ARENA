@@ -197,6 +197,9 @@ export async function onRequestPost({ request, env }) {
       "UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,result_source='admin_correction',result_verified_at=?,updated_at=? WHERE id=? AND status='completed' AND score_a=? AND score_b=? AND winner_team_id=?"
     ).bind(scoreA,scoreB,newWinner,timestamp,timestamp,matchId,before.score_a,before.score_b,before.winner_team_id));
     guardSuccessfulWrite();
+    writes.push(env.DB.prepare(
+      "UPDATE result_events SET validation_status='reviewed',decision_reason=?,reviewed_at=? WHERE match_id=? AND validation_status='valid'"
+    ).bind("Superseded by manual result correction",timestamp,matchId));
     let circuitReconciliation = null;
     if (finalizedTournament && before.tournament_season_id != null) {
       try {
