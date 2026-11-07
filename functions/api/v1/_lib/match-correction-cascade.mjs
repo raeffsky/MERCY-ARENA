@@ -116,8 +116,9 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
     const target = matches.get(String(route.next_match_id));
     assertSupportedTarget(target);
     const slotValue = target[route.next_slot];
-    if (slotValue != null && String(slotValue) !== oldEntrant) {
-      throw new Error("Слот связанного матча уже изменён. Обнови сетку перед корректировкой.");
+    if ((hasPlayedResult(target) && String(slotValue ?? "") !== oldEntrant) ||
+        (slotValue != null && String(slotValue) !== oldEntrant)) {
+      throw new Error("Слот связанного матча не совпадает с исходным участником. Каскадная корректировка остановлена.");
     }
     setSlot(target, route.next_slot, newEntrant);
     if (hasPlayedResult(target)) markReset(target);
@@ -140,14 +141,19 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
       assertSupportedTarget(target);
       const slotValue = target[route.next_slot];
       if (expectedEntrant == null) {
-        if (slotValue != null) {
-          throw new Error("У незавершённого матча уже заполнен слот следующего раунда. Каскадная корректировка остановлена.");
+        if (slotValue != null || hasPlayedResult(target)) {
+          throw new Error("Незавершённый матч уже повлиял на сыгранную ветку. Каскадная корректировка остановлена.");
         }
-      } else if (slotValue != null && String(slotValue) !== expectedEntrant) {
-        throw new Error("У зависимого матча обнаружен участник, не совпадающий с историей продвижения. Каскадная корректировка остановлена.");
+      } else {
+        if (hasPlayedResult(target) && slotValue == null) {
+          throw new Error("У сыгранного зависимого матча отсутствует участник из предыдущего раунда. Каскадная корректировка остановлена.");
+        }
+        if (slotValue != null && String(slotValue) !== expectedEntrant) {
+          throw new Error("У зависимого матча обнаружен участник, не совпадающий с историей продвижения. Каскадная корректировка остановлена.");
+        }
+        if (slotValue != null) setSlot(target, route.next_slot, null);
+        if (hasPlayedResult(target)) markReset(target);
       }
-      if (slotValue != null) setSlot(target, route.next_slot, null);
-      if (hasPlayedResult(target)) markReset(target);
     }
   }
 
