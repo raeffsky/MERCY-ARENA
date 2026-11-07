@@ -70,7 +70,7 @@ test.describe("Safe downstream result correction cascade", () => {
     expect(db.prepared.filter(statement => statement.sql.startsWith("UPDATE result_events"))).toHaveLength(0);
     const update = db.prepared.find(statement => statement.sql.startsWith("UPDATE matches SET team_a_id=?"));
     expect(update.values[0]).toBe(11);
-    expect(update.values[3]).toBe(2);
+    expect(update.values[2]).toBe(2);
   });
 
   test("cascades both winner and loser routes across a Double Elimination branch", async () => {
