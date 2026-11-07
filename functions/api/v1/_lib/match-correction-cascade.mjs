@@ -189,6 +189,7 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
     statements,
     summary: {
       route_count: directRoutes.length,
+      route_outcomes: directRoutes.map((route) => route.outcome),
       updated_slots: [...changedSlots.values()].reduce((sum, slots) => sum + slots.size, 0),
       reset_matches: [...resetIds].map((id) => Number.isNaN(Number(id)) ? id : Number(id))
     }
