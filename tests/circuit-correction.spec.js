@@ -1,7 +1,22 @@
 const { test, expect } = require("@playwright/test");
+const fs = require("node:fs");
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 let prepareFinalizedCircuitCorrection;
 test.beforeAll(async () => {
-  ({ prepareFinalizedCircuitCorrection } = await import("../functions/api/v1/_lib/match-progression.js"));
+  const helperPath = path.join(process.cwd(), "functions/api/v1/_lib/match-progression.js");
+  const scoringUrl = pathToFileURL(path.join(process.cwd(), "functions/api/v1/_lib/circuit-scoring.mjs")).href;
+  const source = fs.readFileSync(helperPath, "utf8")
+    .replace('from "./circuit-scoring.mjs";', 'from "' + scoringUrl + '";')
+    .replace('import { createAuditEventId } from "./audit.js";', `
+      async function createAuditEventId(db) {
+        const { results } = await db.prepare("PRAGMA table_info(audit_events)").all();
+        const idColumn = (results || []).find((column) => column.name === "id");
+        if (!idColumn) throw new Error("audit_events.id column is missing");
+        return /INT/i.test(String(idColumn.type || "")) ? null : "test-audit-event";
+      }`);
+  const moduleUrl = "data:text/javascript;base64," + Buffer.from(source).toString("base64");
+  ({ prepareFinalizedCircuitCorrection } = await import(moduleUrl));
 });
 
 function singleEliminationFixture(overrides = {}) {
