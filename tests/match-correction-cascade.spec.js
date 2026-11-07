@@ -137,7 +137,6 @@ test.describe("Safe downstream result correction cascade", () => {
       { id: 2, bracket: "main", round_number: 2, status: "scheduled", team_a_id: 99, team_b_id: 12, score_a: null, score_b: null, winner_team_id: null }
     ];
     matches[0].tournament_format = "single_elimination";
-    matches[0].tournament_format = "single_elimination";
     const db = makeDb({
       matches,
       progression: [{ match_id: 1, next_match_id: 2, next_slot: "team_a_id" }]
@@ -151,6 +150,7 @@ test.describe("Safe downstream result correction cascade", () => {
       completed(1, "main", 1, 10, 11, 10),
       completed(2, "main", 2, null, 12, 12)
     ];
+    matches[0].tournament_format = "single_elimination";
     const db = makeDb({
       matches,
       progression: [{ match_id: 1, next_match_id: 2, next_slot: "team_a_id" }]
