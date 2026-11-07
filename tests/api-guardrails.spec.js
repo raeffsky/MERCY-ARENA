@@ -119,4 +119,20 @@ test.describe('MERCY ARENA API guardrails', () => {
     const progression = source('functions/api/v1/_lib/match-progression.js');
     expect(progression).toContain('export async function completeTournamentIfReady');
   });
+
+  test('finalized Circuit result corrections append ledger deltas and update placements', () => {
+    const admin = source('functions/api/v1/admin.js');
+    const getHandler = admin.slice(admin.indexOf('export async function onRequestGet'), admin.indexOf('export async function onRequestPost'));
+    const postHandler = admin.slice(admin.indexOf('export async function onRequestPost'));
+    expect(getHandler).not.toContain('action === "correct_result"');
+    expect(postHandler).toContain('action === "correct_result"');
+    expect(postHandler).toContain('prepareFinalizedCircuitCorrection');
+    expect(postHandler).toContain('t.season_id AS tournament_season_id');
+    const progression = source('functions/api/v1/_lib/match-progression.js');
+    expect(progression).toContain('transaction_type,reason,created_by');
+    expect(progression).toContain("'correction'");
+    expect(progression).toContain('UPDATE circuit_tournament_results SET placement=?,placement_group=?,points_awarded=?');
+    expect(progression).toContain('Баланс журнала Circuit не совпадает');
+    expect(progression).toContain('circuit_championship_entries');
+  });
 });
