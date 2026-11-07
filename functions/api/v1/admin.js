@@ -2,6 +2,7 @@ import { createAuditEventId } from "./_lib/audit.js";
 import { json, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, isOwnerAccount, sameOrigin } from "./_lib/session-auth.js";
 import { advanceWinner, completeTournamentIfReady, finalizeCircuitTournament, prepareFinalizedCircuitCorrection } from "./_lib/match-progression.js";
+import { prepareMatchCorrectionCascade } from "./_lib/match-correction-cascade.mjs";
 
 const TABLES = {
   tournaments: { table: "tournaments", fields: ["title","description","game","region","format","status","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","prize_pool","poster_url"] },
@@ -122,8 +123,6 @@ export async function onRequestPost({ request, env }) {
     const teamA = String(before.team_a_id), teamB = String(before.team_b_id);
     if (![teamA, teamB].includes(oldWinner)) return bad("У сохранённого результата некорректный победитель.", 409);
     const newWinner = scoreA > scoreB ? teamA : teamB;
-    const oldLoser = oldWinner === teamA ? teamB : teamA;
-    const newLoser = newWinner === teamA ? teamB : teamA;
     const timestamp = now();
     const writes = [];
     // D1 batch is transactional. Force a constraint failure when any guarded
@@ -132,47 +131,30 @@ export async function onRequestPost({ request, env }) {
       "INSERT INTO audit_events (action,entity_type,entity_id) SELECT NULL,'match','0' WHERE changes()=0"
     ));
 
-    let routes = [];
-    try {
-      const routeRows = await env.DB.prepare(
-        "SELECT outcome,next_match_id,next_slot FROM match_advancement WHERE match_id=? ORDER BY outcome"
-      ).bind(matchId).all();
-      routes = routeRows.results || [];
-    } catch (error) {
-      if (!/no such table/i.test(String(error?.message || error))) throw error;
-    }
-    if (!routes.length) {
-      const link = await env.DB.prepare(
-        "SELECT next_match_id,next_slot FROM match_progression WHERE match_id=? LIMIT 1"
-      ).bind(matchId).first();
-      if (link) routes = [{ outcome: "winner", next_match_id: link.next_match_id, next_slot: link.next_slot }];
-    }
-    if (before.tournament_format === "double_elimination" &&
-        ["upper","lower"].includes(before.bracket) && !routes.length) {
-      return bad("Для этого матча не найдены маршруты Double Elimination. Корректировка остановлена, чтобы не повредить сетку.", 409);
-    }
-
-    for (const route of routes) {
-      if (!["winner","loser"].includes(route.outcome) ||
-          !["team_a_id","team_b_id"].includes(route.next_slot)) {
-        return bad("В маршруте продвижения обнаружена некорректная конфигурация.", 409);
+    let cascade = { statements: [], summary: { route_count: 0, updated_slots: 0, reset_matches: [] } };
+    if (oldWinner !== newWinner) {
+      try {
+        cascade = await prepareMatchCorrectionCascade(
+          env.DB, before.tournament_id, before, newWinner, timestamp
+        );
+      } catch (error) {
+        return bad(error.message || "Не удалось безопасно пересчитать зависимые матчи.", 409);
       }
-      const oldEntrant = route.outcome === "winner" ? oldWinner : oldLoser;
-      const newEntrant = route.outcome === "winner" ? newWinner : newLoser;
-      if (oldEntrant === newEntrant) continue;
-      const target = await env.DB.prepare(
-        "SELECT id,status,team_a_id,team_b_id,score_a,score_b,winner_team_id FROM matches WHERE id=? AND tournament_id=? LIMIT 1"
-      ).bind(route.next_match_id, before.tournament_id).first();
-      if (!target) return bad("Следующий матч по сетке не найден. Корректировка остановлена.", 409);
-      if (target.status !== "scheduled" || target.score_a != null || target.score_b != null || target.winner_team_id != null) {
-        return bad("Следующий матч уже начат или завершён. Сначала потребуется отдельная каскадная корректировка всей ветки.", 409);
+      if (before.tournament_format === "double_elimination" &&
+          ["upper","lower"].includes(before.bracket) && !cascade.summary.route_count) {
+        return bad("Для этого матча не найдены маршруты Double Elimination. Корректировка остановлена, чтобы не повредить сетку.", 409);
       }
-      if (target[route.next_slot] != null && String(target[route.next_slot]) !== oldEntrant) {
-        return bad("Слот следующего матча уже изменён. Обнови сетку перед корректировкой.", 409);
+      if (finalizedTournament && before.tournament_season_id != null &&
+          cascade.summary.reset_matches.length) {
+        return bad("Этот Circuit-турнир уже завершён. Каскад потребует переиграть зависимые матчи и отдельно пересчитать очки сезона, поэтому автоматическая корректировка остановлена.", 409);
       }
+      writes.push(...cascade.statements);
+    }
+    const reopenedTournament = finalizedTournament && cascade.summary.reset_matches.length > 0;
+    if (reopenedTournament) {
       writes.push(env.DB.prepare(
-        "UPDATE matches SET " + route.next_slot + "=?,updated_at=? WHERE id=? AND status='scheduled' AND (" + route.next_slot + "=? OR " + route.next_slot + " IS NULL)"
-      ).bind(newEntrant, timestamp, route.next_match_id, oldEntrant));
+        "UPDATE tournaments SET status='active',updated_at=? WHERE id=? AND status='completed'"
+      ).bind(timestamp,before.tournament_id));
       guardSuccessfulWrite();
     }
 
@@ -232,7 +214,7 @@ export async function onRequestPost({ request, env }) {
       "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?, 'match_result_corrected','matches',?,?,?)"
     ).bind(await createAuditEventId(env.DB),auth.user.id,String(matchId),
       JSON.stringify({score_a:before.score_a,score_b:before.score_b,winner_team_id:before.winner_team_id}),
-      JSON.stringify({score_a:scoreA,score_b:scoreB,winner_team_id:newWinner,downstream_updates:routes.length,tournament_id:before.tournament_id})));
+      JSON.stringify({score_a:scoreA,score_b:scoreB,winner_team_id:newWinner,downstream_updates:cascade.summary.updated_slots,cascade_reset_matches:cascade.summary.reset_matches,tournament_id:before.tournament_id})));
     try {
       await env.DB.batch(writes);
     } catch (error) {
@@ -242,11 +224,12 @@ export async function onRequestPost({ request, env }) {
       throw error;
     }
     const after = await getById(env.DB, "matches", matchId);
-    const tournamentCompleted = finalizedTournament ? true : await completeTournamentIfReady(env.DB, before.tournament_id);
+    const tournamentCompleted = reopenedTournament ? false : finalizedTournament ? true : await completeTournamentIfReady(env.DB, before.tournament_id);
     return json({
       data: after,
       corrected: true,
-      downstream_updates: routes.length,
+      downstream_updates: cascade.summary.updated_slots,
+      cascade_reset_matches: cascade.summary.reset_matches,
       tournament_completed: tournamentCompleted,
       circuit_reconciliation: circuitReconciliation
     });
