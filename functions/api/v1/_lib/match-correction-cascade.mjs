@@ -42,8 +42,8 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
   let advancementRows = [];
   try {
     const result = await db.prepare(
-      "SELECT match_id,outcome,next_match_id,next_slot FROM match_advancement"
-    ).all();
+      "SELECT match_id,outcome,next_match_id,next_slot FROM match_advancement WHERE match_id IN (SELECT id FROM matches WHERE tournament_id=?)"
+    ).bind(tournamentId).all();
     advancementRows = result.results || [];
   } catch (error) {
     if (!/no such table/i.test(String(error?.message || error))) throw error;
@@ -51,8 +51,8 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
   let progressionRows = [];
   try {
     const result = await db.prepare(
-      "SELECT match_id,next_match_id,next_slot FROM match_progression"
-    ).all();
+      "SELECT match_id,next_match_id,next_slot FROM match_progression WHERE match_id IN (SELECT id FROM matches WHERE tournament_id=?)"
+    ).bind(tournamentId).all();
     progressionRows = result.results || [];
   } catch (error) {
     if (!/no such table/i.test(String(error?.message || error))) throw error;
