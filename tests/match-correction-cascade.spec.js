@@ -101,6 +101,30 @@ test.describe("Safe downstream result correction cascade", () => {
     expect(finalReset.values.slice(0, 2)).toEqual([null, null]);
   });
 
+  test("invalidates the Reset Final when a correction changes the lower finalist", async () => {
+    const matches = [
+      completed(1, "lower", 3, 10, 11, 10),
+      completed(2, "final", 1, 20, 10, 10),
+      completed(3, "final", 2, 20, 10, 10)
+    ];
+    matches[0].tournament_format = "double_elimination";
+    const db = makeDb({
+      matches,
+      advancement: [{ match_id: 1, outcome: "winner", next_match_id: 2, next_slot: "team_b_id" }]
+    });
+    const result = await prepareMatchCorrectionCascade(db, 9, matches[0], 11, "2026-11-07T00:00:00.000Z");
+    expect(result.summary.reset_matches).toEqual([2, 3]);
+    const grandFinal = db.prepared.find(statement =>
+      statement.sql.startsWith("UPDATE matches SET team_a_id=?,team_b_id=?") && statement.values[3] === "2"
+    );
+    expect(grandFinal.values.slice(0, 2)).toEqual([20, "11"]);
+    const resetFinal = db.prepared.find(statement =>
+      statement.sql.startsWith("UPDATE matches SET team_a_id=NULL,team_b_id=NULL,status='cancelled'")
+    );
+    expect(resetFinal.values[1]).toBe("3");
+    expect(db.prepared.filter(statement => statement.sql.startsWith("UPDATE result_events"))).toHaveLength(2);
+  });
+
   test("blocks a branch whose next-match slot no longer matches the recorded source result", async () => {
     const matches = [
       completed(1, "main", 1, 10, 11, 10),
