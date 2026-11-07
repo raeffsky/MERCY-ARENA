@@ -215,6 +215,10 @@ export async function onRequestPost({ request, env }) {
           ).bind("Superseded by corrected Grand Final result",timestamp,reset.id));
           appendCascadeMatch("cancelled_matches", reset.id);
           cascade.summary.updated_slots += 2;
+        } else if (newWinner === teamA && reset.status === "cancelled") {
+          writes.push(env.DB.prepare(
+            "UPDATE result_events SET validation_status='reviewed',decision_reason=?,reviewed_at=? WHERE match_id=? AND validation_status='valid'"
+          ).bind("Superseded by corrected Grand Final result",timestamp,reset.id));
         } else if (newWinner === teamA && reset.status !== "cancelled") {
           return bad("Состояние Reset Final не соответствует первому финалу. Корректировка остановлена.", 409);
         } else if (newWinner === teamB && reset.status === "scheduled") {
