@@ -133,11 +133,11 @@ export async function onRequestGet({ request, env }) {
       if (target.status !== "scheduled" || target.score_a != null || target.score_b != null || target.winner_team_id != null) {
         return bad("Следующий матч уже начат или завершён. Сначала потребуется отдельная каскадная корректировка всей ветки.", 409);
       }
-      if (String(target[route.next_slot] ?? "") !== oldEntrant) {
+      if (target[route.next_slot] != null && String(target[route.next_slot]) !== oldEntrant) {
         return bad("Слот следующего матча уже изменён. Обнови сетку перед корректировкой.", 409);
       }
       writes.push(env.DB.prepare(
-        "UPDATE matches SET " + route.next_slot + "=?,updated_at=? WHERE id=? AND status='scheduled' AND " + route.next_slot + "=?"
+        "UPDATE matches SET " + route.next_slot + "=?,updated_at=? WHERE id=? AND status='scheduled' AND (" + route.next_slot + "=? OR " + route.next_slot + " IS NULL)"
       ).bind(newEntrant, timestamp, route.next_match_id, oldEntrant));
     }
 
@@ -171,15 +171,16 @@ export async function onRequestGet({ request, env }) {
     writes.push(env.DB.prepare(
       "UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,result_source='admin_correction',result_verified_at=?,updated_at=? WHERE id=? AND status='completed' AND score_a=? AND score_b=? AND winner_team_id=?"
     ).bind(scoreA,scoreB,Number(newWinner),timestamp,timestamp,matchId,before.score_a,before.score_b,before.winner_team_id));
+    writes.push(env.DB.prepare(
+      "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?, 'match_result_corrected','matches',?,?,?)"
+    ).bind(await createAuditEventId(env.DB),auth.user.id,String(matchId),
+      JSON.stringify({score_a:before.score_a,score_b:before.score_b,winner_team_id:before.winner_team_id}),
+      JSON.stringify({score_a:scoreA,score_b:scoreB,winner_team_id:Number(newWinner),downstream_updates:routes.length,tournament_id:before.tournament_id})));
     const results = await env.DB.batch(writes);
     if (results.some((result) => result.meta?.changes === 0)) {
       return bad("Матч или связанные слоты изменились параллельно. Обнови данные и повтори корректировку.", 409);
     }
     const after = await getById(env.DB, "matches", matchId);
-    await audit(env.DB, auth.user.id, "match_result_corrected", "matches", matchId,
-      { score_a: before.score_a, score_b: before.score_b, winner_team_id: before.winner_team_id },
-      { score_a: after.score_a, score_b: after.score_b, winner_team_id: after.winner_team_id,
-        downstream_updates: routes.length, tournament_id: before.tournament_id });
     return json({ data: after, corrected: true, downstream_updates: routes.length });
   }
   const config = TABLES[resource];
