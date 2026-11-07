@@ -76,10 +76,10 @@ export async function onRequestGet({ request, env }) {
     return json({ data: results || [] });
   }
   if (resource === "matches" && action === "correct_result") {
-    const matchId = Number(id);
+    const matchId = String(id ?? "").trim();
     const scoreA = Number(data.score_a);
     const scoreB = Number(data.score_b);
-    if (!Number.isSafeInteger(matchId) || matchId < 1 ||
+    if (!matchId || matchId.length > 128 ||
         !Number.isSafeInteger(scoreA) || scoreA < 0 ||
         !Number.isSafeInteger(scoreB) || scoreB < 0 || scoreA === scoreB) {
       return bad("Укажи корректный ID матча и победный счёт из целых неотрицательных чисел.");
@@ -173,12 +173,12 @@ export async function onRequestGet({ request, env }) {
 
     writes.push(env.DB.prepare(
       "UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,result_source='admin_correction',result_verified_at=?,updated_at=? WHERE id=? AND status='completed' AND score_a=? AND score_b=? AND winner_team_id=?"
-    ).bind(scoreA,scoreB,Number(newWinner),timestamp,timestamp,matchId,before.score_a,before.score_b,before.winner_team_id));
+    ).bind(scoreA,scoreB,newWinner,timestamp,timestamp,matchId,before.score_a,before.score_b,before.winner_team_id));
     writes.push(env.DB.prepare(
       "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?, 'match_result_corrected','matches',?,?,?)"
     ).bind(await createAuditEventId(env.DB),auth.user.id,String(matchId),
       JSON.stringify({score_a:before.score_a,score_b:before.score_b,winner_team_id:before.winner_team_id}),
-      JSON.stringify({score_a:scoreA,score_b:scoreB,winner_team_id:Number(newWinner),downstream_updates:routes.length,tournament_id:before.tournament_id})));
+      JSON.stringify({score_a:scoreA,score_b:scoreB,winner_team_id:newWinner,downstream_updates:routes.length,tournament_id:before.tournament_id})));
     const results = await env.DB.batch(writes);
     if (results.some((result) => result.meta?.changes === 0)) {
       return bad("Матч или связанные слоты изменились параллельно. Обнови данные и повтори корректировку.", 409);
