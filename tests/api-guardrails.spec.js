@@ -100,4 +100,13 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(page).toContain("action:'correct_result'");
     expect(page).toContain('КОРРЕКТИРОВКА РЕЗУЛЬТАТА');
   });
+
+  test('Double Elimination unused reset final does not block tournament completion', () => {
+    const progression = source('functions/api/v1/_lib/match-progression.js');
+    expect(progression).toContain("m.bracket='final' AND m.round_number=2 AND m.status='cancelled'");
+    expect(progression).toContain('gf.winner_team_id=gf.team_a_id');
+    const admin = source('functions/api/v1/admin.js');
+    expect(admin).toContain('t.status AS tournament_status');
+    expect(admin).toContain('Расписание завершённого матча нельзя менять');
+  });
 });
