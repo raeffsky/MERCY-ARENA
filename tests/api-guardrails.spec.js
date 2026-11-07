@@ -91,10 +91,13 @@ test.describe('MERCY ARENA API guardrails', () => {
     const admin = source('functions/api/v1/admin.js');
     expect(admin).toContain('action === "correct_result"');
     expect(admin).toContain('before.tournament_status === "completed"');
-    expect(admin).toContain('target.status !== "scheduled"');
-    expect(admin).toContain('match_advancement WHERE match_id=?');
-    expect(admin).toContain('match_progression WHERE match_id=?');
-    expect(admin).toContain('Корректировка остановлена, чтобы не повредить сетку.');
+    expect(admin).toContain('prepareMatchCorrectionCascade');
+    expect(admin).toContain('cascade_reset_matches');
+    expect(admin).toContain('Каскад потребует переиграть зависимые матчи');
+    const cascade = source('functions/api/v1/_lib/match-correction-cascade.mjs');
+    expect(cascade).toContain("validation_status='reviewed'");
+    expect(cascade).toContain("result_verified_at=NULL");
+    expect(cascade).toContain('Каскадная корректировка остановлена');
     expect(admin).toContain("match_result_corrected");
     const page = source('index.html');
     expect(page).toContain('data-correct-result');
