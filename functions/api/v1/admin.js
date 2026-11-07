@@ -1,7 +1,7 @@
 import { createAuditEventId } from "./_lib/audit.js";
 import { json, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, isOwnerAccount, sameOrigin } from "./_lib/session-auth.js";
-import { advanceWinner, finalizeCircuitTournament } from "./_lib/match-progression.js";
+import { advanceWinner, completeTournamentIfReady, finalizeCircuitTournament } from "./_lib/match-progression.js";
 
 const TABLES = {
   tournaments: { table: "tournaments", fields: ["title","description","game","region","format","status","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","prize_pool","poster_url"] },
@@ -197,7 +197,8 @@ export async function onRequestGet({ request, env }) {
       throw error;
     }
     const after = await getById(env.DB, "matches", matchId);
-    return json({ data: after, corrected: true, downstream_updates: routes.length });
+    const tournamentCompleted = await completeTournamentIfReady(env.DB, before.tournament_id);
+    return json({ data: after, corrected: true, downstream_updates: routes.length, tournament_completed: tournamentCompleted });
   }
   const config = TABLES[resource];
   if (!config) return bad("Неизвестный раздел.");
