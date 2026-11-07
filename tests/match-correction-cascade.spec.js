@@ -48,7 +48,7 @@ test.describe("Safe downstream result correction cascade", () => {
       ]
     });
     const result = await prepareMatchCorrectionCascade(db, 9, matches[0], 11, "2026-11-07T00:00:00.000Z");
-    expect(result.summary).toEqual({ route_count: 1, updated_slots: 2, reset_matches: [2, 3] });
+    expect(result.summary).toEqual({ route_count: 1, route_outcomes: ["winner"], updated_slots: 2, reset_matches: [2, 3] });
     const resets = db.prepared.filter(statement => statement.sql.startsWith("UPDATE matches SET team_a_id=?,team_b_id=?"));
     expect(resets).toHaveLength(2);
     expect(resets[0].values.slice(0, 2)).toEqual([11, 12]);
