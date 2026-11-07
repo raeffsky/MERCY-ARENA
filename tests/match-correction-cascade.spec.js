@@ -14,9 +14,9 @@ function makeDb({ matches, advancement = [], progression = [] }) {
         values: [],
         bind(...values) { this.values = values; return this; },
         async all() {
-          if (sql.includes("FROM matches WHERE tournament_id")) return { results: matches };
           if (sql.includes("FROM match_advancement")) return { results: advancement };
           if (sql.includes("FROM match_progression")) return { results: progression };
+          if (sql.includes("FROM matches WHERE tournament_id")) return { results: matches };
           throw new Error("Unexpected all() SQL: " + sql);
         }
       };
