@@ -75,6 +75,113 @@ export async function onRequestGet({ request, env }) {
     const { results } = await env.DB.prepare("SELECT id,email,display_name FROM users ORDER BY email COLLATE NOCASE LIMIT 200").all();
     return json({ data: results || [] });
   }
+  if (resource === "matches" && action === "correct_result") {
+    const matchId = Number(id);
+    const scoreA = Number(data.score_a);
+    const scoreB = Number(data.score_b);
+    if (!Number.isSafeInteger(matchId) || matchId < 1 ||
+        !Number.isSafeInteger(scoreA) || scoreA < 0 ||
+        !Number.isSafeInteger(scoreB) || scoreB < 0 || scoreA === scoreB) {
+      return bad("Укажи корректный ID матча и победный счёт из целых неотрицательных чисел.");
+    }
+    const before = await env.DB.prepare(
+      "SELECT m.*,t.status AS tournament_status,t.format AS tournament_format FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=? LIMIT 1"
+    ).bind(matchId).first();
+    if (!before) return bad("Матч не найден.", 404);
+    if (before.status !== "completed") return bad("Корректировать можно только завершённый матч.", 409);
+    if (before.tournament_status === "completed") {
+      return bad("Турнир уже завершён. Корректировка заблокирована, чтобы не повредить итоговые места и Circuit-очки.", 409);
+    }
+    if (before.team_a_id == null || before.team_b_id == null) return bad("У матча должны быть назначены обе команды.", 409);
+    const oldWinner = String(before.winner_team_id || "");
+    const teamA = String(before.team_a_id), teamB = String(before.team_b_id);
+    if (![teamA, teamB].includes(oldWinner)) return bad("У сохранённого результата некорректный победитель.", 409);
+    const newWinner = scoreA > scoreB ? teamA : teamB;
+    const oldLoser = oldWinner === teamA ? teamB : teamA;
+    const newLoser = newWinner === teamA ? teamB : teamA;
+    const timestamp = now();
+    const writes = [];
+
+    let routes = [];
+    try {
+      const routeRows = await env.DB.prepare(
+        "SELECT outcome,next_match_id,next_slot FROM match_advancement WHERE match_id=? ORDER BY outcome"
+      ).bind(matchId).all();
+      routes = routeRows.results || [];
+    } catch (error) {
+      if (!/no such table/i.test(String(error?.message || error))) throw error;
+    }
+    if (!routes.length) {
+      const link = await env.DB.prepare(
+        "SELECT next_match_id,next_slot FROM match_progression WHERE match_id=? LIMIT 1"
+      ).bind(matchId).first();
+      if (link) routes = [{ outcome: "winner", next_match_id: link.next_match_id, next_slot: link.next_slot }];
+    }
+
+    for (const route of routes) {
+      if (!["winner","loser"].includes(route.outcome) ||
+          !["team_a_id","team_b_id"].includes(route.next_slot)) {
+        return bad("В маршруте продвижения обнаружена некорректная конфигурация.", 409);
+      }
+      const oldEntrant = route.outcome === "winner" ? oldWinner : oldLoser;
+      const newEntrant = route.outcome === "winner" ? newWinner : newLoser;
+      if (oldEntrant === newEntrant) continue;
+      const target = await env.DB.prepare(
+        "SELECT id,status,team_a_id,team_b_id,score_a,score_b,winner_team_id FROM matches WHERE id=? AND tournament_id=? LIMIT 1"
+      ).bind(route.next_match_id, before.tournament_id).first();
+      if (!target) return bad("Следующий матч по сетке не найден. Корректировка остановлена.", 409);
+      if (target.status !== "scheduled" || target.score_a != null || target.score_b != null || target.winner_team_id != null) {
+        return bad("Следующий матч уже начат или завершён. Сначала потребуется отдельная каскадная корректировка всей ветки.", 409);
+      }
+      if (String(target[route.next_slot] ?? "") !== oldEntrant) {
+        return bad("Слот следующего матча уже изменён. Обнови сетку перед корректировкой.", 409);
+      }
+      writes.push(env.DB.prepare(
+        "UPDATE matches SET " + route.next_slot + "=?,updated_at=? WHERE id=? AND status='scheduled' AND " + route.next_slot + "=?"
+      ).bind(newEntrant, timestamp, route.next_match_id, oldEntrant));
+    }
+
+    // Grand Final reset is conditional: the lower-bracket finalist must win
+    // the first final to activate the second match.
+    if (before.bracket === "final" && Number(before.round_number) === 1 && oldWinner !== newWinner) {
+      const reset = await env.DB.prepare(
+        "SELECT id,status,team_a_id,team_b_id,score_a,score_b,winner_team_id FROM matches WHERE tournament_id=? AND bracket='final' AND round_number=2 LIMIT 1"
+      ).bind(before.tournament_id).first();
+      if (reset) {
+        if (reset.status === "completed" || reset.status === "in_progress" ||
+            reset.score_a != null || reset.score_b != null || reset.winner_team_id != null) {
+          return bad("Reset Final уже начат или завершён. Его результат нельзя затронуть корректировкой первого финала.", 409);
+        }
+        if (newWinner === teamB && reset.status === "cancelled") {
+          writes.push(env.DB.prepare(
+            "UPDATE matches SET team_a_id=?,team_b_id=?,status='scheduled',updated_at=? WHERE id=? AND status='cancelled'"
+          ).bind(before.team_a_id,before.team_b_id,timestamp,reset.id));
+        } else if (newWinner === teamA && reset.status === "scheduled") {
+          writes.push(env.DB.prepare(
+            "UPDATE matches SET team_a_id=NULL,team_b_id=NULL,status='cancelled',updated_at=? WHERE id=? AND status='scheduled' AND team_a_id=? AND team_b_id=?"
+          ).bind(timestamp,reset.id,before.team_a_id,before.team_b_id));
+        } else if (newWinner === teamA && reset.status !== "cancelled") {
+          return bad("Состояние Reset Final не соответствует первому финалу. Корректировка остановлена.", 409);
+        } else if (newWinner === teamB && reset.status !== "scheduled") {
+          return bad("Нельзя безопасно активировать Reset Final в текущем состоянии.", 409);
+        }
+      }
+    }
+
+    writes.push(env.DB.prepare(
+      "UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,result_source='admin_correction',result_verified_at=?,updated_at=? WHERE id=? AND status='completed' AND score_a=? AND score_b=? AND winner_team_id=?"
+    ).bind(scoreA,scoreB,Number(newWinner),timestamp,timestamp,matchId,before.score_a,before.score_b,before.winner_team_id));
+    const results = await env.DB.batch(writes);
+    if (results.some((result) => result.meta?.changes === 0)) {
+      return bad("Матч или связанные слоты изменились параллельно. Обнови данные и повтори корректировку.", 409);
+    }
+    const after = await getById(env.DB, "matches", matchId);
+    await audit(env.DB, auth.user.id, "match_result_corrected", "matches", matchId,
+      { score_a: before.score_a, score_b: before.score_b, winner_team_id: before.winner_team_id },
+      { score_a: after.score_a, score_b: after.score_b, winner_team_id: after.winner_team_id,
+        downstream_updates: routes.length, tournament_id: before.tournament_id });
+    return json({ data: after, corrected: true, downstream_updates: routes.length });
+  }
   const config = TABLES[resource];
   if (!config) return bad("Неизвестный раздел.");
   if (resource === "matches") {
