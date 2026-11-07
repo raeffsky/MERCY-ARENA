@@ -98,6 +98,7 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(admin).toContain("status=?,score_a=NULL,score_b=NULL,winner_team_id=NULL");
     expect(admin).toContain('cascade_reset_matches');
     expect(admin).toContain('reopenedTournament');
+    expect(admin).toContain('tournament_reopened: reopenedTournament');
     expect(admin).toContain("UPDATE tournaments SET status='active'");
     expect(admin).toContain('Каскад потребует переиграть зависимые матчи');
     const cascade = source('functions/api/v1/_lib/match-correction-cascade.mjs');
