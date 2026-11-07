@@ -90,3 +90,10 @@ If Time Travel is unavailable (legacy alpha storage), use the matching legacy ba
 ## Current verification status
 
 The MERCY ARENA production API was reachable and reported D1 as connected during the latest smoke test. This confirms application connectivity only. The repository workflow does not have access to the Cloudflare account settings, so the production database name, storage version, Time Travel retention, backup destination, and restore permissions have **not** been independently verified yet.
+
+
+## Cloudflare references
+
+- [D1 Time Travel and backups](https://developers.cloudflare.com/d1/reference/time-travel/)
+- [Wrangler D1 commands](https://developers.cloudflare.com/d1/wrangler-commands/)
+- [Import and export data](https://developers.cloudflare.com/d1/best-practices/import-export-data/)
