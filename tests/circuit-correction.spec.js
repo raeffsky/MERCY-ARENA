@@ -95,10 +95,10 @@ test.describe("MERCY CIRCUIT finalized result reconciliation", () => {
       score_a: 1, score_b: 2, winner_team_id: 2
     });
     expect(result.summary.changes).toEqual([
-      { team_id: 1, from_placement: 1, to_placement: 2, points_delta: -25 },
-      { team_id: 2, from_placement: 2, to_placement: 1, points_delta: 25 }
+      { team_id: 2, from_placement: 2, to_placement: 1, points_delta: 25 },
+      { team_id: 1, from_placement: 1, to_placement: 2, points_delta: -25 }
     ]);
-    expect(transactionStatements(db).map(row => row.values[4])).toEqual([-25, 25]);
+    expect(transactionStatements(db).map(row => row.values[4])).toEqual([25, -25]);
     expect(transactionStatements(db).every(row => row.sql.includes("'correction'"))).toBeTruthy();
   });
 
