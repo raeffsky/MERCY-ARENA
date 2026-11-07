@@ -190,15 +190,15 @@ export async function onRequestPost({ request, env }) {
           cascade.summary.updated_slots += 2;
         } else if (newWinner === teamB && reset.status === "cancelled") {
           writes.push(env.DB.prepare(
-            "UPDATE matches SET team_a_id=?,team_b_id=?,status='scheduled',updated_at=? WHERE id=? AND status='cancelled'"
-          ).bind(before.team_a_id,before.team_b_id,timestamp,reset.id));
+            "UPDATE matches SET team_a_id=?,team_b_id=?,status='scheduled',updated_at=? WHERE id=? AND status='cancelled' AND team_a_id IS ? AND team_b_id IS ? AND score_a IS NULL AND score_b IS NULL AND winner_team_id IS NULL"
+          ).bind(before.team_a_id,before.team_b_id,timestamp,reset.id,reset.team_a_id,reset.team_b_id));
           guardSuccessfulWrite();
         } else if (newWinner === teamA && reset.status === "scheduled") {
           if (String(reset.team_a_id ?? "") !== teamA || String(reset.team_b_id ?? "") !== teamB) {
             return bad("У Reset Final изменились участники. Корректировка остановлена.", 409);
           }
           writes.push(env.DB.prepare(
-            "UPDATE matches SET team_a_id=NULL,team_b_id=NULL,status='cancelled',updated_at=? WHERE id=? AND status='scheduled' AND team_a_id=? AND team_b_id=?"
+            "UPDATE matches SET team_a_id=NULL,team_b_id=NULL,status='cancelled',updated_at=? WHERE id=? AND status='scheduled' AND team_a_id=? AND team_b_id=? AND score_a IS NULL AND score_b IS NULL AND winner_team_id IS NULL"
           ).bind(timestamp,reset.id,before.team_a_id,before.team_b_id));
           guardSuccessfulWrite();
         } else if (newWinner === teamA && reset.status !== "cancelled") {
