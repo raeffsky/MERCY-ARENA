@@ -80,6 +80,131 @@ export async function finalizeCircuitTournament(db, tournamentId) {
   return { finalized: true, teams: placements.length };
 }
 
+export async function prepareFinalizedCircuitCorrection(db, tournamentId, actorId, matchId, correctedResult) {
+  const tournament = await db.prepare(
+    "SELECT id,format,season_id,status FROM tournaments WHERE id=? LIMIT 1"
+  ).bind(tournamentId).first();
+  if (!tournament || tournament.status !== "completed" || tournament.season_id == null) {
+    throw new Error("Турнир не имеет завершённого Circuit-результата для пересчёта.");
+  }
+
+  let qualifier = null;
+  try {
+    qualifier = await db.prepare(
+      "SELECT id,awards_points FROM circuit_qualifiers WHERE tournament_id=? LIMIT 1"
+    ).bind(tournamentId).first();
+  } catch (error) {
+    if (!/no such table/i.test(String(error?.message || error))) throw error;
+    throw new Error("Миграция MERCY CIRCUIT не применена. Пересчёт очков недоступен.");
+  }
+  if (qualifier) {
+    throw new Error("Это квалификационный турнир. Его результаты связаны с уже выданными слотами чемпионата, поэтому автоматическая корректировка пока заблокирована.");
+  }
+
+  const lockedEntries = await db.prepare(
+    "SELECT COUNT(*) AS total FROM circuit_championship_entries WHERE season_id=?"
+  ).bind(tournament.season_id).first();
+  if (Number(lockedEntries?.total || 0) > 0) {
+    throw new Error("Состав MERCY CHAMPIONSHIP уже зафиксирован. Сначала нужно отдельно пересчитать квалификационные слоты.");
+  }
+
+  const { results: matches } = await db.prepare(
+    "SELECT id,bracket,round_number,status,team_a_id,team_b_id,score_a,score_b,winner_team_id FROM matches WHERE tournament_id=? ORDER BY bracket,round_number,match_number"
+  ).bind(tournamentId).all();
+  const correctedMatches = (matches || []).map((match) => String(match.id) === String(matchId)
+    ? { ...match, score_a: correctedResult.score_a, score_b: correctedResult.score_b, winner_team_id: correctedResult.winner_team_id }
+    : match);
+  if (!correctedMatches.some((match) => String(match.id) === String(matchId))) {
+    throw new Error("Матч не найден в завершённой сетке турнира.");
+  }
+  const placements = deriveTournamentPlacements(tournament.format, correctedMatches);
+  const { results: registrations } = await db.prepare(
+    "SELECT team_id FROM tournament_registrations WHERE tournament_id=? AND status='approved' ORDER BY team_id"
+  ).bind(tournamentId).all();
+  const approvedTeams = new Set((registrations || []).map((row) => String(row.team_id)));
+  const placedTeams = new Set(placements.map((row) => String(row.team_id)));
+  if (approvedTeams.size < 2 || approvedTeams.size !== placedTeams.size ||
+      [...approvedTeams].some((teamId) => !placedTeams.has(teamId))) {
+    throw new Error("Пересчитанные места не совпадают с утверждёнными командами турнира.");
+  }
+
+  const { results: existing } = await db.prepare(
+    "SELECT id,team_id,placement,placement_group,points_awarded,is_qualifier FROM circuit_tournament_results WHERE season_id=? AND tournament_id=?"
+  ).bind(tournament.season_id, tournamentId).all();
+  const existingByTeam = new Map((existing || []).map((row) => [String(row.team_id), row]));
+  if (existingByTeam.size !== placedTeams.size ||
+      [...placedTeams].some((teamId) => !existingByTeam.has(teamId))) {
+    throw new Error("История Circuit не совпадает с составом турнира. Автоматический пересчёт остановлен.");
+  }
+
+  const { results: ledger } = await db.prepare(
+    "SELECT result_id,SUM(points_delta) AS balance FROM circuit_point_transactions WHERE season_id=? AND tournament_id=? AND result_id IS NOT NULL GROUP BY result_id"
+  ).bind(tournament.season_id, tournamentId).all();
+  const ledgerByResult = new Map((ledger || []).map((row) => [String(row.result_id), Number(row.balance || 0)]));
+  for (const row of existing || []) {
+    if (ledgerByResult.has(String(row.id)) && ledgerByResult.get(String(row.id)) !== Number(row.points_awarded || 0)) {
+      throw new Error("Баланс журнала Circuit не совпадает с итоговой записью. Нужна ручная сверка.");
+    }
+  }
+
+  const { results: rules } = await db.prepare(
+    "SELECT place_from,place_to,points FROM circuit_scoring_rules WHERE season_id=? ORDER BY place_from"
+  ).bind(tournament.season_id).all();
+  const awardPoints = !qualifier || Number(qualifier.awards_points) === 1;
+  const timestamp = new Date().toISOString();
+  const statements = [];
+  const changes = [];
+  for (const result of placements) {
+    const teamId = String(result.team_id);
+    const previous = existingByTeam.get(teamId);
+    const placement = Number(result.placement);
+    const group = placementGroup(placement);
+    const nextPoints = awardPoints && Number(previous.is_qualifier) !== 1
+      ? pointsForPlacement(placement, rules || []) : 0;
+    const oldPoints = Number(previous.points_awarded || 0);
+    const placementChanged = Number(previous.placement) !== placement || previous.placement_group !== group;
+    const pointsDelta = nextPoints - oldPoints;
+    if (!placementChanged && pointsDelta === 0) continue;
+
+    statements.push(db.prepare(
+      "UPDATE circuit_tournament_results SET placement=?,placement_group=?,points_awarded=?,finalized_at=? WHERE id=? AND placement=? AND points_awarded=?"
+    ).bind(placement,group,nextPoints,timestamp,previous.id,previous.placement,previous.points_awarded));
+    statements.push(db.prepare(
+      "INSERT INTO audit_events (action,entity_type,entity_id) SELECT NULL,'circuit_result_guard','0' WHERE changes()=0"
+    ));
+    if (pointsDelta !== 0) {
+      statements.push(db.prepare(
+        "INSERT INTO circuit_point_transactions (season_id,team_id,tournament_id,result_id,points_delta,transaction_type,reason,created_by) VALUES (?,?,?,?,?,'correction',?,?)"
+      ).bind(tournament.season_id,previous.team_id,tournamentId,previous.id,pointsDelta,
+        "Корректировка результата матча #" + matchId + ": место " + previous.placement + " → " + placement,
+        actorId));
+    }
+    changes.push({
+      team_id: previous.team_id,
+      from_placement: Number(previous.placement),
+      to_placement: placement,
+      points_delta: pointsDelta
+    });
+  }
+
+  if (changes.length) {
+    statements.push(db.prepare(
+      "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'circuit_result_corrected','tournament',?,?,?)"
+    ).bind(await createAuditEventId(db),actorId,String(tournamentId),
+      JSON.stringify({ match_id: String(matchId), changes: changes.map((row) => ({ team_id: row.team_id, placement: row.from_placement })) }),
+      JSON.stringify({ match_id: String(matchId), changes })));
+  }
+  return {
+    statements,
+    summary: {
+      reconciled: true,
+      teams_updated: changes.length,
+      points_delta: changes.reduce((sum,row)=>sum+row.points_delta,0),
+      changes
+    }
+  };
+}
+
 export async function completeTournamentIfReady(db, tournamentId) {
   const state = await db.prepare(
     "SELECT COUNT(*) AS total, SUM(CASE WHEN m.status='completed' THEN 1 ELSE 0 END) AS completed " +
