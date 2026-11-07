@@ -80,7 +80,7 @@ export async function finalizeCircuitTournament(db, tournamentId) {
   return { finalized: true, teams: placements.length };
 }
 
-async function completeTournamentIfReady(db, tournamentId) {
+export async function completeTournamentIfReady(db, tournamentId) {
   const state = await db.prepare(
     "SELECT COUNT(*) AS total, SUM(CASE WHEN m.status='completed' THEN 1 ELSE 0 END) AS completed " +
     "FROM matches m WHERE m.tournament_id=? AND NOT (" +
