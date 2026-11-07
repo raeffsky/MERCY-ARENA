@@ -177,8 +177,8 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
       const assignments = [...slots].map((slot) => slot + "=?");
       const values = [...slots].map((slot) => row[slot]);
       statements.push(db.prepare(
-        "UPDATE matches SET " + assignments.join(",") + ",updated_at=? WHERE id=? AND status='scheduled' AND team_a_id IS ? AND team_b_id IS ?"
-      ).bind(...values,timestamp,matchId,original.team_a_id,original.team_b_id));
+        "UPDATE matches SET " + assignments.join(",") + ",updated_at=? WHERE id=? AND status='scheduled' AND team_a_id IS ? AND team_b_id IS ? AND score_a IS ? AND score_b IS ? AND winner_team_id IS ?"
+      ).bind(...values,timestamp,matchId,original.team_a_id,original.team_b_id,original.score_a,original.score_b,original.winner_team_id));
       statements.push(db.prepare(
         "INSERT INTO audit_events (action,entity_type,entity_id) SELECT NULL,'match','0' WHERE changes()=0"
       ));
