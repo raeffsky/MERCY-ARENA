@@ -157,29 +157,38 @@ export async function onRequestPost({ request, env }) {
       }
       writes.push(...cascade.statements);
     }
-    const reopenedTournament = finalizedTournament && cascade.summary.reset_matches.length > 0;
-    if (reopenedTournament) {
-      writes.push(env.DB.prepare(
-        "UPDATE tournaments SET status='active',updated_at=? WHERE id=? AND status='completed'"
-      ).bind(timestamp,before.tournament_id));
-      guardSuccessfulWrite();
-    }
-
-    // Grand Final reset is conditional: the lower-bracket finalist must win
-    // the first final to activate the second match.
+    // Grand Final reset is a dependent fixture. If the first final is corrected,
+    // any played reset game must be invalidated and replayed (or cancelled).
     if (before.bracket === "final" && Number(before.round_number) === 1 && oldWinner !== newWinner) {
       const reset = await env.DB.prepare(
         "SELECT id,status,team_a_id,team_b_id,score_a,score_b,winner_team_id FROM matches WHERE tournament_id=? AND bracket='final' AND round_number=2 LIMIT 1"
       ).bind(before.tournament_id).first();
+      if (before.tournament_format === "double_elimination" && !reset) {
+        return bad("Для Grand Final не найден Reset Final. Корректировка остановлена.", 409);
+      }
       if (reset) {
-        if (finalizedTournament) {
-          return bad("Первый Grand Final завершённого Double Elimination нельзя менять отдельно от Reset Final. Для этого нужна каскадная корректировка всей финальной серии.", 409);
+        if (finalizedTournament && before.tournament_season_id != null) {
+          return bad("Первый Grand Final завершённого MERCY CIRCUIT нельзя менять отдельно от сезонной финализации. Нужна отдельная процедура пересчёта чемпионата.", 409);
         }
-        if (reset.status === "completed" || reset.status === "in_progress" ||
-            reset.score_a != null || reset.score_b != null || reset.winner_team_id != null) {
-          return bad("Reset Final уже начат или завершён. Его результат нельзя затронуть корректировкой первого финала.", 409);
-        }
-        if (newWinner === teamB && reset.status === "cancelled") {
+        const resetHasResult = reset.status === "completed" || reset.status === "in_progress" ||
+          reset.score_a != null || reset.score_b != null || reset.winner_team_id != null;
+        if (resetHasResult) {
+          if (!["scheduled","in_progress","completed"].includes(reset.status)) {
+            return bad("Состояние Reset Final не позволяет безопасно сбросить результат.", 409);
+          }
+          const activateReset = newWinner === teamB;
+          writes.push(env.DB.prepare(
+            "UPDATE matches SET team_a_id=?,team_b_id=?,status=?,score_a=NULL,score_b=NULL,winner_team_id=NULL,result_source=NULL,result_verified_at=NULL,updated_at=? WHERE id=? AND status=? AND team_a_id IS ? AND team_b_id IS ? AND score_a IS ? AND score_b IS ? AND winner_team_id IS ?"
+          ).bind(activateReset ? before.team_a_id : null,activateReset ? before.team_b_id : null,
+            activateReset ? "scheduled" : "cancelled",timestamp,reset.id,reset.status,reset.team_a_id,reset.team_b_id,
+            reset.score_a,reset.score_b,reset.winner_team_id));
+          guardSuccessfulWrite();
+          writes.push(env.DB.prepare(
+            "UPDATE result_events SET validation_status='reviewed',decision_reason=?,reviewed_at=? WHERE match_id=? AND validation_status='valid'"
+          ).bind("Superseded by corrected Grand Final result",timestamp,reset.id));
+          cascade.summary.reset_matches.push(Number.isNaN(Number(reset.id)) ? reset.id : Number(reset.id));
+          cascade.summary.updated_slots += 2;
+        } else if (newWinner === teamB && reset.status === "cancelled") {
           writes.push(env.DB.prepare(
             "UPDATE matches SET team_a_id=?,team_b_id=?,status='scheduled',updated_at=? WHERE id=? AND status='cancelled'"
           ).bind(before.team_a_id,before.team_b_id,timestamp,reset.id));
@@ -198,6 +207,14 @@ export async function onRequestPost({ request, env }) {
           return bad("Нельзя безопасно активировать Reset Final в текущем состоянии.", 409);
         }
       }
+    }
+
+    const reopenedTournament = finalizedTournament && cascade.summary.reset_matches.length > 0;
+    if (reopenedTournament) {
+      writes.push(env.DB.prepare(
+        "UPDATE tournaments SET status='active',updated_at=? WHERE id=? AND status='completed'"
+      ).bind(timestamp,before.tournament_id));
+      guardSuccessfulWrite();
     }
 
     writes.push(env.DB.prepare(
@@ -234,7 +251,7 @@ export async function onRequestPost({ request, env }) {
       throw error;
     }
     const after = await getById(env.DB, "matches", matchId);
-    const tournamentCompleted = reopenedTournament ? false : finalizedTournament ? true : await completeTournamentIfReady(env.DB, before.tournament_id);
+    const tournamentCompleted = finalizedTournament && !reopenedTournament ? true : await completeTournamentIfReady(env.DB, before.tournament_id);
     return json({
       data: after,
       corrected: true,
