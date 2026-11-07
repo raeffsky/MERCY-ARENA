@@ -193,8 +193,7 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
       const reset = [...matches.values()].find((match) =>
         match.bracket === "final" && Number(match.round_number) === 2
       );
-      if (reset && (reset.status !== "cancelled" || reset.team_a_id != null || reset.team_b_id != null ||
-          reset.score_a != null || reset.score_b != null || reset.winner_team_id != null)) {
+      if (reset) {
         if (!["scheduled", "in_progress", "completed", "cancelled"].includes(reset.status)) {
           throw new Error("Reset Final перенесён или отменён нестандартно. Каскадная корректировка остановлена.");
         }
