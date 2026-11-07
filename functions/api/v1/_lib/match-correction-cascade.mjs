@@ -177,10 +177,10 @@ export async function prepareMatchCorrectionCascade(db, tournamentId, sourceMatc
           throw new Error("Незавершённый матч уже повлиял на сыгранную ветку. Каскадная корректировка остановлена.");
         }
       } else {
-        if (hasPlayedResult(target) && slotValue == null) {
-          throw new Error("У сыгранного зависимого матча отсутствует участник из предыдущего раунда. Каскадная корректировка остановлена.");
+        if (slotValue == null) {
+          throw new Error("У зависимого матча отсутствует участник из предыдущего раунда. Каскадная корректировка остановлена.");
         }
-        if (slotValue != null && String(slotValue) !== expectedEntrant) {
+        if (String(slotValue) !== expectedEntrant) {
           throw new Error("У зависимого матча обнаружен участник, не совпадающий с историей продвижения. Каскадная корректировка остановлена.");
         }
         if (slotValue != null) setSlot(target, route.next_slot, null);
