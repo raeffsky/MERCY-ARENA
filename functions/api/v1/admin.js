@@ -122,6 +122,10 @@ export async function onRequestGet({ request, env }) {
       ).bind(matchId).first();
       if (link) routes = [{ outcome: "winner", next_match_id: link.next_match_id, next_slot: link.next_slot }];
     }
+    if (before.tournament_format === "double_elimination" &&
+        ["upper","lower"].includes(before.bracket) && !routes.length) {
+      return bad("Для этого матча не найдены маршруты Double Elimination. Корректировка остановлена, чтобы не повредить сетку.", 409);
+    }
 
     for (const route of routes) {
       if (!["winner","loser"].includes(route.outcome) ||
