@@ -18,6 +18,17 @@ test.describe('MERCY ARENA API guardrails', () => {
     }
   });
 
+  test('administrator audit log is owner-only and read-only', () => {
+    const admin = source('functions/api/v1/admin.js');
+    const getHandler = admin.slice(admin.indexOf('export async function onRequestGet'), admin.indexOf('export async function onRequestPost'));
+    const postHandler = admin.slice(admin.indexOf('export async function onRequestPost'));
+    expect(getHandler).toContain('const auth = await authorize(request, env)');
+    expect(getHandler).toContain('resource === "audit"');
+    expect(getHandler).toContain('FROM audit_events a LEFT JOIN users u ON u.id=a.actor_id');
+    expect(admin).toContain('!session.user.roles.includes("administrator") || !isOwnerAccount(session.user, env)');
+    expect(postHandler).not.toContain('resource === "audit"');
+  });
+
   test('organizers can generate brackets only for their own tournaments', () => {
     const brackets = source('functions/api/v1/brackets.js');
     expect(brackets).toContain('isOwnerAccount');

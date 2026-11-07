@@ -76,6 +76,14 @@ export async function onRequestGet({ request, env }) {
     const { results } = await env.DB.prepare("SELECT id,email,display_name FROM users ORDER BY email COLLATE NOCASE LIMIT 200").all();
     return json({ data: results || [] });
   }
+  if (resource === "audit") {
+    const limit = Math.min(200, Math.max(1, Number(new URL(request.url).searchParams.get("limit")) || 100));
+    const { results } = await env.DB.prepare(
+      "SELECT a.id,a.actor_id,a.action,a.entity_type,a.entity_id,a.before_json,a.after_json,a.created_at,u.email AS actor_email " +
+      "FROM audit_events a LEFT JOIN users u ON u.id=a.actor_id ORDER BY a.created_at DESC,a.id DESC LIMIT ?"
+    ).bind(limit).all();
+    return json({ data: results || [], meta: { limit } });
+  }
   const config = TABLES[resource];
   if (!config) return bad("Неизвестный раздел.");
   if (resource === "matches") {
