@@ -101,6 +101,11 @@ export async function onRequestGet({ request, env }) {
     const newLoser = newWinner === teamA ? teamB : teamA;
     const timestamp = now();
     const writes = [];
+    // D1 batch is transactional. Force a constraint failure when any guarded
+    // update changes zero rows so a concurrent edit cannot leave a partial branch rewrite.
+    const guardSuccessfulWrite = () => writes.push(env.DB.prepare(
+      "INSERT INTO audit_events (action,entity_type,entity_id) SELECT NULL,'match','0' WHERE changes()=0"
+    ));
 
     let routes = [];
     try {
@@ -139,6 +144,7 @@ export async function onRequestGet({ request, env }) {
       writes.push(env.DB.prepare(
         "UPDATE matches SET " + route.next_slot + "=?,updated_at=? WHERE id=? AND status='scheduled' AND (" + route.next_slot + "=? OR " + route.next_slot + " IS NULL)"
       ).bind(newEntrant, timestamp, route.next_match_id, oldEntrant));
+      guardSuccessfulWrite();
     }
 
     // Grand Final reset is conditional: the lower-bracket finalist must win
@@ -156,6 +162,7 @@ export async function onRequestGet({ request, env }) {
           writes.push(env.DB.prepare(
             "UPDATE matches SET team_a_id=?,team_b_id=?,status='scheduled',updated_at=? WHERE id=? AND status='cancelled'"
           ).bind(before.team_a_id,before.team_b_id,timestamp,reset.id));
+          guardSuccessfulWrite();
         } else if (newWinner === teamA && reset.status === "scheduled") {
           if (String(reset.team_a_id ?? "") !== teamA || String(reset.team_b_id ?? "") !== teamB) {
             return bad("У Reset Final изменились участники. Корректировка остановлена.", 409);
@@ -163,6 +170,7 @@ export async function onRequestGet({ request, env }) {
           writes.push(env.DB.prepare(
             "UPDATE matches SET team_a_id=NULL,team_b_id=NULL,status='cancelled',updated_at=? WHERE id=? AND status='scheduled' AND team_a_id=? AND team_b_id=?"
           ).bind(timestamp,reset.id,before.team_a_id,before.team_b_id));
+          guardSuccessfulWrite();
         } else if (newWinner === teamA && reset.status !== "cancelled") {
           return bad("Состояние Reset Final не соответствует первому финалу. Корректировка остановлена.", 409);
         } else if (newWinner === teamB && reset.status !== "scheduled") {
@@ -174,6 +182,7 @@ export async function onRequestGet({ request, env }) {
     writes.push(env.DB.prepare(
       "UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,result_source='admin_correction',result_verified_at=?,updated_at=? WHERE id=? AND status='completed' AND score_a=? AND score_b=? AND winner_team_id=?"
     ).bind(scoreA,scoreB,newWinner,timestamp,timestamp,matchId,before.score_a,before.score_b,before.winner_team_id));
+    guardSuccessfulWrite();
     writes.push(env.DB.prepare(
       "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?, 'match_result_corrected','matches',?,?,?)"
     ).bind(await createAuditEventId(env.DB),auth.user.id,String(matchId),
