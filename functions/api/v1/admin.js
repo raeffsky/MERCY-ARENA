@@ -131,7 +131,11 @@ export async function onRequestPost({ request, env }) {
       "INSERT INTO audit_events (action,entity_type,entity_id) SELECT NULL,'match','0' WHERE changes()=0"
     ));
 
-    let cascade = { statements: [], summary: { route_count: 0, updated_slots: 0, reset_matches: [] } };
+    let cascade = { statements: [], summary: { route_count: 0, route_outcomes: [], updated_slots: 0, reset_matches: [], cancelled_matches: [] } };
+    const appendCascadeMatch = (key, value) => {
+      const id = Number.isNaN(Number(value)) ? value : Number(value);
+      if (!cascade.summary[key].includes(id)) cascade.summary[key].push(id);
+    };
     if (oldWinner !== newWinner) {
       try {
         cascade = await prepareMatchCorrectionCascade(
@@ -186,13 +190,15 @@ export async function onRequestPost({ request, env }) {
           writes.push(env.DB.prepare(
             "UPDATE result_events SET validation_status='reviewed',decision_reason=?,reviewed_at=? WHERE match_id=? AND validation_status='valid'"
           ).bind("Superseded by corrected Grand Final result",timestamp,reset.id));
-          cascade.summary.reset_matches.push(Number.isNaN(Number(reset.id)) ? reset.id : Number(reset.id));
+          appendCascadeMatch(activateReset ? "reset_matches" : "cancelled_matches", reset.id);
           cascade.summary.updated_slots += 2;
         } else if (newWinner === teamB && reset.status === "cancelled") {
           writes.push(env.DB.prepare(
             "UPDATE matches SET team_a_id=?,team_b_id=?,status='scheduled',updated_at=? WHERE id=? AND status='cancelled' AND team_a_id IS ? AND team_b_id IS ? AND score_a IS NULL AND score_b IS NULL AND winner_team_id IS NULL"
           ).bind(before.team_a_id,before.team_b_id,timestamp,reset.id,reset.team_a_id,reset.team_b_id));
           guardSuccessfulWrite();
+          appendCascadeMatch("reset_matches", reset.id);
+          cascade.summary.updated_slots += 2;
         } else if (newWinner === teamA && reset.status === "scheduled") {
           if (String(reset.team_a_id ?? "") !== teamA || String(reset.team_b_id ?? "") !== teamB) {
             return bad("У Reset Final изменились участники. Корректировка остановлена.", 409);
@@ -201,6 +207,8 @@ export async function onRequestPost({ request, env }) {
             "UPDATE matches SET team_a_id=NULL,team_b_id=NULL,status='cancelled',updated_at=? WHERE id=? AND status='scheduled' AND team_a_id=? AND team_b_id=? AND score_a IS NULL AND score_b IS NULL AND winner_team_id IS NULL"
           ).bind(timestamp,reset.id,before.team_a_id,before.team_b_id));
           guardSuccessfulWrite();
+          appendCascadeMatch("cancelled_matches", reset.id);
+          cascade.summary.updated_slots += 2;
         } else if (newWinner === teamA && reset.status !== "cancelled") {
           return bad("Состояние Reset Final не соответствует первому финалу. Корректировка остановлена.", 409);
         } else if (newWinner === teamB && reset.status === "scheduled") {
@@ -261,6 +269,7 @@ export async function onRequestPost({ request, env }) {
       corrected: true,
       downstream_updates: cascade.summary.updated_slots,
       cascade_reset_matches: cascade.summary.reset_matches,
+      cascade_cancelled_matches: cascade.summary.cancelled_matches,
       tournament_reopened: reopenedTournament,
       tournament_completed: tournamentCompleted,
       circuit_reconciliation: circuitReconciliation
