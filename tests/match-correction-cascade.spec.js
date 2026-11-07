@@ -51,10 +51,10 @@ test.describe("Safe downstream result correction cascade", () => {
     expect(result.summary).toEqual({ route_count: 1, route_outcomes: ["winner"], updated_slots: 2, reset_matches: [2, 3] });
     const resets = db.prepared.filter(statement => statement.sql.startsWith("UPDATE matches SET team_a_id=?,team_b_id=?"));
     expect(resets).toHaveLength(2);
-    expect(resets[0].values.slice(0, 2)).toEqual([11, 12]);
-    expect(resets[0].values[3]).toBe(2);
+    expect(resets[0].values.slice(0, 2)).toEqual(["11", 12]);
+    expect(resets[0].values[3]).toBe("2");
     expect(resets[1].values.slice(0, 2)).toEqual([null, 13]);
-    expect(resets[1].values[3]).toBe(3);
+    expect(resets[1].values[3]).toBe("3");
     expect(db.prepared.filter(statement => statement.sql.startsWith("UPDATE result_events"))).toHaveLength(2);
   });
 
@@ -72,8 +72,8 @@ test.describe("Safe downstream result correction cascade", () => {
     expect(result.summary.updated_slots).toBe(1);
     expect(db.prepared.filter(statement => statement.sql.startsWith("UPDATE result_events"))).toHaveLength(0);
     const update = db.prepared.find(statement => statement.sql.startsWith("UPDATE matches SET team_a_id=?"));
-    expect(update.values[0]).toBe(11);
-    expect(update.values[2]).toBe(2);
+    expect(update.values[0]).toBe("11");
+    expect(update.values[2]).toBe("2");
   });
 
   test("cascades both winner and loser routes across a Double Elimination branch", async () => {
@@ -96,7 +96,7 @@ test.describe("Safe downstream result correction cascade", () => {
     expect(result.summary.reset_matches).toEqual([2, 3, 4]);
     expect(result.summary.updated_slots).toBe(4);
     const finalReset = db.prepared.find(statement =>
-      statement.sql.startsWith("UPDATE matches SET team_a_id=?,team_b_id=?") && statement.values[3] === 4
+      statement.sql.startsWith("UPDATE matches SET team_a_id=?,team_b_id=?") && statement.values[3] === "4"
     );
     expect(finalReset.values.slice(0, 2)).toEqual([null, null]);
   });
