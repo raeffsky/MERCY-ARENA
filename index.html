@@ -1240,7 +1240,8 @@ button.disabled=true;correctionMessage.textContent='Проверяем сетк�
 try{
 var correctionResult=await request('matches',{resource:'matches',action:'correct_result',id:correctionForm.dataset.matchId,data:{score_a:scoreA,score_b:scoreB}},true);
 cache={};correctionDialog.close();await render('matches');
-if(correctionResult.cascade_reset_matches&&correctionResult.cascade_reset_matches.length){alert('Результат исправлен. Сброшено зависимых матчей: '+correctionResult.cascade_reset_matches.length+'. '+(correctionResult.tournament_reopened?'Завершённый турнир снова открыт. ':'Турнир остаётся активным. ')+'Эти матчи нужно провести заново.');}
+var replayCount=(correctionResult.cascade_reset_matches||[]).length,cancelledCount=(correctionResult.cascade_cancelled_matches||[]).length;
+if(replayCount||cancelledCount){alert('Результат исправлен. Матчей для переигровки: '+replayCount+'. Отменено матчей: '+cancelledCount+'. '+(correctionResult.tournament_reopened?'Завершённый турнир снова открыт. ':correctionResult.tournament_completed?'Турнир остаётся завершённым. ':'Турнир остаётся активным. ')+(replayCount?'Указанные матчи нужно провести заново.':'Переигровка не требуется.'));}
 }catch(error){correctionMessage.textContent=error.message}
 finally{button.disabled=false}
 });
