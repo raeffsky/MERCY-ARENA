@@ -86,4 +86,18 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(page).toContain('для отмены выбери статус «Отменён»');
     expect(page).toContain("x.scheduled_at?dateLabel(x.scheduled_at):'Не назначено'");
   });
+
+  test('completed match corrections guard downstream progression and keep an audit trail', () => {
+    const admin = source('functions/api/v1/admin.js');
+    expect(admin).toContain('action === "correct_result"');
+    expect(admin).toContain('before.tournament_status === "completed"');
+    expect(admin).toContain('target.status !== "scheduled"');
+    expect(admin).toContain('match_advancement WHERE match_id=?');
+    expect(admin).toContain('match_progression WHERE match_id=?');
+    expect(admin).toContain("match_result_corrected");
+    const page = source('index.html');
+    expect(page).toContain('data-correct-result');
+    expect(page).toContain("action:'correct_result'");
+    expect(page).toContain('КОРРЕКТИРОВКА РЕЗУЛЬТАТА');
+  });
 });
