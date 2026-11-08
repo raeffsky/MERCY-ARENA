@@ -5,7 +5,7 @@ import { createAuditEventId } from "./_lib/audit.js";
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return databaseUnavailable();
   const limit = parseLimit(new URL(request.url), 12, 50);
-  const current = await env.DB.prepare("SELECT r.id,r.team_id,r.started_at,r.defenses_count,r.notes,t.name AS team_name,t.tag AS team_tag,t.logo_url,t.region FROM mercy_crown_reigns r JOIN teams t ON t.id=r.team_id WHERE r.ended_at IS NULL LIMIT 1").first();
+  const current = await env.DB.prepare("SELECT r.id,r.team_id,r.started_at,r.defenses_count,r.notes,t.name AS team_name,t.tag AS team_tag,t.logo_url,t.region,t.captain_id FROM mercy_crown_reigns r JOIN teams t ON t.id=r.team_id WHERE r.ended_at IS NULL LIMIT 1").first();
   const history = await env.DB.prepare("SELECT r.id,r.team_id,r.started_at,r.ended_at,r.defenses_count,r.end_reason,t.name AS team_name,t.tag AS team_tag,t.logo_url FROM mercy_crown_reigns r JOIN teams t ON t.id=r.team_id WHERE r.ended_at IS NOT NULL ORDER BY r.ended_at DESC,r.id DESC LIMIT ?").bind(limit).all();
   const challenges = await env.DB.prepare("SELECT c.id,c.challenger_team_id,c.status,c.message,c.created_at,t.name AS team_name,t.tag AS team_tag,t.logo_url FROM mercy_crown_challenges c JOIN teams t ON t.id=c.challenger_team_id WHERE c.status IN ('pending','accepted','scheduled') ORDER BY c.created_at ASC LIMIT ?").bind(limit).all();
   return json({data:{current:current||null,history:history.results||[],challenges:challenges.results||[]}});
