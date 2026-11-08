@@ -17,6 +17,18 @@ export async function onRequestPost({ request, env }) {
   if(session.error)return session.error;
   if(!session.user)return json({error:{code:"UNAUTHORIZED",message:"Войди в аккаунт MERCY ARENA."}},401);
   let body; try{body=await request.json()}catch{return json({error:{code:"INVALID_JSON",message:"Некорректные данные."}},400)}
+  if(body.action==="challenge_decision"){
+    const challengeId=Number(body.challenge_id),decision=String(body.decision||"");
+    if(!Number.isSafeInteger(challengeId)||challengeId<=0||!["accept","decline"].includes(decision))return json({error:{code:"INVALID_DECISION",message:"Некорректное решение по вызову."}},400);
+    const current=await env.DB.prepare("SELECT t.captain_id FROM mercy_crown_reigns r JOIN teams t ON t.id=r.team_id WHERE r.ended_at IS NULL LIMIT 1").first();
+    const owner=session.user.roles.includes("administrator")&&isOwnerAccount(session.user,env);
+    if(!current||(String(current.captain_id)!==String(session.user.id)&&!owner))return json({error:{code:"FORBIDDEN",message:"Решение по вызову принимает чемпион или владелец платформы."}},403);
+    const challenge=await env.DB.prepare("SELECT id,status FROM mercy_crown_challenges WHERE id=? LIMIT 1").bind(challengeId).first();
+    if(!challenge||challenge.status!=="pending")return json({error:{code:"CHALLENGE_NOT_PENDING",message:"Этот вызов уже обработан."}},409);
+    await env.DB.prepare("UPDATE mercy_crown_challenges SET status=?,reviewed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),decided_by=? WHERE id=? AND status='pending'").bind(decision==="accept"?"accepted":"declined",session.user.id,challengeId).run();
+    await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,?,?,?,?)").bind(await createAuditEventId(env.DB),session.user.id,"mercy_crown_challenge_"+decision,"mercy_crown_challenge",String(challengeId),JSON.stringify({decision})).run();
+    return json({data:{id:challengeId,status:decision==="accept"?"accepted":"declined"}});
+  }
   if(body.action==="challenge"){
     const teamId=Number(body.team_id),message=String(body.message||"").trim().slice(0,500);
     if(!Number.isSafeInteger(teamId)||teamId<=0)return json({error:{code:"INVALID_TEAM",message:"Выбери команду."}},400);
@@ -41,7 +53,7 @@ export async function onRequestPost({ request, env }) {
     if(current&&winner===Number(current.team_id)){
       const challenge=await env.DB.prepare("SELECT id FROM mercy_crown_challenges WHERE challenger_team_id IN (?,?) AND status IN ('pending','accepted','scheduled') ORDER BY created_at LIMIT 1").bind(match.team_a_id,match.team_b_id).first();
       if(!challenge)return json({error:{code:"NO_TITLE_CHALLENGE",message:"Для защиты нужен зарегистрированный вызов соперника."}},409);
-      await env.DB.prepare("UPDATE mercy_crown_reigns SET defenses_count=defenses_count+1,source_match_id=? WHERE id=?").bind(matchId,current.id).run();
+      await env.DB.prepare("UPDATE mercy_crown_reigns SET defenses_count=defenses_count+1 WHERE id=?").bind(current.id).run();
       await env.DB.prepare("UPDATE mercy_crown_challenges SET status='completed',result_match_id=?,reviewed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),decided_by=? WHERE id=?").bind(matchId,session.user.id,challenge.id).run();
       await env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,?,?,?,?)").bind(await createAuditEventId(env.DB),session.user.id,"mercy_crown_defended","mercy_crown",String(current.id),JSON.stringify({match_id:matchId,champion_team_id:winner})).run();
       return json({data:{status:"defended",team_id:winner}});
