@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS mercy_crown_reigns (
   notes TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mercy_crown_one_active_reign
-  ON mercy_crown_reigns((1)) WHERE ended_at IS NULL;
+  ON mercy_crown_reigns(1) WHERE ended_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_mercy_crown_reigns_team ON mercy_crown_reigns(team_id, started_at DESC);
 
 CREATE TABLE IF NOT EXISTS mercy_crown_challenges (
