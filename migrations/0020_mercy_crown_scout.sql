@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS mercy_crown_challenges (
   reviewed_at TEXT,
   decided_by INTEGER REFERENCES users(id),
   result_match_id INTEGER REFERENCES matches(id) ON DELETE SET NULL,
-  UNIQUE(challenger_team_id, status)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mercy_crown_one_open_challenge ON mercy_crown_challenges(challenger_team_id) WHERE status IN ('pending','accepted','scheduled');
 CREATE INDEX IF NOT EXISTS idx_mercy_crown_challenges_status ON mercy_crown_challenges(status, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS mercy_scout_watchlist (
