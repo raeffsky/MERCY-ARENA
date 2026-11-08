@@ -18,6 +18,7 @@ export async function onRequestGet({request,env}) {
     )
     SELECT p.id,p.nickname,p.game_id,p.role,p.region,p.avatar_url,p.team_id,t.name AS team_name,t.tag AS team_tag,t.logo_url AS team_logo,
       COUNT(pm.match_id) AS matches_played,COALESCE(SUM(CASE WHEN pm.winner_team_id=pm.team_id THEN 1 ELSE 0 END),0) AS wins,
+      COALESCE(SUM(CASE WHEN pm.winner_team_id=pm.team_id THEN 3 ELSE 0 END),0) AS points,
       COALESCE(SUM(CASE WHEN pm.winner_team_id IS NOT NULL AND pm.winner_team_id!=pm.team_id THEN 1 ELSE 0 END),0) AS losses,
       COALESCE(ROUND(100.0*SUM(CASE WHEN pm.winner_team_id=pm.team_id THEN 1 ELSE 0 END)/NULLIF(COUNT(pm.match_id),0),1),0) AS win_rate,p.created_at
     FROM players p LEFT JOIN teams t ON t.id=p.team_id LEFT JOIN player_matches pm ON pm.player_id=p.id
