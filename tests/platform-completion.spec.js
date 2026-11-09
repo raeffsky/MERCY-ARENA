@@ -107,6 +107,44 @@ test.describe('MERCY ARENA completion flows', () => {
     await expect(page.locator('#matchSchedule')).toContainText('MERCY Test Cup');
   });
 
+  test('tournament watch tab embeds a validated YouTube livestream and has an empty state', async ({ page }) => {
+    await page.route('**/api/v1/tournaments?id=779', route => route.fulfill({ json: { data: [{
+      id: 779,
+      title: 'MERCY Live Cup',
+      description: 'Live event',
+      format: 'single_elimination',
+      status: 'active',
+      stream_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      registered_teams_list: []
+    }] } }));
+    await page.route('**/api/v1/matches?tournament_id=779', route => route.fulfill({ json: { data: [] } }));
+
+    await page.goto('/#/tournament/779');
+    await page.locator('[data-tournament-tab="watch"]').click();
+    await expect(page.locator('#tournamentTabContent iframe')).toHaveAttribute(
+      'src',
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ'
+    );
+    await expect(page.locator('#tournamentTabContent')).toContainText('ТРАНСЛЯЦИЯ ТУРНИРА');
+  });
+
+  test('tournament watch tab does not render an unsafe or missing stream URL', async ({ page }) => {
+    await page.route('**/api/v1/tournaments?id=780', route => route.fulfill({ json: { data: [{
+      id: 780,
+      title: 'MERCY Offline Cup',
+      format: 'single_elimination',
+      status: 'completed',
+      stream_url: 'javascript:alert(1)',
+      registered_teams_list: []
+    }] } }));
+    await page.route('**/api/v1/matches?tournament_id=780', route => route.fulfill({ json: { data: [] } }));
+
+    await page.goto('/#/tournament/780');
+    await page.locator('[data-tournament-tab="watch"]').click();
+    await expect(page.locator('#tournamentTabContent')).toContainText('Трансляция пока не добавлена');
+    await expect(page.locator('#tournamentTabContent iframe')).toHaveCount(0);
+  });
+
   test('owner admin can inspect an immutable audit log', async ({ page }) => {
     await openOwnerAdmin(page, {
       audit: [{
