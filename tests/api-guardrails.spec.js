@@ -63,6 +63,21 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(applications).not.toContain("SELECT COUNT(*) AS total FROM tournament_registrations WHERE tournament_id=? AND status IN ('pending','approved')");
   });
 
+  test('MERCY CROWN accepts numeric IDs and uses a guarded single-winner transition', () => {
+    const crown = source('functions/api/v1/crown.js');
+    expect(crown).toContain('/^\\d+$/');
+    expect(crown).toContain("status='scheduled' AND reign_id=?");
+    expect(crown).toContain("status='decided' AND decided_at=? AND winner_team_id=?");
+    expect(crown).toContain('MATCH_TEAMS_CHANGED');
+    expect(crown).toContain('CROWN_ALREADY_HELD');
+  });
+
+  test('application withdrawal recognizes the same captain identities as submission', () => {
+    const applications = source('functions/api/v1/applications.js');
+    expect(applications).toContain('AS can_manage');
+    expect(applications).toContain("tr.roster_role='captain' AND p.user_id=?");
+  });
+
   test('MERCY SCOUT exposes only approved, non-archived players and verified starter matches', () => {
     const scout = source('functions/api/v1/scout.js');
     expect(scout).toContain("p.profile_status='approved'");
