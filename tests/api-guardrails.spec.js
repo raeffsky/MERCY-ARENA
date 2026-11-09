@@ -97,6 +97,17 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(rankings).toContain("p.archived_at IS NULL");
   });
 
+  test('player and team public stats only use published tournament results', () => {
+    const players = source('functions/api/v1/players.js');
+    const teams = source('functions/api/v1/teams.js');
+    const scout = source('functions/api/v1/scout.js');
+    expect(players).toContain("tour.published_at IS NOT NULL AND tour.status!='draft'");
+    expect(players).toContain("t.published_at IS NOT NULL AND t.status!='draft'");
+    expect(teams).toContain("tour.published_at IS NOT NULL AND tour.status!='draft'");
+    expect(teams).toContain("t.published_at IS NOT NULL AND t.status!='draft'");
+    expect(scout).toContain("p0.archived_at IS NULL");
+  });
+
   test('team roster limits do not count archived players as active members', () => {
     const members = source('functions/api/v1/team-members.js');
     expect(members).toContain("JOIN players p ON p.id=tr.player_id AND p.archived_at IS NULL");
