@@ -41,7 +41,7 @@ export async function onRequestPost({ request, env }) {
   try {
     if (action === "appoint_champion") {
       const teamId = String(body.team_id || "").trim();
-      if (!/^\\d+$/.test(teamId)) return fail("INVALID_TEAM", "Укажи корректную команду.");
+      if (!/^\d+$/.test(teamId)) return fail("INVALID_TEAM", "Укажи корректную команду.");
       const team = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND status='active' AND archived_at IS NULL").bind(teamId).first();
       if (!team) return fail("TEAM_NOT_ELIGIBLE", "Команда не найдена или неактивна.", 409);
       const active = await env.DB.prepare("SELECT id FROM mercy_crown_reigns WHERE ended_at IS NULL LIMIT 1").first();
@@ -56,7 +56,7 @@ export async function onRequestPost({ request, env }) {
     if (action === "schedule_challenge") {
       const challengerId = String(body.challenger_team_id || "").trim();
       const matchId = String(body.match_id || "").trim();
-      if (!/^\\d+$/.test(challengerId) || !/^\\d+$/.test(matchId)) return fail("INVALID_CHALLENGE", "Укажи команду-претендента и матч.");
+      if (!/^\d+$/.test(challengerId) || !/^\d+$/.test(matchId)) return fail("INVALID_CHALLENGE", "Укажи команду-претендента и матч.");
       const reign = await env.DB.prepare("SELECT id,team_id FROM mercy_crown_reigns WHERE ended_at IS NULL LIMIT 1").first();
       if (!reign) return fail("CROWN_UNCLAIMED", "Сначала назначь первого чемпиона.",409);
       if (String(reign.team_id) === challengerId) return fail("INVALID_CHALLENGER", "Действующий чемпион не может бросить вызов сам себе.",409);
@@ -77,7 +77,7 @@ export async function onRequestPost({ request, env }) {
 
     if (action === "resolve_challenge") {
       const challengeId = String(body.challenge_id || "").trim();
-      if (!/^\\d+$/.test(challengeId)) return fail("INVALID_CHALLENGE", "Укажи ID защиты.");
+      if (!/^\d+$/.test(challengeId)) return fail("INVALID_CHALLENGE", "Укажи ID защиты.");
       const challenge = await env.DB.prepare("SELECT c.*,r.ended_at AS reign_ended_at FROM mercy_crown_challenges c JOIN mercy_crown_reigns r ON r.id=c.reign_id WHERE c.id=?").bind(challengeId).first();
       if (!challenge || challenge.status !== "scheduled" || challenge.reign_ended_at !== null) return fail("CHALLENGE_NOT_OPEN", "Защита не найдена или уже обработана.",409);
       const match = await env.DB.prepare("SELECT status,team_a_id,team_b_id,winner_team_id,result_verified_at FROM matches WHERE id=?").bind(challenge.match_id).first();
@@ -91,7 +91,7 @@ export async function onRequestPost({ request, env }) {
       if (![String(challenge.champion_team_id),String(challenge.challenger_team_id)].includes(winnerId)) return fail("INVALID_MATCH_WINNER", "Победитель матча не совпадает с участниками защиты.",409);
       // The extra fractional digits form a per-request compare-and-set token.
       // Every write after the status transition is guarded by this exact decision.
-      const operationNow = now.replace(/(\\.\\d{3})Z$/, function(_, milliseconds) {
+      const operationNow = now.replace(/(\.\d{3})Z$/, function(_, milliseconds) {
         return milliseconds + String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0") + "Z";
       });
       const decisionGuard = "EXISTS (SELECT 1 FROM mercy_crown_challenges WHERE id=? AND status='decided' AND decided_at=? AND winner_team_id=? AND reign_id=?)";
