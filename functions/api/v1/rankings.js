@@ -20,7 +20,7 @@ export async function onRequestGet({ request, env }) {
       FROM teams t
       LEFT JOIN matches m ON (m.team_a_id=t.id OR m.team_b_id=t.id)
         AND m.status='completed' AND m.result_verified_at IS NOT NULL ${seasonMatchFilter}
-      WHERE t.status='active'
+      WHERE t.status='active' AND t.archived_at IS NULL
       GROUP BY t.id
       ORDER BY points DESC,wins DESC,win_rate DESC,matches_played DESC,t.name COLLATE NOCASE
       LIMIT ?
@@ -42,7 +42,7 @@ export async function onRequestGet({ request, env }) {
             AND (m.team_a_id=r.team_id OR m.team_b_id=r.team_id)
             AND m.status='completed' AND m.result_verified_at IS NOT NULL
           JOIN tournaments tour ON tour.id=m.tournament_id
-          WHERE rr.roster_role='starter' AND tour.published_at IS NOT NULL AND tour.status!='draft' ${seasonFilter}
+          WHERE rr.roster_role='starter' AND p.archived_at IS NULL AND tour.published_at IS NOT NULL AND tour.status!='draft' ${seasonFilter}
         )
         SELECT p.id,p.nickname,p.role,p.team_id,p.avatar_url,p.region,
           COUNT(pm.match_id) AS matches_played,
@@ -52,7 +52,7 @@ export async function onRequestGet({ request, env }) {
           COALESCE(ROUND(100.0*SUM(CASE WHEN pm.winner_team_id=pm.team_id THEN 1 ELSE 0 END)/NULLIF(COUNT(pm.match_id),0),1),0) AS win_rate
         FROM players p
         LEFT JOIN player_matches pm ON pm.player_id=p.id
-        WHERE p.profile_status='approved'
+        WHERE p.profile_status='approved' AND p.archived_at IS NULL
         GROUP BY p.id
         ORDER BY points DESC,wins DESC,win_rate DESC,matches_played DESC,p.nickname COLLATE NOCASE
         LIMIT ?
@@ -65,7 +65,7 @@ export async function onRequestGet({ request, env }) {
         SELECT id,nickname,role,team_id,avatar_url,region,
           0 AS matches_played,0 AS wins,0 AS losses,0 AS points,0 AS win_rate
         FROM players
-        WHERE profile_status='approved'
+        WHERE profile_status='approved' AND archived_at IS NULL
         ORDER BY nickname COLLATE NOCASE
         LIMIT ?
       `).bind(limit).all();
