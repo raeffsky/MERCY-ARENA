@@ -10,16 +10,16 @@ export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const teamIdValue = url.searchParams.get("team_id");
   if (!teamIdValue) {
-    const player = await env.DB.prepare("SELECT id FROM players WHERE user_id=? AND profile_status='approved' LIMIT 1").bind(auth.user.id).first();
+    const player = await env.DB.prepare("SELECT id FROM players WHERE user_id=? AND profile_status='approved' AND archived_at IS NULL LIMIT 1").bind(auth.user.id).first();
     if (!player) return json({ data: [] });
-    const { results } = await env.DB.prepare("SELECT i.id,i.team_id,i.status,i.created_at,t.name AS team_name,t.tag AS team_tag,p.nickname AS captain_name FROM team_invites i JOIN teams t ON t.id=i.team_id LEFT JOIN players p ON p.user_id=t.captain_id WHERE i.player_id=? AND i.status='pending' ORDER BY i.created_at DESC").bind(player.id).all();
+    const { results } = await env.DB.prepare("SELECT i.id,i.team_id,i.status,i.created_at,t.name AS team_name,t.tag AS team_tag,p.nickname AS captain_name FROM team_invites i JOIN teams t ON t.id=i.team_id AND t.status='active' AND t.archived_at IS NULL LEFT JOIN players p ON p.user_id=t.captain_id AND p.archived_at IS NULL WHERE i.player_id=? AND i.status='pending' ORDER BY i.created_at DESC").bind(player.id).all();
     return json({ data: results || [] });
   }
   const teamId = String(teamIdValue || "").trim();
   if (!teamId) return json({ error: { code: "INVALID_TEAM", message: "Укажи команду." } }, 400);
-  const own = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND captain_id=?").bind(teamId, auth.user.id).first();
+  const own = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND captain_id=? AND status='active' AND archived_at IS NULL AND archived_at IS NULL").bind(teamId, auth.user.id).first();
   if (!own) return json({ data: [] });
-  const { results } = await env.DB.prepare("SELECT i.id,i.status,i.created_at,p.id AS player_id,p.nickname,p.role,p.avatar_url FROM team_invites i JOIN players p ON p.id=i.player_id WHERE i.team_id=? AND i.status='pending' ORDER BY i.created_at DESC").bind(teamId).all();
+  const { results } = await env.DB.prepare("SELECT i.id,i.status,i.created_at,p.id AS player_id,p.nickname,p.role,p.avatar_url FROM team_invites i JOIN players p ON p.id=i.player_id AND p.archived_at IS NULL WHERE i.team_id=? AND i.status='pending' ORDER BY i.created_at DESC").bind(teamId).all();
   return json({ data: results || [] });
 }
 
@@ -36,7 +36,7 @@ export async function onRequestPost({ request, env }) {
     if (!teamId || !nextPlayerId) return json({ error: { code: "INVALID_TRANSFER", message: "Укажи команду и нового капитана." } }, 400);
     const team = await env.DB.prepare("SELECT id,captain_id FROM teams WHERE id=? AND captain_id=? AND status='active'").bind(teamId, auth.user.id).first();
     if (!team) return json({ error: { code: "CAPTAIN_REQUIRED", message: "Передать капитанство может только текущий капитан." } }, 403);
-    const member = await env.DB.prepare("SELECT p.id,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL AND p.profile_status='approved'").bind(teamId, nextPlayerId).first();
+    const member = await env.DB.prepare("SELECT p.id,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL AND p.profile_status='approved' AND p.archived_at IS NULL").bind(teamId, nextPlayerId).first();
     if (!member) return json({ error: { code: "MEMBER_NOT_FOUND", message: "Новый капитан должен состоять в команде." } }, 404);
     const now = new Date().toISOString();
     const transferWrites = await env.DB.batch([
@@ -49,9 +49,9 @@ export async function onRequestPost({ request, env }) {
   }
   const teamId = String(body.team_id || "").trim(), playerId = String(body.player_id || "").trim();
   if (!teamId || !playerId) return json({ error: { code: "INVALID_INVITE", message: "Проверь команду и игрока." } }, 400);
-  const team = await env.DB.prepare("SELECT id,name FROM teams WHERE id=? AND captain_id=? AND status='active'").bind(teamId, auth.user.id).first();
+  const team = await env.DB.prepare("SELECT id,name FROM teams WHERE id=? AND captain_id=? AND status='active' AND archived_at IS NULL").bind(teamId, auth.user.id).first();
   if (!team) return json({ error: { code: "CAPTAIN_REQUIRED", message: "Приглашать игроков может только капитан." } }, 403);
-  const player = await env.DB.prepare("SELECT id,user_id,nickname,team_id,profile_status FROM players WHERE id=?").bind(playerId).first();
+  const player = await env.DB.prepare("SELECT id,user_id,nickname,team_id,profile_status FROM players WHERE id=? AND archived_at IS NULL").bind(playerId).first();
   if (!player || player.profile_status !== "approved") return json({ error: { code: "PLAYER_NOT_AVAILABLE", message: "Игрок не найден или профиль не подтверждён." } }, 404);
   if (player.team_id) return json({ error: { code: "PLAYER_IN_TEAM", message: "Этот игрок уже состоит в команде." } }, 409);
   const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster WHERE team_id=? AND left_at IS NULL").bind(teamId).first();
@@ -76,9 +76,9 @@ export async function onRequestPut({ request, env }) {
   try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректные данные." } }, 400); }
   const inviteId = Number(body.invite_id), action = body.action;
   if (!Number.isSafeInteger(inviteId) || inviteId < 1 || !["accept","decline"].includes(action)) return json({ error: { code: "INVALID_ACTION", message: "Некорректное действие." } }, 400);
-  const player = await env.DB.prepare("SELECT id,team_id,nickname FROM players WHERE user_id=? AND profile_status='approved'").bind(auth.user.id).first();
+  const player = await env.DB.prepare("SELECT id,team_id,nickname FROM players WHERE user_id=? AND profile_status='approved' AND archived_at IS NULL").bind(auth.user.id).first();
   if (!player) return json({ error: { code: "PROFILE_REQUIRED", message: "Нужен подтверждённый игровой профиль." } }, 409);
-  const invite = await env.DB.prepare("SELECT i.*,t.name AS team_name,t.captain_id FROM team_invites i JOIN teams t ON t.id=i.team_id WHERE i.id=? AND i.player_id=? AND i.status='pending'").bind(inviteId, player.id).first();
+  const invite = await env.DB.prepare("SELECT i.*,t.name AS team_name,t.captain_id FROM team_invites i JOIN teams t ON t.id=i.team_id AND t.status='active' AND t.archived_at IS NULL WHERE i.id=? AND i.player_id=? AND i.status='pending'").bind(inviteId, player.id).first();
   if (!invite) return json({ error: { code: "INVITE_NOT_FOUND", message: "Приглашение не найдено или уже обработано." } }, 404);
   const now = new Date().toISOString();
   if (action === "decline") {
@@ -134,7 +134,7 @@ export async function onRequestDelete({ request, env }) {
   try { body = await request.json(); } catch { return json({ error: { code: "INVALID_JSON", message: "Некорректные данные." } }, 400); }
   const teamId = String(body.team_id || "").trim(), playerId = String(body.player_id || "").trim();
   if (!teamId || !playerId) return json({ error: { code: "INVALID_MEMBER", message: "Укажи команду и игрока." } }, 400);
-  const team = await env.DB.prepare("SELECT id,captain_id,name FROM teams WHERE id=? AND status='active'").bind(teamId).first();
+  const team = await env.DB.prepare("SELECT id,captain_id,name FROM teams WHERE id=? AND status='active' AND archived_at IS NULL").bind(teamId).first();
   if (!team) return json({ error: { code: "TEAM_NOT_FOUND", message: "Команда не найдена." } }, 404);
   const member = await env.DB.prepare("SELECT r.roster_role,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL").bind(teamId, playerId).first();
   if (!member) return json({ error: { code: "MEMBER_NOT_FOUND", message: "Игрок не состоит в этой команде." } }, 404);
