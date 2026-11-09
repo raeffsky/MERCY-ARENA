@@ -115,6 +115,18 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(members).toContain("roster_player.archived_at IS NULL");
   });
 
+  test('admin archives entities without deleting history and restores them safely', () => {
+    const admin = source('functions/api/v1/admin.js');
+    const page = source('index.html');
+    expect(admin).toContain('if (action === "restore")');
+    expect(admin).toContain("archived_at=?,updated_at=?");
+    expect(admin).toContain("UPDATE team_invites SET status='cancelled',responded_at=?");
+    expect(admin).toContain("archived_at=NULL,status='inactive'");
+    expect(admin).toContain("archived_at=NULL,profile_status='pending'");
+    expect(page).toContain('data-restore');
+    expect(page).toContain('>Архивировать</button>');
+  });
+
   test('team invitations cannot target archived profiles or archived teams', () => {
     const members = source('functions/api/v1/team-members.js');
     expect(members).toContain("p.archived_at IS NULL");
