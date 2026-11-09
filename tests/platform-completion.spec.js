@@ -107,6 +107,28 @@ test.describe('MERCY ARENA completion flows', () => {
     await expect(page.locator('#matchSchedule')).toContainText('MERCY Test Cup');
   });
 
+  test('full tournament counts pending applications and does not offer a new application', async ({ page }) => {
+    await page.route('**/api/v1/tournaments?id=781', route => route.fulfill({ json: { data: [{
+      id: 781,
+      title: 'MERCY Sold Out Cup',
+      format: 'single_elimination',
+      status: 'published',
+      max_teams: 8,
+      registered_teams: 3,
+      occupied_slots: 8,
+      registered_teams_list: [
+        { id: 1, name: 'Alpha', tag: 'ALP' },
+        { id: 2, name: 'Bravo', tag: 'BRV' },
+        { id: 3, name: 'Charlie', tag: 'CHL' }
+      ]
+    }] } }));
+    await page.route('**/api/v1/matches?tournament_id=781', route => route.fulfill({ json: { data: [] } }));
+
+    await page.goto('/#/tournament/781');
+    await expect(page.locator('.tournament-facts')).toContainText('8 / 8');
+    await expect(page.locator('#openTournamentApplication')).toHaveCount(0);
+  });
+
   test('tournament watch tab embeds a validated YouTube livestream and has an empty state', async ({ page }) => {
     await page.route('**/api/v1/tournaments?id=779', route => route.fulfill({ json: { data: [{
       id: 779,
