@@ -115,6 +115,14 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(members).toContain("roster_player.archived_at IS NULL");
   });
 
+  test('admin cannot approve an application for an archived team or count archived teams toward capacity', () => {
+    const admin = source('functions/api/v1/admin.js');
+    expect(admin).toContain("tm.archived_at AS team_archived_at");
+    expect(admin).toContain('before.team_status !== "active" || before.team_archived_at != null');
+    expect(admin).toContain("active_team.status='active' AND active_team.archived_at IS NULL");
+    expect(admin).toContain("capacity_team.status='active' AND capacity_team.archived_at IS NULL");
+  });
+
   test('admin archives entities without deleting history and restores them safely', () => {
     const admin = source('functions/api/v1/admin.js');
     const page = source('index.html');
