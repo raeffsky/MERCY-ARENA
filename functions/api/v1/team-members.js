@@ -17,7 +17,7 @@ export async function onRequestGet({ request, env }) {
   }
   const teamId = String(teamIdValue || "").trim();
   if (!teamId) return json({ error: { code: "INVALID_TEAM", message: "Укажи команду." } }, 400);
-  const own = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND captain_id=? AND status='active' AND archived_at IS NULL AND archived_at IS NULL").bind(teamId, auth.user.id).first();
+  const own = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND captain_id=? AND status='active' AND archived_at IS NULL").bind(teamId, auth.user.id).first();
   if (!own) return json({ data: [] });
   const { results } = await env.DB.prepare("SELECT i.id,i.status,i.created_at,p.id AS player_id,p.nickname,p.role,p.avatar_url FROM team_invites i JOIN players p ON p.id=i.player_id AND p.archived_at IS NULL WHERE i.team_id=? AND i.status='pending' ORDER BY i.created_at DESC").bind(teamId).all();
   return json({ data: results || [] });
@@ -54,7 +54,7 @@ export async function onRequestPost({ request, env }) {
   const player = await env.DB.prepare("SELECT id,user_id,nickname,team_id,profile_status FROM players WHERE id=? AND archived_at IS NULL").bind(playerId).first();
   if (!player || player.profile_status !== "approved") return json({ error: { code: "PLAYER_NOT_AVAILABLE", message: "Игрок не найден или профиль не подтверждён." } }, 404);
   if (player.team_id) return json({ error: { code: "PLAYER_IN_TEAM", message: "Этот игрок уже состоит в команде." } }, 409);
-  const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster WHERE team_id=? AND left_at IS NULL").bind(teamId).first();
+  const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster tr JOIN players p ON p.id=tr.player_id AND p.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL").bind(teamId).first();
   if ((count?.total || 0) >= 7) return json({ error: { code: "ROSTER_FULL", message: "В составе уже 7 игроков." } }, 409);
   const old = await env.DB.prepare("SELECT id,status FROM team_invites WHERE team_id=? AND player_id=?").bind(teamId, playerId).first();
   if (old?.status === "pending" || old?.status === "accepted") return json({ error: { code: "INVITE_EXISTS", message: "Приглашение уже существует." } }, 409);
