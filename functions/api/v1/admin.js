@@ -402,23 +402,25 @@ export async function onRequestPost({ request, env }) {
     // Preserve foreign-key history: retire records instead of physically deleting them.
     if (resource === "teams") {
       const retiredAt = now();
-      await env.DB.batch([
+      const writes = await env.DB.batch([
         env.DB.prepare("UPDATE teams SET status='dissolved',archived_at=?,updated_at=? WHERE id=? AND archived_at IS NULL").bind(retiredAt,retiredAt,recordId),
-        env.DB.prepare("UPDATE players SET team_id=NULL,updated_at=? WHERE team_id=?").bind(retiredAt,recordId),
-        env.DB.prepare("UPDATE team_roster SET left_at=? WHERE team_id=? AND left_at IS NULL").bind(retiredAt,recordId),
-        env.DB.prepare("UPDATE team_invites SET status='cancelled',responded_at=? WHERE team_id=? AND status='pending'").bind(retiredAt,recordId)
+        env.DB.prepare("UPDATE players SET team_id=NULL,updated_at=? WHERE team_id=? AND EXISTS (SELECT 1 FROM teams WHERE id=? AND archived_at=?)").bind(retiredAt,recordId,recordId,retiredAt),
+        env.DB.prepare("UPDATE team_roster SET left_at=? WHERE team_id=? AND left_at IS NULL AND EXISTS (SELECT 1 FROM teams WHERE id=? AND archived_at=?)").bind(retiredAt,recordId,recordId,retiredAt),
+        env.DB.prepare("UPDATE team_invites SET status='cancelled',responded_at=? WHERE team_id=? AND status='pending' AND EXISTS (SELECT 1 FROM teams WHERE id=? AND archived_at=?)").bind(retiredAt,recordId,recordId,retiredAt)
       ]);
+      if (!writes[0]?.meta?.changes) return bad("Команда уже архивирована другим запросом.", 409);
       const after = await getById(env.DB, config.table, recordId);
       await audit(env.DB, auth.user.id, "teams_archived", resource, recordId, before, after);
       return json({ ok: true, archived: true, id: recordId, message: "Команда архивирована. История турниров и матчей сохранена." });
     }
     if (resource === "players") {
       const retiredAt = now();
-      await env.DB.batch([
+      const writes = await env.DB.batch([
         env.DB.prepare("UPDATE players SET profile_status='rejected',archived_at=?,team_id=NULL,updated_at=? WHERE id=? AND archived_at IS NULL").bind(retiredAt,retiredAt,recordId),
-        env.DB.prepare("UPDATE team_roster SET left_at=? WHERE player_id=? AND left_at IS NULL").bind(retiredAt,recordId),
-        env.DB.prepare("UPDATE team_invites SET status='cancelled',responded_at=? WHERE player_id=? AND status='pending'").bind(retiredAt,recordId)
+        env.DB.prepare("UPDATE team_roster SET left_at=? WHERE player_id=? AND left_at IS NULL AND EXISTS (SELECT 1 FROM players WHERE id=? AND archived_at=?)").bind(retiredAt,recordId,recordId,retiredAt),
+        env.DB.prepare("UPDATE team_invites SET status='cancelled',responded_at=? WHERE player_id=? AND status='pending' AND EXISTS (SELECT 1 FROM players WHERE id=? AND archived_at=?)").bind(retiredAt,recordId,recordId,retiredAt)
       ]);
+      if (!writes[0]?.meta?.changes) return bad("Профиль уже архивирован другим запросом.", 409);
       const after = await getById(env.DB, config.table, recordId);
       await audit(env.DB, auth.user.id, "players_archived", resource, recordId, before, after);
       return json({ ok: true, archived: true, id: recordId, message: "Игрок архивирован. История участия и матчей сохранена." });
