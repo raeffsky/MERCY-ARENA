@@ -46,6 +46,28 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(tournaments).toContain("tm.status='active'");
   });
 
+  test('tournament application capacity matches public counts and excludes archived teams', () => {
+    const applications = source('functions/api/v1/applications.js');
+    const tournaments = source('functions/api/v1/tournaments.js');
+    expect(applications).toContain("capacity_team.status='active' AND capacity_team.archived_at IS NULL");
+    expect(tournaments).toContain("applying_team.status='active' AND applying_team.archived_at IS NULL");
+    expect(applications).toContain('opensAt !== null && !Number.isFinite(opensAt)');
+    expect(applications).toContain('closesAt !== null && !Number.isFinite(closesAt)');
+  });
+
+  test('application form prevents duplicate submits and invalid rosters before sending', () => {
+    const page = source('index.html');
+    expect(page).toContain('if(submit.disabled)return');
+    expect(page).toContain('selectedPlayers.length<5||selectedPlayers.length>7');
+    expect(page).toContain('player_ids:selectedPlayers');
+  });
+
+  test('logout rejects requests without an Origin header', () => {
+    const logout = source('functions/api/v1/auth/logout.js');
+    expect(logout).toContain('const origin = request.headers.get("origin")');
+    expect(logout).toContain('if (!origin || !sameOrigin(request, env))');
+  });
+
   test('declining a team invite is conditional and does not notify after a competing acceptance', () => {
     const members = source('functions/api/v1/team-members.js');
     expect(members).toContain("status='declined' AND responded_at=?");
