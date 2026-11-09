@@ -30,7 +30,8 @@ export async function onRequestGet({ request, env }) {
   const hasSlots = await hasTournamentColumn(env.DB, "registration_slots");
   const fields = "id,title,description,game,region,format,status,max_teams,registration_open_at,registration_close_at," +
     (hasSlots ? "registration_slots" : "NULL AS registration_slots") +
-    ",starts_at,ends_at,rules_url,season_id,prize_pool,poster_url,published_at,created_at,updated_at";
+    ",starts_at,ends_at,rules_url,season_id,prize_pool,poster_url,published_at,created_at,updated_at," +
+    "(SELECT COUNT(*) FROM tournament_registrations r JOIN teams applying_team ON applying_team.id=r.team_id AND applying_team.status='active' WHERE r.tournament_id=tournaments.id AND r.status IN ('pending','approved')) AS occupied_slots";
   const stmt = env.DB.prepare(`SELECT ${fields} FROM tournaments WHERE ${where.join(" AND ")} ORDER BY starts_at IS NULL, starts_at ASC, published_at DESC LIMIT ?`).bind(...values, limit);
   const { results } = await stmt.all();
   return json(publicList(results || [], limit));
