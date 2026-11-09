@@ -368,7 +368,28 @@ export async function onRequestPost({ request, env }) {
     const duplicate = await env.DB.prepare("SELECT id FROM seasons WHERE season_number=? AND (? IS NULL OR id!=?) LIMIT 1").bind(number, id == null ? null : String(id), id == null ? null : String(id)).first();
     if (duplicate) return bad("Этот номер сезона уже занят. Укажи другой номер.", 409);
   }
-  if (!["create","update","delete","publish"].includes(action)) return bad("Неизвестное действие.");
+  if (!["create","update","delete","publish","restore"].includes(action)) return bad("Неизвестное действие.");
+  if (action === "restore") {
+    if (!["teams","players"].includes(resource)) return bad("Восстановить можно только команду или профиль игрока.");
+    const recordId = String(id || "").trim();
+    if (!recordId) return bad("Некорректный ID.");
+    const before = await getById(env.DB, config.table, recordId);
+    if (!before) return bad("Запись не найдена.", 404);
+    if (!before.archived_at) return bad("Запись уже не находится в архиве.", 409);
+    const restoredAt = now();
+    if (resource === "teams") {
+      const result = await env.DB.prepare("UPDATE teams SET archived_at=NULL,status='inactive',updated_at=? WHERE id=? AND archived_at IS NOT NULL").bind(restoredAt,recordId).run();
+      if (!result.meta?.changes) return bad("Команда уже восстановлена другим запросом.", 409);
+    } else {
+      const result = await env.DB.prepare("UPDATE players SET archived_at=NULL,profile_status='pending',team_id=NULL,updated_at=? WHERE id=? AND archived_at IS NOT NULL").bind(restoredAt,recordId).run();
+      if (!result.meta?.changes) return bad("Профиль уже восстановлен другим запросом.", 409);
+    }
+    const after = await getById(env.DB, config.table, recordId);
+    await audit(env.DB, auth.user.id, resource + "_restored", resource, recordId, before, after);
+    return json({ ok: true, restored: true, id: recordId, message: resource === "teams"
+      ? "Команда восстановлена как неактивная. Проверь состав и включи её вручную."
+      : "Профиль восстановлен со статусом «На проверке». Подтверди его после проверки данных." });
+  }
   if (action === "delete") {
     const recordId = String(id || "").trim();
     if (!recordId) return bad("Некорректный ID.");
@@ -378,9 +399,10 @@ export async function onRequestPost({ request, env }) {
     if (resource === "teams") {
       const retiredAt = now();
       await env.DB.batch([
-        env.DB.prepare("UPDATE teams SET status='dissolved',updated_at=? WHERE id=?").bind(retiredAt,recordId),
+        env.DB.prepare("UPDATE teams SET status='dissolved',archived_at=?,updated_at=? WHERE id=? AND archived_at IS NULL").bind(retiredAt,retiredAt,recordId),
         env.DB.prepare("UPDATE players SET team_id=NULL,updated_at=? WHERE team_id=?").bind(retiredAt,recordId),
-        env.DB.prepare("UPDATE team_roster SET left_at=? WHERE team_id=? AND left_at IS NULL").bind(retiredAt,recordId)
+        env.DB.prepare("UPDATE team_roster SET left_at=? WHERE team_id=? AND left_at IS NULL").bind(retiredAt,recordId),
+        env.DB.prepare("UPDATE team_invites SET status='cancelled',responded_at=? WHERE team_id=? AND status='pending'").bind(retiredAt,recordId)
       ]);
       const after = await getById(env.DB, config.table, recordId);
       await audit(env.DB, auth.user.id, "teams_archived", resource, recordId, before, after);
@@ -389,8 +411,9 @@ export async function onRequestPost({ request, env }) {
     if (resource === "players") {
       const retiredAt = now();
       await env.DB.batch([
-        env.DB.prepare("UPDATE players SET profile_status='rejected',team_id=NULL,updated_at=? WHERE id=?").bind(retiredAt,recordId),
-        env.DB.prepare("UPDATE team_roster SET left_at=? WHERE player_id=? AND left_at IS NULL").bind(retiredAt,recordId)
+        env.DB.prepare("UPDATE players SET profile_status='rejected',archived_at=?,team_id=NULL,updated_at=? WHERE id=? AND archived_at IS NULL").bind(retiredAt,retiredAt,recordId),
+        env.DB.prepare("UPDATE team_roster SET left_at=? WHERE player_id=? AND left_at IS NULL").bind(retiredAt,recordId),
+        env.DB.prepare("UPDATE team_invites SET status='cancelled',responded_at=? WHERE player_id=? AND status='pending'").bind(retiredAt,recordId)
       ]);
       const after = await getById(env.DB, config.table, recordId);
       await audit(env.DB, auth.user.id, "players_archived", resource, recordId, before, after);
