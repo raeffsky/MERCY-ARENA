@@ -55,6 +55,16 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(applications).toContain('closesAt !== null && !Number.isFinite(closesAt)');
   });
 
+  test('MERCY SCOUT exposes only approved, non-archived players and verified starter matches', () => {
+    const scout = source('functions/api/v1/scout.js');
+    expect(scout).toContain("p.profile_status='approved'");
+    expect(scout).toContain("p.archived_at IS NULL");
+    expect(scout).toContain("rr.roster_role='starter'");
+    expect(scout).toContain("m.status='completed' AND m.result_verified_at IS NOT NULL");
+    expect(scout).toContain("tour.published_at IS NOT NULL AND tour.status!='draft'");
+    expect(scout).toContain('INVALID_ROLE');
+  });
+
   test('application form prevents duplicate submits and invalid rosters before sending', () => {
     const page = source('index.html');
     expect(page).toContain('if(submit.disabled)return');
