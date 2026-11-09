@@ -49,7 +49,7 @@ export async function onRequestGet({ request, env }) {
     const response = await env.DB.prepare(
       `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
         r.selected_slot,r.captain_note,r.submitted_at,r.reviewed_at,
-        (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
+        (SELECT COUNT(*) FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id WHERE tr.team_id=t.id AND tr.left_at IS NULL AND roster_player.profile_status='approved' AND roster_player.archived_at IS NULL) AS roster_count
        FROM teams t
        LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
        WHERE t.status='active' AND t.archived_at IS NULL AND (t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster cr JOIN players cp ON cp.id=cr.player_id WHERE cr.team_id=t.id AND cr.left_at IS NULL AND cr.roster_role='captain' AND cp.user_id=?))
@@ -62,7 +62,7 @@ export async function onRequestGet({ request, env }) {
       const response = await env.DB.prepare(
         `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
           NULL AS selected_slot,NULL AS captain_note,r.submitted_at,r.reviewed_at,
-          (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
+          (SELECT COUNT(*) FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id WHERE tr.team_id=t.id AND tr.left_at IS NULL AND roster_player.profile_status='approved' AND roster_player.archived_at IS NULL) AS roster_count
          FROM teams t
          LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
          WHERE t.status='active' AND t.archived_at IS NULL AND (t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster cr JOIN players cp ON cp.id=cr.player_id WHERE cr.team_id=t.id AND cr.left_at IS NULL AND cr.roster_role='captain' AND cp.user_id=?))
@@ -72,7 +72,7 @@ export async function onRequestGet({ request, env }) {
         return env.DB.prepare(
           `SELECT t.id,t.name,t.tag,t.region,NULL AS registration_id,NULL AS application_status,
             NULL AS selected_slot,NULL AS captain_note,NULL AS submitted_at,NULL AS reviewed_at,
-            (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
+            (SELECT COUNT(*) FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id WHERE tr.team_id=t.id AND tr.left_at IS NULL AND roster_player.profile_status='approved' AND roster_player.archived_at IS NULL) AS roster_count
            FROM teams t WHERE t.status='active' AND t.archived_at IS NULL AND (t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster cr JOIN players cp ON cp.id=cr.player_id WHERE cr.team_id=t.id AND cr.left_at IS NULL AND cr.roster_role='captain' AND cp.user_id=?)) ORDER BY t.name COLLATE NOCASE`
         ).bind(auth.user.id, auth.user.id).all();
       });
@@ -91,7 +91,7 @@ export async function onRequestGet({ request, env }) {
         `SELECT p.id,p.nickname,p.role,p.game_id,p.server_id,
           CASE WHEN p.user_id=t.captain_id THEN 'captain' ELSE COALESCE(tr.roster_role,'player') END AS team_role
          FROM team_roster tr JOIN players p ON p.id=tr.player_id JOIN teams t ON t.id=tr.team_id
-         WHERE tr.team_id=? AND tr.left_at IS NULL AND p.profile_status='approved'
+         WHERE tr.team_id=? AND tr.left_at IS NULL AND p.profile_status='approved' AND p.archived_at IS NULL
          ORDER BY CASE WHEN p.user_id=t.captain_id THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
       ).bind(row.id).all();
     } catch (error) {
@@ -100,7 +100,7 @@ export async function onRequestGet({ request, env }) {
         `SELECT p.id,p.nickname,p.role,p.game_id,
           CASE WHEN p.user_id=t.captain_id THEN 'captain' ELSE COALESCE(tr.roster_role,'player') END AS team_role
          FROM team_roster tr JOIN players p ON p.id=tr.player_id JOIN teams t ON t.id=tr.team_id
-         WHERE tr.team_id=? AND tr.left_at IS NULL
+         WHERE tr.team_id=? AND tr.left_at IS NULL AND p.archived_at IS NULL
          ORDER BY CASE WHEN p.user_id=t.captain_id THEN 0 ELSE 1 END,p.nickname COLLATE NOCASE`
       ).bind(row.id).all();
     }
@@ -172,7 +172,7 @@ export async function onRequestPost({ request, env }) {
   const { results: members } = await env.DB.prepare(
     `SELECT p.id,p.nickname,p.role FROM team_roster tr
      JOIN players p ON p.id=tr.player_id
-     WHERE tr.team_id=? AND tr.left_at IS NULL AND p.profile_status='approved'
+     WHERE tr.team_id=? AND tr.left_at IS NULL AND p.profile_status='approved' AND p.archived_at IS NULL
      ORDER BY CASE tr.roster_role WHEN 'captain' THEN 0 ELSE 1 END,p.created_at ASC`
   ).bind(teamId).all();
   const memberIds = new Set((members || []).map((p) => String(p.id)));
@@ -189,7 +189,7 @@ export async function onRequestPost({ request, env }) {
   ).bind(tournamentId, teamId).first();
   if (existing && !["rejected","withdrawn"].includes(existing.status)) return invalid("Эта команда уже подала заявку на турнир.", 409, "ALREADY_APPLIED");
   if (tournament.max_teams) {
-    const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM tournament_registrations WHERE tournament_id=? AND status IN ('pending','approved')").bind(tournamentId).first();
+    const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM tournament_registrations r JOIN teams capacity_team ON capacity_team.id=r.team_id AND capacity_team.status='active' AND capacity_team.archived_at IS NULL WHERE r.tournament_id=? AND r.status IN ('pending','approved')").bind(tournamentId).first();
     if ((count?.total || 0) >= tournament.max_teams) return invalid("Все места турнира уже заняты или ожидают подтверждения.", 409, "TOURNAMENT_FULL");
   }
 
