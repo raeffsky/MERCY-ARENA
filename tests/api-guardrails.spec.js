@@ -115,6 +115,29 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(members).toContain("roster_player.archived_at IS NULL");
   });
 
+  test('organizer API is role-gated and scopes all records to the assigned organizer', () => {
+    const organizer = source('functions/api/v1/organizer.js');
+    expect(organizer).toContain('session.user.roles.includes("organizer")');
+    expect(organizer).toContain('organizer_id=?');
+    expect(organizer).toContain('String(before.organizer_id)!==String(auth.user.id)');
+    expect(organizer).toContain('sameOrigin(request,env)');
+    expect(organizer).toContain("result_source='organizer_manual'");
+    expect(organizer).toContain('advanceWinner(env.DB,id,winner)');
+    expect(organizer).toContain('BRACKET_FORMAT_LOCKED');
+    expect(organizer).toContain('TEAM_LIMIT_BELOW_OCCUPIED');
+  });
+
+  test('only the platform owner can grant or revoke organizer access', () => {
+    const admin = source('functions/api/v1/admin.js');
+    const page = source('index.html');
+    expect(admin).toContain('resource === "users" && action === "set_organizer"');
+    expect(admin).toContain("INSERT INTO user_roles (user_id,role,granted_by) VALUES (?,'organizer',?)");
+    expect(admin).toContain("DELETE FROM user_roles WHERE user_id=? AND role='organizer'");
+    expect(page).toContain('data-organizer-toggle');
+    expect(page).toContain("me.roles||[]).includes('organizer')");
+    expect(page).toContain('initOrganizerDashboard');
+  });
+
   test('admin application overview hides archived teams from approved bracket counts', () => {
     const admin = source('functions/api/v1/admin.js');
     const page = source('index.html');
