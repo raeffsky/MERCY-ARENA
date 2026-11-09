@@ -11,7 +11,7 @@ export async function onRequestGet({request,env}) {
   const {results}=await env.DB.prepare(`
     WITH player_matches AS (
       SELECT DISTINCT p0.id AS player_id,m.id AS match_id,m.winner_team_id,r.team_id
-      FROM tournament_registration_roster rr JOIN players p0 ON p0.id=rr.player_id
+      FROM tournament_registration_roster rr JOIN players p0 ON p0.id=rr.player_id AND p0.archived_at IS NULL
       JOIN tournament_registrations r ON r.id=rr.registration_id AND r.status='approved'
       JOIN matches m ON m.tournament_id=r.tournament_id AND (m.team_a_id=r.team_id OR m.team_b_id=r.team_id)
       JOIN tournaments tour ON tour.id=m.tournament_id AND tour.published_at IS NOT NULL AND tour.status!='draft'
@@ -22,7 +22,7 @@ export async function onRequestGet({request,env}) {
       COALESCE(SUM(CASE WHEN pm.winner_team_id=pm.team_id THEN 3 ELSE 0 END),0) AS points,
       COALESCE(SUM(CASE WHEN pm.winner_team_id IS NOT NULL AND pm.winner_team_id!=pm.team_id THEN 1 ELSE 0 END),0) AS losses,
       COALESCE(ROUND(100.0*SUM(CASE WHEN pm.winner_team_id=pm.team_id THEN 1 ELSE 0 END)/NULLIF(COUNT(pm.match_id),0),1),0) AS win_rate,p.created_at
-    FROM players p LEFT JOIN teams t ON t.id=p.team_id LEFT JOIN player_matches pm ON pm.player_id=p.id
+    FROM players p LEFT JOIN teams t ON t.id=p.team_id AND t.status='active' AND t.archived_at IS NULL LEFT JOIN player_matches pm ON pm.player_id=p.id
     WHERE ${where.join(" AND ")} GROUP BY p.id ORDER BY ${order},p.nickname COLLATE NOCASE LIMIT ?
   `).bind(...values,limit).all();
   const {results:regions}=await env.DB.prepare("SELECT DISTINCT region FROM players WHERE profile_status='approved' AND archived_at IS NULL AND region IS NOT NULL AND region!='' ORDER BY region COLLATE NOCASE LIMIT 100").all();
