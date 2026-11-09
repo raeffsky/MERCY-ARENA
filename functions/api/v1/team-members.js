@@ -91,13 +91,13 @@ export async function onRequestPut({ request, env }) {
     return json({ data: { status: "declined" } });
   }
   if (player.team_id) return json({ error: { code: "ALREADY_IN_TEAM", message: "Ты уже состоишь в команде." } }, 409);
-  const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster WHERE team_id=? AND left_at IS NULL").bind(invite.team_id).first();
+  const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster tr JOIN players p ON p.id=tr.player_id AND p.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL").bind(invite.team_id).first();
   if ((count?.total || 0) >= 7) return json({ error: { code: "ROSTER_FULL", message: "В составе больше нет свободных мест." } }, 409);
   // Enforce the seven-player cap in the same atomic statement that claims the player.
   // Counting players.team_id also closes the race between parallel invite acceptances,
   // before their team_roster rows are written.
   const claimed = await env.DB.prepare(
-    "UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL AND (SELECT COUNT(*) FROM players p WHERE p.team_id=? OR p.id IN (SELECT tr.player_id FROM team_roster tr WHERE tr.team_id=? AND tr.left_at IS NULL))<7"
+    "UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL AND (SELECT COUNT(DISTINCT p.id) FROM players p WHERE p.archived_at IS NULL AND (p.team_id=? OR p.id IN (SELECT tr.player_id FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id AND roster_player.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL)))<7"
   ).bind(invite.team_id, now, player.id, invite.team_id, invite.team_id).run();
   if (!claimed.meta?.changes) {
     const current = await env.DB.prepare("SELECT team_id FROM players WHERE id=?").bind(player.id).first();
