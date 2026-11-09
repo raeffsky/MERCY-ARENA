@@ -73,7 +73,7 @@ export async function onRequestGet({ request, env }) {
     return json({ data: results || [] });
   }
   if (resource === "users") {
-    const { results } = await env.DB.prepare("SELECT id,email,display_name FROM users ORDER BY email COLLATE NOCASE LIMIT 200").all();
+    const { results } = await env.DB.prepare("SELECT u.id,u.email,u.display_name,COALESCE(GROUP_CONCAT(ur.role,','),'') AS roles FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id GROUP BY u.id ORDER BY u.email COLLATE NOCASE LIMIT 200").all();
     return json({ data: results || [] });
   }
   if (resource === "audit") {
@@ -111,6 +111,21 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return bad("Некорректный JSON."); }
   const { resource, action = "create", id, data = {} } = body || {};
+    if (resource === "users" && action === "set_organizer") {
+      const userId = String(id ?? "").trim(), enabled = data.enabled === true;
+      if (!userId) return bad("Укажи аккаунт пользователя.");
+      const target = await env.DB.prepare("SELECT id,email,display_name FROM users WHERE id=? LIMIT 1").bind(userId).first();
+      if (!target) return bad("Аккаунт не найден.",404);
+      const current = await env.DB.prepare("SELECT role FROM user_roles WHERE user_id=? AND role='organizer'").bind(userId).first();
+      if (enabled && !current) {
+        await env.DB.prepare("INSERT INTO user_roles (user_id,role,granted_by) VALUES (?,'organizer',?) ON CONFLICT(user_id,role) DO NOTHING").bind(userId,auth.user.id).run();
+      } else if (!enabled && current) {
+        await env.DB.prepare("DELETE FROM user_roles WHERE user_id=? AND role='organizer'").bind(userId).run();
+      }
+      await audit(env.DB,auth.user.id,enabled?"organizer_role_granted":"organizer_role_revoked","user",userId,
+        {organizer:Boolean(current)},{organizer:enabled,email:target.email});
+      return json({data:{id:userId,email:target.email,organizer:enabled}});
+    }
     if (resource === "matches" && action === "correct_result") {
     const matchId = String(id ?? "").trim();
     const scoreA = Number(data.score_a);
