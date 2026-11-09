@@ -63,7 +63,7 @@ export async function onRequestGet({ request, env }) {
   if (auth.response) return auth.response;
   const resource = new URL(request.url).searchParams.get("resource") || "";
   if (resource === "applications") {
-    const { results } = await env.DB.prepare(`SELECT r.id,r.tournament_id,r.team_id,r.status,r.submitted_at,r.reviewed_at,r.reviewer_id,r.selected_slot,r.captain_note,t.title AS tournament_title,tm.name AS team_name,tm.tag AS team_tag,tm.captain_id,
+    const { results } = await env.DB.prepare(`SELECT r.id,r.tournament_id,r.team_id,r.status,r.submitted_at,r.reviewed_at,r.reviewer_id,r.selected_slot,r.captain_note,t.title AS tournament_title,tm.name AS team_name,tm.tag AS team_tag,tm.captain_id,tm.status AS team_status,tm.archived_at AS team_archived_at,
       (SELECT COUNT(*) FROM tournament_registration_roster rr WHERE rr.registration_id=r.id AND rr.roster_role='starter') AS starters,
       (SELECT COUNT(*) FROM tournament_registration_roster rr WHERE rr.registration_id=r.id AND rr.roster_role='substitute') AS substitutes,
       (SELECT GROUP_CONCAT(p.nickname, ', ') FROM tournament_registration_roster rr JOIN players p ON p.id=rr.player_id WHERE rr.registration_id=r.id AND rr.roster_role='starter') AS starter_names,
