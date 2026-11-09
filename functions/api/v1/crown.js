@@ -60,6 +60,8 @@ export async function onRequestPost({ request, env }) {
       const reign = await env.DB.prepare("SELECT id,team_id FROM mercy_crown_reigns WHERE ended_at IS NULL LIMIT 1").first();
       if (!reign) return fail("CROWN_UNCLAIMED", "Сначала назначь первого чемпиона.",409);
       if (String(reign.team_id) === challengerId) return fail("INVALID_CHALLENGER", "Действующий чемпион не может бросить вызов сам себе.",409);
+      const challenger = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND status='active' AND archived_at IS NULL").bind(challengerId).first();
+      if (!challenger) return fail("INVALID_CHALLENGER", "Команда-претендент должна быть активной и неархивной.",409);
       const match = await env.DB.prepare("SELECT id,tournament_id,status,team_a_id,team_b_id,scheduled_at FROM matches WHERE id=?").bind(matchId).first();
       if (!match || !["scheduled","in_progress"].includes(match.status) ||
           ![String(reign.team_id),challengerId].every(id => [String(match.team_a_id),String(match.team_b_id)].includes(id))) {
@@ -78,31 +80,46 @@ export async function onRequestPost({ request, env }) {
       if (!/^\\d+$/.test(challengeId)) return fail("INVALID_CHALLENGE", "Укажи ID защиты.");
       const challenge = await env.DB.prepare("SELECT c.*,r.ended_at AS reign_ended_at FROM mercy_crown_challenges c JOIN mercy_crown_reigns r ON r.id=c.reign_id WHERE c.id=?").bind(challengeId).first();
       if (!challenge || challenge.status !== "scheduled" || challenge.reign_ended_at !== null) return fail("CHALLENGE_NOT_OPEN", "Защита не найдена или уже обработана.",409);
-      const match = await env.DB.prepare("SELECT status,winner_team_id,result_verified_at FROM matches WHERE id=?").bind(challenge.match_id).first();
+      const match = await env.DB.prepare("SELECT status,team_a_id,team_b_id,winner_team_id,result_verified_at FROM matches WHERE id=?").bind(challenge.match_id).first();
       if (!match || match.status !== "completed" || !match.result_verified_at || !match.winner_team_id) {
         return fail("MATCH_NOT_VERIFIED", "Результат матча должен быть завершён и подтверждён судьёй.",409);
       }
+      if (![String(challenge.champion_team_id),String(challenge.challenger_team_id)].every(id => [String(match.team_a_id),String(match.team_b_id)].includes(id))) {
+        return fail("MATCH_TEAMS_CHANGED", "Состав участников матча изменился после назначения защиты.",409);
+      }
       const winnerId = String(match.winner_team_id);
       if (![String(challenge.champion_team_id),String(challenge.challenger_team_id)].includes(winnerId)) return fail("INVALID_MATCH_WINNER", "Победитель матча не совпадает с участниками защиты.",409);
+      // The extra fractional digits form a per-request compare-and-set token.
+      // Every write after the status transition is guarded by this exact decision.
+      const operationNow = now.replace(/(\\.\\d{3})Z$/, function(_, milliseconds) {
+        return milliseconds + String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0") + "Z";
+      });
+      const decisionGuard = "EXISTS (SELECT 1 FROM mercy_crown_challenges WHERE id=? AND status='decided' AND decided_at=? AND winner_team_id=? AND reign_id=?)";
       const statements = [
-        env.DB.prepare("UPDATE mercy_crown_challenges SET status='decided',winner_team_id=?,decided_at=? WHERE id=? AND status='scheduled'").bind(winnerId,now,challengeId)
+        env.DB.prepare("UPDATE mercy_crown_challenges SET status='decided',winner_team_id=?,decided_at=? WHERE id=? AND status='scheduled' AND reign_id=? AND EXISTS (SELECT 1 FROM mercy_crown_reigns WHERE id=? AND ended_at IS NULL)").bind(winnerId,operationNow,challengeId,challenge.reign_id,challenge.reign_id)
       ];
       if (winnerId === String(challenge.challenger_team_id)) {
-        statements.push(env.DB.prepare("UPDATE mercy_crown_reigns SET ended_at=? WHERE id=? AND ended_at IS NULL").bind(now,challenge.reign_id));
-        statements.push(env.DB.prepare("INSERT INTO mercy_crown_reigns (team_id,started_at,created_by) VALUES (?,?,?)").bind(winnerId,now,auth.user.id));
+        statements.push(env.DB.prepare("UPDATE mercy_crown_reigns SET ended_at=? WHERE id=? AND ended_at IS NULL AND " + decisionGuard).bind(operationNow,challenge.reign_id,challengeId,operationNow,winnerId,challenge.reign_id));
+        statements.push(env.DB.prepare("INSERT INTO mercy_crown_reigns (team_id,started_at,created_by) SELECT ?,?,? WHERE " + decisionGuard + " AND EXISTS (SELECT 1 FROM mercy_crown_reigns WHERE id=? AND ended_at=?)").bind(winnerId,operationNow,auth.user.id,challengeId,operationNow,winnerId,challenge.reign_id,challenge.reign_id,operationNow));
       } else {
-        statements.push(env.DB.prepare("UPDATE mercy_crown_reigns SET defenses_count=defenses_count+1 WHERE id=? AND ended_at IS NULL").bind(challenge.reign_id));
+        statements.push(env.DB.prepare("UPDATE mercy_crown_reigns SET defenses_count=defenses_count+1 WHERE id=? AND ended_at IS NULL AND " + decisionGuard).bind(challenge.reign_id,challengeId,operationNow,winnerId,challenge.reign_id));
       }
-      statements.push(env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'mercy_crown_challenge_resolved','mercy_crown_challenge',?,?)")
-        .bind(await createAuditEventId(env.DB),auth.user.id,challengeId,JSON.stringify({winner_team_id:winnerId,previous_champion_id:challenge.champion_team_id,challenger_team_id:challenge.challenger_team_id})));
-      await env.DB.batch(statements);
-      return json({ data: { challenge_id: challengeId, winner_team_id: winnerId, title_changed: winnerId === String(challenge.challenger_team_id), decided_at: now } });
+      statements.push(env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,'mercy_crown_challenge_resolved','mercy_crown_challenge',?,? WHERE " + decisionGuard)
+        .bind(await createAuditEventId(env.DB),auth.user.id,challengeId,JSON.stringify({winner_team_id:winnerId,previous_champion_id:challenge.champion_team_id,challenger_team_id:challenge.challenger_team_id}),challengeId,operationNow,winnerId,challenge.reign_id));
+      const writes = await env.DB.batch(statements);
+      if (!writes[0]?.meta?.changes) return fail("CHALLENGE_NOT_OPEN", "Защита уже обработана или корона сменила владельца.",409);
+      if (!writes[1]?.meta?.changes || (winnerId === String(challenge.challenger_team_id) && !writes[2]?.meta?.changes)) {
+        console.error("MERCY CROWN transition was not completed atomically", writes.map(item => item?.meta?.changes));
+        return fail("CROWN_TRANSITION_FAILED", "Не удалось завершить переход чемпионского титула.",500);
+      }
+      return json({ data: { challenge_id: challengeId, winner_team_id: winnerId, title_changed: winnerId === String(challenge.challenger_team_id), decided_at: operationNow } });
     }
 
     return fail("UNKNOWN_ACTION", "Неизвестное действие.");
   } catch (error) {
     console.error("MERCY CROWN action failed:", error);
     if (/UNIQUE constraint failed.*match_id/i.test(String(error?.message || error))) return fail("MATCH_ALREADY_LINKED", "Этот матч уже назначен защитой короны.",409);
+    if (/UNIQUE constraint failed.*idx_mercy_crown_one_active_reign/i.test(String(error?.message || error))) return fail("CROWN_ALREADY_HELD", "У короны уже есть действующий чемпион.",409);
     return fail("CROWN_ACTION_FAILED", "Не удалось обработать действие MERCY CROWN.",500);
   }
 }
