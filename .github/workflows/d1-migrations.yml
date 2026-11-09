@@ -1,9 +1,10 @@
-name: MERCY ARENA production D1 migration audit
+name: MERCY ARENA production D1 migrations
 
 on:
   push:
     branches: [main]
     paths:
+      - "migrations/**"
       - ".github/workflows/d1-migrations.yml"
   workflow_dispatch:
 
@@ -15,10 +16,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  audit-production-d1:
-    name: Read-only production D1 schema audit
+  apply-migrations:
+    name: Reconcile and apply production D1 migrations
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -55,24 +56,95 @@ jobs:
           const id = process.env.CLOUDFLARE_D1_DATABASE_ID;
           if (!name || !/^[0-9a-f-]{36}$/i.test(id || '')) throw new Error('Invalid D1 database name or UUID');
           fs.writeFileSync('wrangler.migrations.json', JSON.stringify({
-            name: 'mercy-arena-audit',
+            name: 'mercy-arena-migrations',
             compatibility_date: '2026-11-10',
             d1_databases: [{ binding: 'DB', database_name: name, database_id: id, migrations_dir: 'migrations' }]
           }, null, 2));
           NODE
 
-      - name: Inspect applied migration ledger
+      - name: Export production backup before schema changes
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 export DB --remote --config wrangler.migrations.json --output=mercy-arena-pre-migration.sql
+
+      - name: Upload production backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: mercy-arena-d1-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: mercy-arena-pre-migration.sql
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Verify the known legacy production schema
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          SQL="SELECT CASE WHEN
+            (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN (
+              'users','user_roles','seasons','tournaments','teams','players','team_roster',
+              'tournament_registrations','matches','result_events','audit_events','auth_magic_links',
+              'auth_sessions','auth_login_attempts','team_invites','match_progression',
+              'tournament_registration_roster','notifications','tournament_staff',
+              'circuit_scoring_rules','circuit_tournament_results','circuit_point_transactions',
+              'circuit_qualifiers','circuit_championship_entries'
+            )) = 24
+            AND (SELECT sql LIKE '%password_hash%' FROM sqlite_master WHERE type='table' AND name='users')
+            AND (SELECT sql LIKE '%profile_status%' AND sql LIKE '%server_id%' AND sql LIKE '%avatar_url%' FROM sqlite_master WHERE type='table' AND name='players')
+            AND (SELECT sql LIKE '%poster_url%' AND sql LIKE '%prize_pool%' AND sql NOT LIKE '%registration_slots%' AND sql NOT LIKE '%stream_url%' FROM sqlite_master WHERE type='table' AND name='tournaments')
+            AND (SELECT sql LIKE '%image_url%' AND sql LIKE '%season_number%' FROM sqlite_master WHERE type='table' AND name='seasons')
+            AND (SELECT sql NOT LIKE '%archived_at%' FROM sqlite_master WHERE type='table' AND name='teams')
+            AND (SELECT sql NOT LIKE '%archived_at%' FROM sqlite_master WHERE type='table' AND name='players')
+            AND NOT EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='match_advancement')
+            THEN 1 ELSE 0 END AS baseline_ready;"
+          npx --yes wrangler@4 d1 execute DB --remote --config wrangler.migrations.json --command "$SQL" --json > /tmp/d1-preflight.json
+          cat /tmp/d1-preflight.json
+          grep -q '"baseline_ready": 1' /tmp/d1-preflight.json || {
+            echo "::error::Production schema does not match the audited legacy baseline. No migration history was changed."
+            exit 1
+          }
+
+      - name: Reconcile already-present migrations in D1 ledger
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 execute DB --remote --config wrangler.migrations.json --command "INSERT OR IGNORE INTO d1_migrations (name) VALUES
+            ('0001_initial_schema.sql'),
+            ('0002_email_auth.sql'),
+            ('0003_admin_login_rate_limit.sql'),
+            ('0004_player_self_registration.sql'),
+            ('0005_tournament_poster_and_prize.sql'),
+            ('0006_fix_auth_session_user_id_type.sql'),
+            ('0007_restore_integer_auth_session_user_id.sql'),
+            ('0008_mlbb_player_verification.sql'),
+            ('0009_player_avatar.sql'),
+            ('0010_team_invites.sql'),
+            ('0011_match_progression.sql'),
+            ('0012_season_cover_image.sql'),
+            ('0013_platform_foundation.sql'),
+            ('0015_text_foreign_keys.sql'),
+            ('0017_season_display_number.sql'),
+            ('0018_mercy_circuit.sql');"
+
+      - name: Apply only genuinely pending migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 d1 migrations apply DB --remote --config wrangler.migrations.json
+
+      - name: Verify all migrations and new schema objects
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           npx --yes wrangler@4 d1 migrations list DB --remote --config wrangler.migrations.json
-
-      - name: Inspect production schema (read-only)
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          npx --yes wrangler@4 d1 execute DB --remote --config wrangler.migrations.json --command "SELECT name, sql FROM sqlite_master WHERE type IN ('table','index') ORDER BY type, name;"
+          npx --yes wrangler@4 d1 execute DB --remote --config wrangler.migrations.json --command "SELECT name, sql FROM sqlite_master WHERE type='table' AND name IN ('match_advancement'); SELECT registration_slots, stream_url FROM tournaments LIMIT 0; SELECT archived_at FROM teams LIMIT 0; SELECT archived_at FROM players LIMIT 0;"
