@@ -85,6 +85,25 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(applications).toContain("tr.roster_role='captain' AND p.user_id=?");
   });
 
+  test('public player and team directories consistently hide archived entities', () => {
+    const players = source('functions/api/v1/players.js');
+    const teams = source('functions/api/v1/teams.js');
+    const rankings = source('functions/api/v1/rankings.js');
+    expect(players).toContain("p.archived_at IS NULL");
+    expect(players).toContain("archived_at IS NULL");
+    expect(teams).toContain("t.archived_at IS NULL");
+    expect(teams).toContain("archived_at IS NULL");
+    expect(rankings).toContain("t.archived_at IS NULL");
+    expect(rankings).toContain("p.archived_at IS NULL");
+  });
+
+  test('team invitations cannot target archived profiles or archived teams', () => {
+    const members = source('functions/api/v1/team-members.js');
+    expect(members).toContain("p.archived_at IS NULL");
+    expect(members).toContain("t.archived_at IS NULL");
+    expect(members).toContain("archived_at IS NULL");
+  });
+
   test('MERCY SCOUT exposes only approved, non-archived players and verified starter matches', () => {
     const scout = source('functions/api/v1/scout.js');
     expect(scout).toContain("p.profile_status='approved'");
