@@ -63,6 +63,13 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(applications).not.toContain("SELECT COUNT(*) AS total FROM tournament_registrations WHERE tournament_id=? AND status IN ('pending','approved')");
   });
 
+  test('CROWN defense selector only offers matches between the chosen challenger and champion', () => {
+    const page = source('index.html');
+    expect(page).toContain('crownMatchSelect.disabled=!eligibleMatches.length');
+    expect(page).toContain("sides.includes(String(current.team_id))&&sides.includes(challengerId)");
+    expect(page).toContain('Сначала выбери претендента');
+  });
+
   test('MERCY CROWN accepts numeric IDs and uses a guarded single-winner transition', () => {
     const crown = source('functions/api/v1/crown.js');
     expect(crown).toContain('/^\\d+$/');
