@@ -75,4 +75,4 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes wrangler@4 d1 execute DB --remote --config wrangler.migrations.json --command "SELECT m.name AS table_name, p.cid, p.name AS column_name, p.type, p."notnull" AS not_null, p.pk FROM sqlite_master AS m JOIN pragma_table_info(m.name) AS p WHERE m.type='table' AND m.name NOT LIKE 'sqlite_%' ORDER BY m.name, p.cid;"
+          npx --yes wrangler@4 d1 execute DB --remote --config wrangler.migrations.json --command "SELECT m.name AS table_name, p.cid, p.name AS column_name, p.type, p.pk FROM sqlite_master AS m JOIN pragma_table_info(m.name) AS p WHERE m.type='table' AND m.name NOT LIKE 'sqlite_%' ORDER BY m.name, p.cid;"
