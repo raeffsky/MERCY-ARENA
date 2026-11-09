@@ -24,6 +24,7 @@ export async function onRequestGet({ request, env }) {
           JOIN tournament_registrations r ON r.id=rr.registration_id AND r.status='approved'
           JOIN matches m ON m.tournament_id=r.tournament_id
             AND (m.team_a_id=r.team_id OR m.team_b_id=r.team_id)
+          JOIN tournaments tour ON tour.id=m.tournament_id AND tour.published_at IS NOT NULL AND tour.status!='draft'
           WHERE rr.player_id=? AND rr.roster_role='starter'
             AND m.status='completed' AND m.result_verified_at IS NOT NULL
         )
@@ -39,7 +40,7 @@ export async function onRequestGet({ request, env }) {
         JOIN tournament_registrations r ON r.id=rr.registration_id AND r.status='approved'
         JOIN matches m ON m.tournament_id=r.tournament_id
           AND (m.team_a_id=r.team_id OR m.team_b_id=r.team_id)
-        JOIN tournaments t ON t.id=m.tournament_id
+        JOIN tournaments t ON t.id=m.tournament_id AND t.published_at IS NOT NULL AND t.status!='draft'
         LEFT JOIN teams ta ON ta.id=m.team_a_id
         LEFT JOIN teams tb ON tb.id=m.team_b_id
         WHERE rr.player_id=? AND rr.roster_role='starter'
