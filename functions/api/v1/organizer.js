@@ -128,7 +128,8 @@ export async function onRequestPost({request,env}) {
       const format=String(data.format??before.format);
       if(title.length<3)return fail("INVALID_TITLE","Название турнира должно содержать минимум 3 символа.");
       if(!FORMATS.has(format))return fail("INVALID_FORMAT","Недопустимый формат сетки.");
-      const maxTeams=data.max_teams==null||data.max_teams===""?null:Number(data.max_teams);
+      const maxValue=Object.prototype.hasOwnProperty.call(data,"max_teams")?data.max_teams:before.max_teams;
+      const maxTeams=maxValue==null||maxValue===""?null:Number(maxValue);
       if(maxTeams!==null&&(!Number.isSafeInteger(maxTeams)||maxTeams<2||maxTeams>32))return fail("INVALID_TEAM_LIMIT","Лимит турнира должен быть от 2 до 32 команд.");
       if(String(data.format??before.format)!==String(before.format)){
         const existingMatches=await env.DB.prepare("SELECT COUNT(*) AS total FROM matches WHERE tournament_id=?").bind(id).first();
@@ -138,7 +139,8 @@ export async function onRequestPost({request,env}) {
         const occupied=await env.DB.prepare("SELECT COUNT(*) AS total FROM tournament_registrations r JOIN teams tm ON tm.id=r.team_id AND tm.status='active' AND tm.archived_at IS NULL WHERE r.tournament_id=? AND r.status IN ('pending','approved')").bind(id).first();
         if(Number(occupied?.total||0)>maxTeams)return fail("TEAM_LIMIT_BELOW_OCCUPIED","Новый лимит меньше количества уже поданных и одобренных заявок.",409);
       }
-      const merged={registration_open_at:data.registration_open_at??before.registration_open_at,registration_close_at:data.registration_close_at??before.registration_close_at,starts_at:data.starts_at??before.starts_at,ends_at:data.ends_at??before.ends_at};
+      const fieldValue=function(key){return Object.prototype.hasOwnProperty.call(data,key)?data[key]:before[key]};
+      const merged={registration_open_at:fieldValue("registration_open_at"),registration_close_at:fieldValue("registration_close_at"),starts_at:fieldValue("starts_at"),ends_at:fieldValue("ends_at")};
       const dates=validateDates(merged);
       if(!isHttpsUrl(data.poster_url??before.poster_url)||!isHttpsUrl(data.rules_url??before.rules_url))return fail("INVALID_URL","Постер и правила должны использовать HTTPS.");
       const stream=data.stream_url??before.stream_url;
