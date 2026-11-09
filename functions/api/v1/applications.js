@@ -49,7 +49,7 @@ export async function onRequestGet({ request, env }) {
     const response = await env.DB.prepare(
       `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
         r.selected_slot,r.captain_note,r.submitted_at,r.reviewed_at,
-        (SELECT COUNT(*) FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id WHERE tr.team_id=t.id AND tr.left_at IS NULL AND roster_player.profile_status='approved' AND roster_player.archived_at IS NULL) AS roster_count
+        (SELECT COUNT(*) FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id WHERE tr.team_id=t.id AND tr.left_at IS NULL AND roster_player.archived_at IS NULL) AS roster_count
        FROM teams t
        LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
        WHERE t.status='active' AND t.archived_at IS NULL AND (t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster cr JOIN players cp ON cp.id=cr.player_id WHERE cr.team_id=t.id AND cr.left_at IS NULL AND cr.roster_role='captain' AND cp.user_id=?))
@@ -62,7 +62,7 @@ export async function onRequestGet({ request, env }) {
       const response = await env.DB.prepare(
         `SELECT t.id,t.name,t.tag,t.region,r.id AS registration_id,r.status AS application_status,
           NULL AS selected_slot,NULL AS captain_note,r.submitted_at,r.reviewed_at,
-          (SELECT COUNT(*) FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id WHERE tr.team_id=t.id AND tr.left_at IS NULL AND roster_player.profile_status='approved' AND roster_player.archived_at IS NULL) AS roster_count
+          (SELECT COUNT(*) FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id WHERE tr.team_id=t.id AND tr.left_at IS NULL AND roster_player.archived_at IS NULL) AS roster_count
          FROM teams t
          LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
          WHERE t.status='active' AND t.archived_at IS NULL AND (t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster cr JOIN players cp ON cp.id=cr.player_id WHERE cr.team_id=t.id AND cr.left_at IS NULL AND cr.roster_role='captain' AND cp.user_id=?))
@@ -72,7 +72,7 @@ export async function onRequestGet({ request, env }) {
         return env.DB.prepare(
           `SELECT t.id,t.name,t.tag,t.region,NULL AS registration_id,NULL AS application_status,
             NULL AS selected_slot,NULL AS captain_note,NULL AS submitted_at,NULL AS reviewed_at,
-            (SELECT COUNT(*) FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id WHERE tr.team_id=t.id AND tr.left_at IS NULL AND roster_player.profile_status='approved' AND roster_player.archived_at IS NULL) AS roster_count
+            (SELECT COUNT(*) FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id WHERE tr.team_id=t.id AND tr.left_at IS NULL AND roster_player.archived_at IS NULL) AS roster_count
            FROM teams t WHERE t.status='active' AND t.archived_at IS NULL AND (t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster cr JOIN players cp ON cp.id=cr.player_id WHERE cr.team_id=t.id AND cr.left_at IS NULL AND cr.roster_role='captain' AND cp.user_id=?)) ORDER BY t.name COLLATE NOCASE`
         ).bind(auth.user.id, auth.user.id).all();
       });
@@ -255,10 +255,10 @@ export async function onRequestPut({ request, env }) {
   const action = body.action;
   if (!id || !["withdraw"].includes(action)) return invalid("Некорректное действие.", 400);
   const row = await env.DB.prepare(
-    "SELECT r.id,r.status,r.team_id,t.captain_id FROM tournament_registrations r JOIN teams t ON t.id=r.team_id WHERE r.id=?"
-  ).bind(id).first();
+    "SELECT r.id,r.status,r.team_id,CASE WHEN t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster tr JOIN players p ON p.id=tr.player_id WHERE tr.team_id=t.id AND tr.left_at IS NULL AND tr.roster_role='captain' AND p.user_id=?) THEN 1 ELSE 0 END AS can_manage FROM tournament_registrations r JOIN teams t ON t.id=r.team_id WHERE r.id=?"
+  ).bind(auth.user.id, auth.user.id, id).first();
   if (!row) return invalid("Заявка не найдена.", 404, "APPLICATION_NOT_FOUND");
-  if (String(row.captain_id) !== String(auth.user.id)) return invalid("Отозвать заявку может только капитан команды.", 403, "FORBIDDEN");
+  if (!row.can_manage) return invalid("Отозвать заявку может только капитан команды.", 403, "FORBIDDEN");
   if (row.status !== "pending") return invalid("Можно отозвать только заявку на рассмотрении.", 409, "APPLICATION_NOT_PENDING");
   await env.DB.prepare("UPDATE tournament_registrations SET status='withdrawn',updated_at=? WHERE id=? AND status='pending'").bind(new Date().toISOString(), id).run();
   return json({ data: { id, status: "withdrawn" } });
