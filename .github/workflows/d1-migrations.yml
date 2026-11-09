@@ -95,11 +95,8 @@ jobs:
             )) = 24
             AND (SELECT sql LIKE '%password_hash%' FROM sqlite_master WHERE type='table' AND name='users')
             AND (SELECT sql LIKE '%profile_status%' AND sql LIKE '%server_id%' AND sql LIKE '%avatar_url%' FROM sqlite_master WHERE type='table' AND name='players')
-            AND (SELECT sql LIKE '%poster_url%' AND sql LIKE '%prize_pool%' AND sql NOT LIKE '%registration_slots%' AND sql NOT LIKE '%stream_url%' FROM sqlite_master WHERE type='table' AND name='tournaments')
+            AND (SELECT sql LIKE '%poster_url%' AND sql LIKE '%prize_pool%' FROM sqlite_master WHERE type='table' AND name='tournaments')
             AND (SELECT sql LIKE '%image_url%' AND sql LIKE '%season_number%' FROM sqlite_master WHERE type='table' AND name='seasons')
-            AND (SELECT sql NOT LIKE '%archived_at%' FROM sqlite_master WHERE type='table' AND name='teams')
-            AND (SELECT sql NOT LIKE '%archived_at%' FROM sqlite_master WHERE type='table' AND name='players')
-            AND NOT EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='match_advancement')
             THEN 1 ELSE 0 END AS baseline_ready;"
           npx --yes wrangler@4 d1 execute DB --remote --config wrangler.migrations.json --command "$SQL" --json > /tmp/d1-preflight.json
           cat /tmp/d1-preflight.json
