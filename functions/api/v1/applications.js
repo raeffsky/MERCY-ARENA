@@ -22,7 +22,8 @@ async function tournamentConfig(db, tournamentId, includePublished = false) {
   if (!columns.has("id")) throw new Error("tournaments table is missing its id column");
   const fields = ["id", "title", "status", "max_teams", "registration_open_at", "registration_close_at", "registration_slots"];
   const projection = fields.map((name) => columns.has(name) ? name : (name === "title" && columns.has("name") ? "name AS title" : "NULL AS " + name));
-  const publishedFilter = includePublished && columns.has("published_at") ? " AND published_at IS NOT NULL" : "";
+  if (includePublished && !columns.has("published_at")) return null;
+  const publishedFilter = includePublished ? " AND published_at IS NOT NULL" : "";
   return db.prepare(
     "SELECT " + projection.join(",") + " FROM tournaments WHERE id=?" + publishedFilter
   ).bind(tournamentId).first();
@@ -51,7 +52,7 @@ export async function onRequestGet({ request, env }) {
         (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
        FROM teams t
        LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
-       WHERE t.status='active' AND (t.captain_id=? OR EXISTS (SELECT 1 FROM players cp LEFT JOIN team_roster cr ON cr.player_id=cp.id AND cr.team_id=t.id AND cr.left_at IS NULL WHERE cp.user_id=? AND (cp.team_id=t.id OR cr.roster_role='captain')))
+       WHERE t.status='active' AND t.archived_at IS NULL AND (t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster cr JOIN players cp ON cp.id=cr.player_id WHERE cr.team_id=t.id AND cr.left_at IS NULL AND cr.roster_role='captain' AND cp.user_id=?))
        ORDER BY t.name COLLATE NOCASE`
     ).bind(tournamentId, auth.user.id, auth.user.id).all();
     results = response.results || [];
@@ -64,7 +65,7 @@ export async function onRequestGet({ request, env }) {
           (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
          FROM teams t
          LEFT JOIN tournament_registrations r ON r.team_id=t.id AND r.tournament_id=?
-         WHERE t.status='active' AND (t.captain_id=? OR EXISTS (SELECT 1 FROM players cp LEFT JOIN team_roster cr ON cr.player_id=cp.id AND cr.team_id=t.id AND cr.left_at IS NULL WHERE cp.user_id=? AND (cp.team_id=t.id OR cr.roster_role='captain')))
+         WHERE t.status='active' AND t.archived_at IS NULL AND (t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster cr JOIN players cp ON cp.id=cr.player_id WHERE cr.team_id=t.id AND cr.left_at IS NULL AND cr.roster_role='captain' AND cp.user_id=?))
          ORDER BY t.name COLLATE NOCASE`
       ).bind(tournamentId, auth.user.id, auth.user.id).all().catch(async (fallbackError) => {
         if (!/no such table:\s*tournament_registrations/i.test(String(fallbackError?.message || fallbackError))) throw fallbackError;
@@ -72,7 +73,7 @@ export async function onRequestGet({ request, env }) {
           `SELECT t.id,t.name,t.tag,t.region,NULL AS registration_id,NULL AS application_status,
             NULL AS selected_slot,NULL AS captain_note,NULL AS submitted_at,NULL AS reviewed_at,
             (SELECT COUNT(*) FROM team_roster tr WHERE tr.team_id=t.id AND tr.left_at IS NULL) AS roster_count
-           FROM teams t WHERE t.status='active' AND (t.captain_id=? OR EXISTS (SELECT 1 FROM players cp LEFT JOIN team_roster cr ON cr.player_id=cp.id AND cr.team_id=t.id AND cr.left_at IS NULL WHERE cp.user_id=? AND (cp.team_id=t.id OR cr.roster_role='captain'))) ORDER BY t.name COLLATE NOCASE`
+           FROM teams t WHERE t.status='active' AND t.archived_at IS NULL AND (t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster cr JOIN players cp ON cp.id=cr.player_id WHERE cr.team_id=t.id AND cr.left_at IS NULL AND cr.roster_role='captain' AND cp.user_id=?)) ORDER BY t.name COLLATE NOCASE`
         ).bind(auth.user.id, auth.user.id).all();
       });
       results = response.results || [];
@@ -148,16 +149,23 @@ export async function onRequestPost({ request, env }) {
 
   const tournament = await tournamentConfig(env.DB, tournamentId, true);
   if (!tournament || !["published","active"].includes(tournament.status)) return invalid("Регистрация на этот турнир сейчас закрыта.", 409, "REGISTRATION_CLOSED");
-  const now = new Date().toISOString();
-  if (tournament.registration_open_at && now < tournament.registration_open_at) return invalid("Регистрация ещё не началась.", 409, "REGISTRATION_NOT_STARTED");
-  if (tournament.registration_close_at && now > tournament.registration_close_at) return invalid("Срок подачи заявок завершён.", 409, "REGISTRATION_CLOSED");
+  const nowMs = Date.now();
+  const opensAt = tournament.registration_open_at ? Date.parse(tournament.registration_open_at) : null;
+  const closesAt = tournament.registration_close_at ? Date.parse(tournament.registration_close_at) : null;
+  if ((opensAt !== null && !Number.isFinite(opensAt)) || (closesAt !== null && !Number.isFinite(closesAt)) ||
+      (opensAt !== null && closesAt !== null && opensAt > closesAt)) {
+    return invalid("Организатор указал некорректные сроки регистрации. Сообщи ему об этой ошибке.", 503, "REGISTRATION_CONFIG_INVALID");
+  }
+  if (opensAt !== null && nowMs < opensAt) return invalid("Регистрация ещё не началась.", 409, "REGISTRATION_NOT_STARTED");
+  if (closesAt !== null && nowMs > closesAt) return invalid("Срок подачи заявок завершён.", 409, "REGISTRATION_CLOSED");
+  const now = new Date(nowMs).toISOString();
 
   if (!await hasTable(env.DB, "tournament_registration_roster")) {
     return invalid("Система состава турнира ещё не настроена. Организатору нужно применить миграцию 0013_platform_foundation.sql.", 503, "ROSTER_MIGRATION_REQUIRED");
   }
 
   const team = await env.DB.prepare(
-    "SELECT t.id,t.name,t.tag FROM teams t WHERE t.id=? AND t.status='active' AND (t.captain_id=? OR EXISTS (SELECT 1 FROM players cp LEFT JOIN team_roster cr ON cr.player_id=cp.id AND cr.team_id=t.id AND cr.left_at IS NULL WHERE cp.user_id=? AND (cp.team_id=t.id OR cr.roster_role='captain')))"
+    "SELECT t.id,t.name,t.tag FROM teams t WHERE t.id=? AND t.status='active' AND t.archived_at IS NULL AND (t.captain_id=? OR EXISTS (SELECT 1 FROM team_roster cr JOIN players cp ON cp.id=cr.player_id WHERE cr.team_id=t.id AND cr.left_at IS NULL AND cr.roster_role='captain' AND cp.user_id=?))"
   ).bind(teamId, auth.user.id, auth.user.id).first();
   if (!team) return invalid("Подать заявку может только капитан активной команды.", 403, "TEAM_NOT_MANAGED");
 
@@ -190,13 +198,13 @@ export async function onRequestPost({ request, env }) {
   try {
     if (existing) {
       const reopened = await env.DB.prepare(
-        "UPDATE tournament_registrations SET status='pending',submitted_at=?,reviewed_at=NULL,reviewer_id=NULL,selected_slot=?,captain_note=?,updated_at=? WHERE id=? AND status IN ('rejected','withdrawn') AND (? IS NULL OR (SELECT COUNT(*) FROM tournament_registrations WHERE tournament_id=? AND status IN ('pending','approved')) < ?)"
+        "UPDATE tournament_registrations SET status='pending',submitted_at=?,reviewed_at=NULL,reviewer_id=NULL,selected_slot=?,captain_note=?,updated_at=? WHERE id=? AND status IN ('rejected','withdrawn') AND (? IS NULL OR (SELECT COUNT(*) FROM tournament_registrations r JOIN teams capacity_team ON capacity_team.id=r.team_id AND capacity_team.status='active' AND capacity_team.archived_at IS NULL WHERE r.tournament_id=? AND r.status IN ('pending','approved')) < ?)"
       ).bind(now, selectedSlot || null, captainNote || null, now, existing.id, tournament.max_teams, tournamentId, tournament.max_teams).run();
       if (!reopened.meta?.changes) return invalid("Все места турнира уже заняты или заявка была изменена другим запросом.", 409, "TOURNAMENT_FULL");
       reopenedExisting = true;
     } else {
       const inserted = await env.DB.prepare(
-        "INSERT INTO tournament_registrations (tournament_id,team_id,status,submitted_at,selected_slot,captain_note,updated_at) SELECT ?,?,'pending',?,?,?,? WHERE ? IS NULL OR (SELECT COUNT(*) FROM tournament_registrations WHERE tournament_id=? AND status IN ('pending','approved')) < ?"
+        "INSERT INTO tournament_registrations (tournament_id,team_id,status,submitted_at,selected_slot,captain_note,updated_at) SELECT ?,?,'pending',?,?,?,? WHERE ? IS NULL OR (SELECT COUNT(*) FROM tournament_registrations r JOIN teams capacity_team ON capacity_team.id=r.team_id AND capacity_team.status='active' AND capacity_team.archived_at IS NULL WHERE r.tournament_id=? AND r.status IN ('pending','approved')) < ?"
       ).bind(tournamentId, teamId, now, selectedSlot || null, captainNote || null, now, tournament.max_teams, tournamentId, tournament.max_teams).run();
       if (!inserted.meta?.changes) return invalid("Все места турнира уже заняты или ожидают подтверждения.", 409, "TOURNAMENT_FULL");
       registrationId = inserted.meta?.last_row_id;
