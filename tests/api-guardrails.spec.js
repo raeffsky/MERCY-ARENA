@@ -55,6 +55,14 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(applications).toContain('closesAt !== null && !Number.isFinite(closesAt)');
   });
 
+  test('tournament applications ignore archived roster members and archived teams when checking capacity', () => {
+    const applications = source('functions/api/v1/applications.js');
+    expect(applications).toContain("roster_player.archived_at IS NULL");
+    expect(applications).toContain("p.archived_at IS NULL");
+    expect(applications).toContain("capacity_team.status='active' AND capacity_team.archived_at IS NULL");
+    expect(applications).not.toContain("SELECT COUNT(*) AS total FROM tournament_registrations WHERE tournament_id=? AND status IN ('pending','approved')");
+  });
+
   test('MERCY SCOUT exposes only approved, non-archived players and verified starter matches', () => {
     const scout = source('functions/api/v1/scout.js');
     expect(scout).toContain("p.profile_status='approved'");
