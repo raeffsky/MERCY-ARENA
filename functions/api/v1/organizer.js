@@ -130,6 +130,14 @@ export async function onRequestPost({request,env}) {
       if(!FORMATS.has(format))return fail("INVALID_FORMAT","Недопустимый формат сетки.");
       const maxTeams=data.max_teams==null||data.max_teams===""?null:Number(data.max_teams);
       if(maxTeams!==null&&(!Number.isSafeInteger(maxTeams)||maxTeams<2||maxTeams>32))return fail("INVALID_TEAM_LIMIT","Лимит турнира должен быть от 2 до 32 команд.");
+      if(String(data.format??before.format)!==String(before.format)){
+        const existingMatches=await env.DB.prepare("SELECT COUNT(*) AS total FROM matches WHERE tournament_id=?").bind(id).first();
+        if(Number(existingMatches?.total||0)>0)return fail("BRACKET_FORMAT_LOCKED","Формат нельзя менять после создания матчей. Сначала обратись к владельцу платформы.",409);
+      }
+      if(maxTeams!==null){
+        const occupied=await env.DB.prepare("SELECT COUNT(*) AS total FROM tournament_registrations r JOIN teams tm ON tm.id=r.team_id AND tm.status='active' AND tm.archived_at IS NULL WHERE r.tournament_id=? AND r.status IN ('pending','approved')").bind(id).first();
+        if(Number(occupied?.total||0)>maxTeams)return fail("TEAM_LIMIT_BELOW_OCCUPIED","Новый лимит меньше количества уже поданных и одобренных заявок.",409);
+      }
       const merged={registration_open_at:data.registration_open_at??before.registration_open_at,registration_close_at:data.registration_close_at??before.registration_close_at,starts_at:data.starts_at??before.starts_at,ends_at:data.ends_at??before.ends_at};
       const dates=validateDates(merged);
       if(!isHttpsUrl(data.poster_url??before.poster_url)||!isHttpsUrl(data.rules_url??before.rules_url))return fail("INVALID_URL","Постер и правила должны использовать HTTPS.");
@@ -213,6 +221,7 @@ export async function onRequestPost({request,env}) {
       ).bind(id).first();
       if(!match||(!auth.owner&&String(match.organizer_id)!==String(auth.user.id)))return fail("MATCH_NOT_FOUND","Матч не найден или недоступен.",404);
       if(match.status==="completed")return fail("MATCH_COMPLETED","Завершённый матч нельзя изменить. Для исправления результата обратись к владельцу платформы.",409);
+      if(!["published","active"].includes(match.tournament_status))return fail("TOURNAMENT_NOT_ACTIVE","Управлять матчами можно только в опубликованном или активном турнире.",409);
       const status=String(data.status||match.status);
       if(!["scheduled","in_progress","cancelled","postponed"].includes(status))return fail("INVALID_MATCH_STATUS","Недопустимый статус матча.");
       if(status==="in_progress"&&(match.team_a_id==null||match.team_b_id==null))return fail("MATCH_TEAMS_REQUIRED","Нельзя начать матч без двух назначенных команд.");
@@ -229,9 +238,10 @@ export async function onRequestPost({request,env}) {
       if(!id||!Number.isSafeInteger(scoreA)||!Number.isSafeInteger(scoreB)||scoreA<0||scoreB<0||scoreA===scoreB)
         return fail("INVALID_RESULT","Укажи два разных целых счёта от нуля.");
       const match=await env.DB.prepare(
-        "SELECT m.*,t.organizer_id,t.title AS tournament_title FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=?"
+        "SELECT m.*,t.organizer_id,t.title AS tournament_title,t.status AS tournament_status FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=?"
       ).bind(id).first();
       if(!match||(!auth.owner&&String(match.organizer_id)!==String(auth.user.id)))return fail("MATCH_NOT_FOUND","Матч не найден или недоступен.",404);
+      if(!["published","active"].includes(match.tournament_status))return fail("TOURNAMENT_NOT_ACTIVE","Результат можно внести только в опубликованном или активном турнире.",409);
       if(!["scheduled","in_progress"].includes(match.status)||match.team_a_id==null||match.team_b_id==null)
         return fail("MATCH_NOT_PLAYABLE","Матч не готов к внесению результата.",409);
       const winner=scoreA>scoreB?match.team_a_id:match.team_b_id,verifiedAt=now();
