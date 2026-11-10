@@ -102,6 +102,28 @@ test.describe('MERCY ARENA completion flows', () => {
     await expect(card.locator('.tournament-list-apply')).toHaveCount(0);
   });
 
+  test('tournament cards explain future registration, sold-out capacity and cancellation', async ({ page }) => {
+    await page.route('**/api/v1/tournaments', route => route.fulfill({ json: { data: [
+      { id: 783, title: 'MERCY Future Cup', format: 'single_elimination', status: 'published',
+        registration_open_at: '2099-01-01T10:00:00Z', registration_close_at: '2099-01-02T10:00:00Z',
+        max_teams: 8, occupied_slots: 0 },
+      { id: 784, title: 'MERCY Sold Out Cup', format: 'single_elimination', status: 'published',
+        max_teams: 8, occupied_slots: 8 },
+      { id: 785, title: 'MERCY Cancelled Cup', format: 'single_elimination', status: 'cancelled',
+        max_teams: 8, occupied_slots: 0 }
+    ] } }));
+    await page.goto('/#/tournaments');
+    const future = page.locator('.tournament-list-card').filter({ hasText: 'MERCY Future Cup' });
+    const full = page.locator('.tournament-list-card').filter({ hasText: 'MERCY Sold Out Cup' });
+    const cancelled = page.locator('.tournament-list-card').filter({ hasText: 'MERCY Cancelled Cup' });
+    await expect(future).toContainText('Регистрация скоро');
+    await expect(future).toContainText('СКОРО ОТКРЫТИЕ');
+    await expect(full).toContainText('Набор закрыт: нет мест');
+    await expect(full).toContainText('МЕСТ НЕТ');
+    await expect(cancelled).toContainText('Отменён');
+    await expect(cancelled).toContainText('ТУРНИР ОТМЕНЁН');
+  });
+
   test('match center uses bracket progression order and readable empty team slots', async ({ page }) => {
     await page.route('**/api/v1/tournaments', route => route.fulfill({ json: { data: [
       { id: 55, title: 'MERCY Test Cup', format: 'double_elimination', status: 'active' }
