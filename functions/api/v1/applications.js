@@ -20,7 +20,7 @@ async function tournamentConfig(db, tournamentId, includePublished = false) {
   const info = await db.prepare("PRAGMA table_info(tournaments)").all();
   const columns = new Set((info.results || []).map((column) => column.name));
   if (!columns.has("id")) throw new Error("tournaments table is missing its id column");
-  const fields = ["id", "title", "status", "max_teams", "registration_open_at", "registration_close_at", "registration_slots"];
+  const fields = ["id", "title", "status", "max_teams", "registration_open_at", "registration_close_at", "registration_slots", "organizer_id"];
   const projection = fields.map((name) => columns.has(name) ? name : (name === "title" && columns.has("name") ? "name AS title" : "NULL AS " + name));
   if (includePublished && !columns.has("published_at")) return null;
   const publishedFilter = includePublished ? " AND published_at IS NOT NULL" : "";
@@ -226,6 +226,10 @@ export async function onRequestPost({ request, env }) {
     writes.push(
       env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'application_submitted','Заявка отправлена',?,?, 'tournament',?)")
         .bind(auth.user.id, "Заявка команды " + team.name + " отправлена на рассмотрение.", "#/tournament/" + tournamentId, tournamentId),
+      ...(tournament.organizer_id && String(tournament.organizer_id) !== String(auth.user.id) ? [
+        env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'application_received','Новая заявка на турнир',?,?, 'tournament_registration',?)")
+          .bind(tournament.organizer_id, "Команда " + team.name + " подала заявку на турнир «" + tournament.title + "».", "#/organizer", registrationId)
+      ] : []),
       env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'tournament_application_submitted','tournament_registration',?,?)")
         .bind(await createAuditEventId(env.DB), auth.user.id, registrationId, JSON.stringify({ tournament_id: tournamentId, team_id: teamId, player_ids: requestedIds, selected_slot: selectedSlot || null }))
     );
