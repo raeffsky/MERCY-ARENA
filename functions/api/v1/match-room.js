@@ -31,7 +31,8 @@ async function accessFor(db, user, match, env) {
   const player = await db.prepare(
     "SELECT p.id,p.team_id,t.captain_id FROM players p " +
     "JOIN teams t ON t.id=p.team_id AND t.status='active' AND t.archived_at IS NULL " +
-    "WHERE p.user_id=? AND p.profile_status='approved' AND p.archived_at IS NULL LIMIT 1"
+    "WHERE p.user_id=? AND p.profile_status='approved' AND p.archived_at IS NULL " +
+    "AND EXISTS (SELECT 1 FROM team_roster tr WHERE tr.player_id=p.id AND tr.team_id=t.id AND tr.left_at IS NULL) LIMIT 1"
   ).bind(user.id).first().catch(() => null);
   const roster = player ? await db.prepare(
     "SELECT team_id FROM team_roster WHERE player_id=? AND left_at IS NULL AND team_id IN (?,?) AND team_id=?"
