@@ -74,7 +74,7 @@ export async function onRequestGet({ request, env }) {
   }
   if (resource === "tournament_staff") {
     const tournamentId = String(new URL(request.url).searchParams.get("tournament_id") || "").trim();
-    if (!/^\\d+$/.test(tournamentId)) return bad("Укажи корректный ID турнира.");
+    if (!/^\d+$/.test(tournamentId)) return bad("Укажи корректный ID турнира.");
     const { results } = await env.DB.prepare("SELECT s.tournament_id,s.user_id,s.staff_role,s.granted_at,u.email,u.display_name FROM tournament_staff s JOIN users u ON u.id=s.user_id WHERE s.tournament_id=? ORDER BY CASE s.staff_role WHEN 'admin' THEN 0 WHEN 'organizer' THEN 1 WHEN 'referee' THEN 2 ELSE 3 END,u.email COLLATE NOCASE").bind(tournamentId).all();
     return json({ data: results || [] });
   }
@@ -120,7 +120,7 @@ export async function onRequestPost({ request, env }) {
     if (resource === "tournament_staff" && action === "set") {
       const tournamentId = String(data.tournament_id ?? "").trim(), userId = String(data.user_id ?? "").trim();
       const enabled = data.enabled, staffRole = String(data.staff_role || "");
-      if (!tournamentId || !/^\\d+$/.test(tournamentId) || !userId) return bad("Укажи турнир и аккаунт.");
+      if (!tournamentId || !/^\d+$/.test(tournamentId) || !userId) return bad("Укажи турнир и аккаунт.");
       if (typeof enabled !== "boolean") return bad("Укажи, нужно ли выдать или отозвать доступ.");
       if (enabled && !["organizer","admin","referee","observer"].includes(staffRole)) return bad("Некорректная роль персонала турнира.");
       const tournament = await env.DB.prepare("SELECT id FROM tournaments WHERE id=? LIMIT 1").bind(tournamentId).first();
