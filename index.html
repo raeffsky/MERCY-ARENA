@@ -1145,7 +1145,7 @@ var link=document.querySelector('[data-route="organizer"]');
 if(!link)return;
 fetch('/api/v1/me',{credentials:'same-origin',cache:'no-store'})
 .then(function(response){return response.json()})
-.then(function(me){link.hidden=!(me.is_owner||(me.roles||[]).includes('organizer'));})
+.then(function(me){link.hidden=!(me.is_owner||(me.roles||[]).includes('organizer')||me.has_organizer_access);})
 .catch(function(){link.hidden=true;});
 }
 function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]})}
@@ -1356,7 +1356,7 @@ form.hidden=true;
 window.__mercyAdminEmail=me.account.email;
 var dashboard=document.getElementById('adminDashboard');
 if(dashboard){dashboard.hidden=false;dashboard.innerHTML=adminDashboardMarkup(me.account.email);initAdminDashboard();}
-}else if(me.authenticated && (me.roles||[]).includes('organizer')){
+}else if(me.authenticated && ((me.roles||[]).includes('organizer')||me.has_organizer_access)){
 form.hidden=true;showStatus('Доступ подтверждён. Кабинет организатора.');
 var dashboard=document.getElementById('adminDashboard');
 if(dashboard){dashboard.hidden=false;dashboard.innerHTML=organizerDashboardMarkup(me.account&&me.account.name||me.account&&me.account.email||'Организатор');initOrganizerDashboard();}
