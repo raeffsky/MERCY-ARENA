@@ -92,12 +92,13 @@ export async function onRequestPut({ request, env }) {
   const mlbb = manualReview ? { ok: true, nickname: manualNickname } : await lookupMlbbPlayer(env, gameId, serverId);
   if (!mlbb.ok) return json({ error: { code: mlbb.code, message: mlbb.message } }, mlbb.status);
   const profileStatus = manualReview ? "pending" : "approved";
-  const profile = await env.DB.prepare("SELECT id FROM players WHERE user_id=? LIMIT 1").bind(session.user.id).first();
+  const profile = await env.DB.prepare("SELECT id,archived_at FROM players WHERE user_id=? LIMIT 1").bind(session.user.id).first();
+  if (profile?.archived_at) return json({ error: { code: "PROFILE_ARCHIVED", message: "Профиль находится в архиве. Его восстановление может выполнить только администратор MERCY ARENA." } }, 409);
   const verifiedAt = new Date().toISOString();
   let playerId = profile?.id;
   try {
     if (profile) {
-      await env.DB.prepare("UPDATE players SET nickname=?,game_id=?,server_id=?,mlbb_verified_at=?,role=?,region=?,profile_status=?,archived_at=NULL,updated_at=? WHERE user_id=?").bind(mlbb.nickname, gameId, serverId, manualReview ? null : verifiedAt, role, region || null, profileStatus, verifiedAt, session.user.id).run();
+      await env.DB.prepare("UPDATE players SET nickname=?,game_id=?,server_id=?,mlbb_verified_at=?,role=?,region=?,profile_status=?,updated_at=? WHERE user_id=?").bind(mlbb.nickname, gameId, serverId, manualReview ? null : verifiedAt, role, region || null, profileStatus, verifiedAt, session.user.id).run();
     } else {
       const inserted = await env.DB.prepare("INSERT INTO players (user_id,nickname,game_id,server_id,mlbb_verified_at,role,region,profile_status) VALUES (?,?,?,?,?,?,?,?)").bind(session.user.id, mlbb.nickname, gameId, serverId, manualReview ? null : verifiedAt, role, region || null, profileStatus).run();
       playerId = Number(inserted.meta?.last_row_id);
