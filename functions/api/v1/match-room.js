@@ -62,7 +62,7 @@ function publicRoom(match, room, access, submission = null) {
       { series_format: "BO1", room_id: null, room_password: null, published: false, judge_contact: null,
         instructions: null, team_a_ready: false, team_b_ready: false },
     result_submission: submission ? { status: submission.status, score_a: submission.score_a, score_b: submission.score_b, winner_team_id: submission.winner_team_id, confirming_team_id: submission.confirming_team_id, submitted_at: submission.submitted_at, dispute_reason: submission.dispute_reason, decided_at: submission.decided_at } : null,
-    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && matchActive, can_confirm_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_dispute_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_resolve_result: (access.owner || access.organizer) && !!submission && submission.status === "disputed", can_retry_progression: (access.owner || access.organizer || access.judge) && match.status === "completed" && !!match.result_verified_at && match.winner_team_id != null, side: access.side }
+    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && matchActive, can_confirm_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_dispute_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_resolve_result: (access.owner || access.organizer) && !!submission && ["pending","disputed"].includes(submission.status), can_retry_progression: (access.owner || access.organizer || access.judge) && match.status === "completed" && !!match.result_verified_at && match.winner_team_id != null, side: access.side }
   };
 }
 
@@ -295,7 +295,7 @@ export async function onRequestPost({ request, env }) {
     if (action === "resolve_result") {
       if (!access.owner && !access.organizer) return fail("ORGANIZER_REQUIRED","Спорный результат может разрешить только организатор турнира.",403);
       const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
-      if (!submission || submission.status !== "disputed") return fail("RESULT_NOT_DISPUTED","По этому матчу нет открытого спора.",409);
+      if (!submission || !["pending","disputed"].includes(submission.status)) return fail("RESULT_NOT_PENDING","Нет результата, ожидающего решения организатора.",409);\n      const resolutionReason = String(body.reason || "").trim().slice(0,500);\n      if (resolutionReason.length < 5) return fail("RESOLUTION_REASON_REQUIRED","Добавь комментарий к решению минимум из пяти символов.");
       const scoreA = Number(body.score_a), scoreB = Number(body.score_b);
       if (!Number.isSafeInteger(scoreA)||!Number.isSafeInteger(scoreB)||scoreA<0||scoreB<0||scoreA===scoreB) return fail("INVALID_RESULT","Укажи корректный итоговый счёт.");
       const roomConfig = await db.prepare("SELECT series_format FROM match_rooms WHERE match_id=?").bind(id).first();
@@ -306,10 +306,10 @@ export async function onRequestPost({ request, env }) {
       const writes = await db.batch([
         db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='organizer_resolved',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress') AND EXISTS (SELECT 1 FROM match_result_submissions s WHERE s.match_id=matches.id AND s.status='disputed')")
           .bind(scoreA,scoreB,winner,timestamp,timestamp,id),
-        db.prepare("UPDATE match_result_submissions SET status='confirmed',score_a=?,score_b=?,winner_team_id=?,decided_by=?,decided_at=?,dispute_reason=NULL WHERE match_id=? AND status='disputed' AND EXISTS (SELECT 1 FROM matches m WHERE m.id=match_result_submissions.match_id AND m.status='completed' AND m.result_source='organizer_resolved' AND m.score_a=? AND m.score_b=?)")
+        db.prepare("UPDATE match_result_submissions SET status='confirmed',score_a=?,score_b=?,winner_team_id=?,decided_by=?,decided_at=?,dispute_reason=NULL WHERE match_id=? AND status IN ('pending','disputed') AND EXISTS (SELECT 1 FROM matches m WHERE m.id=match_result_submissions.match_id AND m.status='completed' AND m.result_source='organizer_resolved' AND m.score_a=? AND m.score_b=?)")
           .bind(scoreA,scoreB,winner,user.id,timestamp,id,scoreA,scoreB),
         db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'organizer_resolved_match_result','match',?,?,?)")
-          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:"disputed",score_a:submission.score_a,score_b:submission.score_b,reason:submission.dispute_reason}),JSON.stringify({status:"confirmed",score_a:scoreA,score_b:scoreB,winner_team_id:winner}))
+          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:submission.status,score_a:submission.score_a,score_b:submission.score_b,dispute_reason:submission.dispute_reason}),JSON.stringify({status:"confirmed",score_a:scoreA,score_b:scoreB,winner_team_id:winner,organizer_reason:resolutionReason}))
       ]);
       if (!writes[0]?.meta?.changes || !writes[1]?.meta?.changes) return fail("RESULT_RESOLUTION_CONFLICT","Матч или спор уже изменился. Обнови данные и проверь результат.",409);
       try { await advanceWinner(db,id,winner); }
