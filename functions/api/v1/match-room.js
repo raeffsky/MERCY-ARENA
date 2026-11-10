@@ -25,6 +25,7 @@ async function accessFor(db, user, match, env) {
     .bind(match.tournament_id, user.id).first().catch(() => null);
   const organizer = owner || String(match.organizer_id) === String(user.id) || ["organizer", "admin"].includes(staff?.staff_role);
   const judge = staff?.staff_role === "referee";
+  const observer = staff?.staff_role === "observer";
   const player = await db.prepare(
     "SELECT p.id,p.team_id,t.captain_id FROM players p " +
     "LEFT JOIN teams t ON t.id=p.team_id AND t.status='active' AND t.archived_at IS NULL " +
@@ -37,7 +38,7 @@ async function accessFor(db, user, match, env) {
   const captainA = !!(player && String(match.team_a_id) && String(player.team_id) === String(match.team_a_id) && String(player.captain_id) === String(user.id));
   const captainB = !!(player && String(match.team_b_id) && String(player.team_id) === String(match.team_b_id) && String(player.captain_id) === String(user.id));
   const participant = teamIds.length > 0 || captainA || captainB;
-  return { owner, organizer, judge, participant, canManage: owner || organizer || judge, canReady: captainA || captainB,
+  return { owner, organizer, judge, observer, participant, canManage: owner || organizer || judge, canReady: captainA || captainB,
     side: captainA ? "a" : captainB ? "b" : teamIds.includes(String(match.team_a_id)) ? "a" : teamIds.includes(String(match.team_b_id)) ? "b" : null };
 }
 
@@ -68,7 +69,7 @@ async function authorize(request, env, id) {
   const match = await loadMatch(env.DB, id);
   if (!match) return { response: fail("MATCH_NOT_FOUND", "Матч не найден.", 404) };
   const access = await accessFor(env.DB, auth.user, match, env);
-  if (!access.canManage && !access.participant) return { response: fail("MATCH_ACCESS_DENIED", "Комната доступна только участникам матча, организатору, судье и администратору.", 403) };
+  if (!access.canManage && !access.participant && !access.observer) return { response: fail("MATCH_ACCESS_DENIED", "Комната доступна только участникам матча, персоналу турнира и администратору.", 403) };
   return { db: env.DB, user: auth.user, match, access };
 }
 
