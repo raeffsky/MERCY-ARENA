@@ -257,3 +257,13 @@ test('opposing captain confirms the referee result and sees the finalized state'
   await expect(page.locator('#resultReviewText')).toContainText('РЕЗУЛЬТАТ ПОДТВЕРЖДЁН');
   expect(decision.action).toBe('confirm_result');
 });
+
+test('staff can retry bracket progression without resubmitting or changing a verified score', () => {
+  const api = source('functions/api/v1/match-room.js');
+  const page = source('match.html');
+  expect(api).toContain('action === "retry_progression"');
+  expect(api).toContain('can_retry_progression:');
+  expect(api).toContain('advanceWinner(db,id,match.winner_team_id)');
+  expect(page).toContain("action:'retry_progression'");
+  expect(page).toContain('id="retryProgressionButton"');
+});
