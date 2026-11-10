@@ -41,7 +41,7 @@ async function accessFor(db, user, match, env) {
   const captainA = !!(player && String(match.team_a_id) && String(player.team_id) === String(match.team_a_id) && String(player.captain_id) === String(user.id));
   const captainB = !!(player && String(match.team_b_id) && String(player.team_id) === String(match.team_b_id) && String(player.captain_id) === String(user.id));
   const participant = teamIds.length > 0 || captainA || captainB;
-  return { owner, organizer, judge, observer, participant, canManage: owner || organizer || judge, canReady: captainA || captainB,
+  return { owner, organizer, judge, observer, participant, userId: user.id, canManage: owner || organizer || judge, canReady: captainA || captainB,
     side: captainA ? "a" : captainB ? "b" : teamIds.includes(String(match.team_a_id)) ? "a" : teamIds.includes(String(match.team_b_id)) ? "b" : null };
 }
 
@@ -62,7 +62,7 @@ function publicRoom(match, room, access, submission = null) {
       { series_format: "BO1", room_id: null, room_password: null, published: false, judge_contact: null,
         instructions: null, team_a_ready: false, team_b_ready: false },
     result_submission: submission ? { status: submission.status, score_a: submission.score_a, score_b: submission.score_b, winner_team_id: submission.winner_team_id, confirming_team_id: submission.confirming_team_id, submitted_at: submission.submitted_at, dispute_reason: submission.dispute_reason, decided_at: submission.decided_at } : null,
-    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && matchActive, can_confirm_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_dispute_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_resolve_result: (access.owner || access.organizer) && !!submission && ["pending","disputed"].includes(submission.status), can_retry_progression: (access.owner || access.organizer || access.judge) && match.status === "completed" && !!match.result_verified_at && match.winner_team_id != null, side: access.side }
+    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && matchActive, can_confirm_result: !!submission && submission.status === "pending" && access.canReady && String(access.userId) !== String(submission.proposed_by) && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_dispute_result: !!submission && submission.status === "pending" && access.canReady && String(access.userId) !== String(submission.proposed_by) && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_resolve_result: (access.owner || access.organizer) && !!submission && ["pending","disputed"].includes(submission.status), can_retry_progression: (access.owner || access.organizer || access.judge) && match.status === "completed" && !!match.result_verified_at && match.winner_team_id != null, side: access.side }
   };
 }
 
@@ -248,6 +248,7 @@ export async function onRequestPost({ request, env }) {
       const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
       if (!submission || submission.status !== "pending") return fail("RESULT_NOT_PENDING","Нет результата, ожидающего подтверждения.",409);
       if (!access.canReady || !access.side) return fail("TEAM_CAPTAIN_REQUIRED","Подтвердить результат может только капитан команды-соперника.",403);
+      if (String(user.id) === String(submission.proposed_by)) return fail("SUBMITTER_CANNOT_CONFIRM","Судья, отправивший результат, не может подтверждать его от имени команды.",403);
       const ownTeamId = access.side === "a" ? match.team_a_id : match.team_b_id;
       if (String(ownTeamId) !== String(submission.confirming_team_id)) return fail("OPPONENT_CONFIRMATION_REQUIRED","Подтвердить или оспорить результат может только капитан проигравшей по протоколу команды.",403);
       const disputeReason = String(body.reason || "").trim().slice(0,500);
