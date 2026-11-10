@@ -16,7 +16,7 @@ export async function onRequestGet({ request, env }) {
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 30));
   const { results } = await env.DB.prepare("SELECT id,type,title,message,link,entity_type,entity_id,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT ?").bind(session.user.id, limit).all();
   const unread = await env.DB.prepare("SELECT COUNT(*) AS total FROM notifications WHERE user_id=? AND read_at IS NULL").bind(session.user.id).first();
-  return json({ data: results || [], meta: { unread: unread?.total || 0, limit } });
+  return json({ data: results || [], meta: { unread: unread?.total || 0, limit } }, 200, { "Cache-Control": "no-store, private" });
 }
 
 export async function onRequestPut({ request, env }) {
