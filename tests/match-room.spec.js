@@ -177,3 +177,20 @@ test('organizer cabinet cannot bypass referee and opponent result confirmation',
   expect(page).toContain('/match.html?id=');
 });
 
+
+test('staff can retry bracket progression without resubmitting or changing a verified score', () => {
+  const api = source('functions/api/v1/match-room.js');
+  const page = source('match.html');
+  expect(api).toContain('action === "retry_progression"');
+  expect(api).toContain('can_retry_progression:');
+  expect(api).toContain('advanceWinner(db,id,match.winner_team_id)');
+  expect(page).toContain("action:'retry_progression'");
+  expect(page).toContain('id="retryProgressionButton"');
+});
+
+test('admin bracket corrections keep the current result record aligned and clear superseded descendant submissions', () => {
+  const admin = source('functions/api/v1/admin.js');
+  expect(admin).toContain('match_result_submission_superseded');
+  expect(admin).toContain('DELETE FROM match_result_submissions WHERE match_id=?');
+  expect(admin).toContain("UPDATE match_result_submissions SET status='confirmed',score_a=?");
+});
