@@ -1,4 +1,6 @@
 import { json, databaseUnavailable } from "./_lib/http.js";
+import { createAuditEventId } from "./_lib/audit.js";
+import { advanceWinner } from "./_lib/match-progression.js";
 import { getSessionUser, isOwnerAccount, sameOrigin } from "./_lib/session-auth.js";
 import { createAuditEventId } from "./_lib/audit.js";
 
@@ -13,7 +15,8 @@ async function audit(db, actor, action, matchId, details) {
 async function loadMatch(db, id) {
   return db.prepare(
     "SELECT m.id,m.tournament_id,m.round_number,m.bracket,m.match_number,m.scheduled_at,m.status," +
-    "m.team_a_id,m.team_b_id,ta.name AS team_a_name,tb.name AS team_b_name,t.organizer_id,t.title AS tournament_title " +
+    "m.team_a_id,m.team_b_id,m.score_a,m.score_b,m.winner_team_id,m.result_source,m.result_verified_at," +
+    "ta.name AS team_a_name,tb.name AS team_b_name,t.organizer_id,t.status AS tournament_status,t.published_at AS tournament_published_at,t.title AS tournament_title " +
     "FROM matches m JOIN tournaments t ON t.id=m.tournament_id " +
     "LEFT JOIN teams ta ON ta.id=m.team_a_id LEFT JOIN teams tb ON tb.id=m.team_b_id WHERE m.id=? LIMIT 1"
   ).bind(id).first();
@@ -43,7 +46,7 @@ async function accessFor(db, user, match, env) {
 }
 
 function publicRoom(match, room, access) {
-  const matchActive = ["scheduled", "in_progress"].includes(match.status);
+  const matchActive = !!match.tournament_published_at && ["published", "active"].includes(match.tournament_status) && ["scheduled", "in_progress"].includes(match.status);
   const credentialsVisible = !!room && matchActive && (access.canManage || !!room.room_published_at);
   return {
     match: { id: match.id, tournament_id: match.tournament_id, tournament_title: match.tournament_title,
@@ -57,7 +60,7 @@ function publicRoom(match, room, access) {
       team_a_ready_at: room.team_a_ready_at, team_b_ready_at: room.team_b_ready_at } :
       { series_format: "BO1", room_id: null, room_password: null, published: false, judge_contact: null,
         instructions: null, team_a_ready: false, team_b_ready: false },
-    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, side: access.side }
+    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && matchActive, side: access.side }
   };
 }
 
@@ -101,6 +104,7 @@ export async function onRequestPost({ request, env }) {
   try {
     if (action === "configure") {
       if (!access.canManage) return fail("MANAGER_REQUIRED", "Настраивать комнату может организатор, судья или администратор.", 403);
+      if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_PUBLISHED", "Комнату можно настраивать только для опубликованного турнира.", 409);
       if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_CONFIGURABLE", "Комнату можно настраивать только для запланированного или текущего матча.", 409);
       const data = body.data && typeof body.data === "object" ? body.data : {};
       const format = String(data.series_format || "BO1").toUpperCase();
@@ -125,6 +129,7 @@ export async function onRequestPost({ request, env }) {
     }
     if (action === "ready") {
       if (!access.canReady || !access.side) return fail("CAPTAIN_REQUIRED", "Готовность может подтвердить только капитан одной из команд.", 403);
+      if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_PUBLISHED", "Готовность доступна только в опубликованном турнире.", 409);
       if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_READY", "Подтвердить готовность можно только для запланированного или текущего матча.", 409);
       const column = access.side === "a" ? "team_a_ready_at" : "team_b_ready_at";
       await db.prepare(
@@ -139,6 +144,7 @@ export async function onRequestPost({ request, env }) {
     }
     if (action === "reset_ready") {
       if (!access.canManage) return fail("MANAGER_REQUIRED", "Сбросить готовность может организатор, судья или администратор.", 403);
+      if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_PUBLISHED", "Готовность доступна только в опубликованном турнире.", 409);
       if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_READY", "Готовность можно сбрасывать только для запланированного или текущего матча.", 409);
       const side = String(body.side || "both");
       if (!["a", "b", "both"].includes(side)) return fail("INVALID_SIDE", "Некорректная сторона матча.");
@@ -147,6 +153,42 @@ export async function onRequestPost({ request, env }) {
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
       await audit(db, user.id, "match_readiness_reset", id, { side });
       return json({ data: publicRoom(match, room, access) }, 200, { "Cache-Control": "no-store, private" });
+    }
+    if (action === "verify_result") {
+      if (!access.owner && !access.organizer && !access.judge) return fail("REFEREE_REQUIRED", "Подтвердить результат может только назначенный судья или организатор.", 403);
+      if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_PUBLISHED", "Результат можно подтвердить только в опубликованном турнире.", 409);
+      const scoreA = Number(body.score_a), scoreB = Number(body.score_b);
+      if (!Number.isSafeInteger(scoreA) || !Number.isSafeInteger(scoreB) || scoreA < 0 || scoreB < 0 || scoreA === scoreB)
+        return fail("INVALID_RESULT", "Укажи два разных целых счёта от нуля.");
+      if (match.team_a_id == null || match.team_b_id == null) return fail("MATCH_NOT_PLAYABLE", "Матч не готов к внесению результата.", 409);
+      const winner = scoreA > scoreB ? match.team_a_id : match.team_b_id;
+      if (match.status === "completed" && match.result_verified_at && Number(match.score_a) === scoreA && Number(match.score_b) === scoreB && String(match.winner_team_id) === String(winner)) {
+        try {
+          const progression = await advanceWinner(db, id, winner);
+          const updatedMatch = await loadMatch(db, id);
+          const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+          return json({ data: publicRoom(updatedMatch, room, access), progression, result_already_saved: true, progression_retried: true }, 200, { "Cache-Control": "no-store, private" });
+        } catch (error) {
+          console.error("MERCY MATCH result progression retry failed:", error);
+          return json({ error: { code: "RESULT_SAVED_PROGRESSION_PENDING", message: "Результат уже сохранён. Продвижение победителя пока не удалось завершить, повтори попытку позже." } }, 503);
+        }
+      }
+      if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_PLAYABLE", "Матч уже завершён или не готов к внесению результата.", 409);
+      const verifiedAt = timestamp;
+      const write = await db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='judge_verified',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress')")
+        .bind(scoreA,scoreB,winner,verifiedAt,verifiedAt,id).run();
+      if (!write.meta?.changes) return fail("RESULT_ALREADY_SAVED", "Результат уже сохранён другим запросом.", 409);
+      const after = await loadMatch(db,id);
+      await db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'judge_match_result_verified','match',?,?,?)")
+        .bind(await createAuditEventId(db),user.id,id,JSON.stringify(match),JSON.stringify(after)).run();
+      const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+      try {
+        const progression = await advanceWinner(db,id,winner);
+        return json({ data: publicRoom(after,room,access), progression }, 200, { "Cache-Control": "no-store, private" });
+      } catch (error) {
+        console.error("MERCY MATCH result progression failed:",error);
+        return json({ error: { code: "RESULT_SAVED_PROGRESSION_PENDING", message: "Результат сохранён, но продвижение победителя не завершилось. Повтори попытку позже." } }, 503);
+      }
     }
     return fail("UNKNOWN_ACTION", "Неизвестное действие.");
   } catch (error) {
