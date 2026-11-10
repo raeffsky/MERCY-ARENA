@@ -267,7 +267,7 @@ export async function onRequestPost({ request, env }) {
           .bind(user.id,timestamp,id,submission.score_a,submission.score_b),
         db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,'match_result_confirmed_by_opponent','match',?,? WHERE EXISTS (SELECT 1 FROM match_result_submissions WHERE match_id=? AND status='confirmed' AND decided_by=? AND decided_at=?)")
           .bind(await createAuditEventId(db),user.id,id,JSON.stringify({score_a:submission.score_a,score_b:submission.score_b,status:"confirmed"}),id,user.id,timestamp),
-        db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) SELECT ?,'match_result_confirmed','Результат подтверждён','Капитан соперника подтвердил результат матча #'||?||'. Победитель продвинут по сетке.','/match.html?id='||?,'match',? WHERE EXISTS (SELECT 1 FROM match_result_submissions WHERE match_id=? AND status='confirmed' AND decided_by=? AND decided_at=?)")
+        db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) SELECT ?,'match_result_confirmed','Результат подтверждён','Капитан соперника подтвердил результат матча #'||?||'. Итоговый счёт зафиксирован.','/match.html?id='||?,'match',? WHERE EXISTS (SELECT 1 FROM match_result_submissions WHERE match_id=? AND status='confirmed' AND decided_by=? AND decided_at=?)")
           .bind(submission.proposed_by,id,id,String(id),id,user.id,timestamp)
       ] : [
         db.prepare("UPDATE match_result_submissions SET status='disputed',decided_by=?,decided_at=?,dispute_reason=? WHERE match_id=? AND status='pending'")
