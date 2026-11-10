@@ -6,5 +6,6 @@ test('CROWN owner panel disables scheduling while a defense is already pending',
   const page = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
   expect(page).toContain('if(pending.length){crownChallengerSelect.disabled=true');
   expect(page).toContain('crownChallengeForm.querySelector(\'button[type="submit"]\').disabled=true');
+  expect(page).toContain('crownMatchSelect.disabled=!eligibleMatches.length||pending.length>0');
   expect(page).toContain('Сначала заверши её по подтверждённому результату или отмени');
 });
