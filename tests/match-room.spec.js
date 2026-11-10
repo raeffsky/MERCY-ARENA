@@ -86,3 +86,11 @@ test('referee result entry enforces the BO1, BO3 and BO5 map-win thresholds', ()
   expect(page).toContain('ПОБЕДЫ НА КАРТАХ A');
   expect(page).toContain('ПОБЕДЫ НА КАРТАХ B');
 });
+
+test('changing room ID, password or BO format clears stale team readiness', () => {
+  const api = source('functions/api/v1/match-room.js');
+  expect(api).toContain('const readinessReset = !!previousRoom');
+  expect(api).toContain('team_a_ready_at=CASE WHEN match_rooms.series_format<>excluded.series_format');
+  expect(api).toContain('team_b_ready_at=CASE WHEN match_rooms.series_format<>excluded.series_format');
+  expect(api).toContain('readiness_reset: readinessReset');
+});
