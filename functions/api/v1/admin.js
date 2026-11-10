@@ -137,6 +137,11 @@ export async function onRequestPost({ request, env }) {
       const after = enabled ? {tournament_id:tournamentId,user_id:userId,staff_role:staffRole} : null;
       if (JSON.stringify(before || null) !== JSON.stringify(after)) {
         await audit(env.DB,auth.user.id,enabled?"tournament_staff_granted":"tournament_staff_revoked","tournament_staff",tournamentId+":"+userId,before,after);
+        if (enabled && staffRole === "referee" && before?.staff_role !== "referee") {
+          const tournamentTitle = await env.DB.prepare("SELECT title FROM tournaments WHERE id=?").bind(tournamentId).first();
+          await env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'tournament',?)")
+            .bind(userId,"referee_assignment","Тебя назначили судьёй","Ты назначен судьёй турнира «"+(tournamentTitle?.title||"MERCY ARENA")+"». Открой судейский кабинет, чтобы увидеть свои матчи.","/referee.html",String(tournamentId)).run();
+        }
       }
       return json({data:{tournament_id:tournamentId,user_id:userId,staff_role:enabled?staffRole:null,enabled}});
     }
