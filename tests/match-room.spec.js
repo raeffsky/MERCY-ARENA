@@ -9,9 +9,10 @@ function source(file) {
 test('MERCY MATCH room access is limited to authenticated match participants and staff', () => {
   const api = source('functions/api/v1/match-room.js');
   expect(api).toContain('getSessionUser(request, env)');
-  expect(api).toContain('if (!access.canManage && !access.participant)');
+  expect(api).toContain('if (!access.canManage && !access.participant && !access.observer)');
   expect(api).toContain('MATCH_ACCESS_DENIED');
-  expect(api).toContain('user.roles.includes("judge")');
+  expect(api).toContain('const judge = staff?.staff_role === "referee"');
+  expect(api).toContain('const staff = await db.prepare("SELECT staff_role FROM tournament_staff');
   expect(api).toContain('String(match.organizer_id) === String(user.id)');
 });
 
@@ -53,6 +54,8 @@ test('MERCY MATCH page hides credentials and manager controls after a match is n
 test('assigned observers can read a match room without receiving management or readiness permissions', () => {
   const api = source('functions/api/v1/match-room.js');
   expect(api).toContain('const observer = staff?.staff_role === "observer"');
+  expect(api).toContain('const judge = staff?.staff_role === "referee"');
+  expect(api).toContain('canReady: captainA || captainB');
   expect(api).toContain('!access.observer');
   expect(api).toContain('canManage: owner || organizer || judge');
 });
