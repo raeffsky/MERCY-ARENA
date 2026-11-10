@@ -7,4 +7,5 @@ test('team capacity and captain transfer count only players whose current team_i
   expect(api).toContain('p.team_id=r.team_id');
   expect(api).toContain('p.team_id=tr.team_id');
   expect(api).toContain('roster_player.team_id=tr.team_id');
+  expect(api).toContain("p.profile_status='approved' AND p.archived_at IS NULL AND (p.team_id=?");
 });
