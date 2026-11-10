@@ -248,18 +248,21 @@ export async function onRequestPost({ request, env }) {
       const disputeReason = String(body.reason || "").trim().slice(0,500);
       if (action === "dispute_result" && disputeReason.length < 5) return fail("DISPUTE_REASON_REQUIRED","Опиши причину спора минимум пятью символами.");
       const nextStatus = action === "confirm_result" ? "confirmed" : "disputed";
-      const decisionWrites = [
-        db.prepare("UPDATE match_result_submissions SET status=?,decided_by=?,decided_at=?,dispute_reason=? WHERE match_id=? AND status='pending'")
-          .bind(nextStatus,user.id,timestamp,action === "dispute_result" ? disputeReason : null,id),
-        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,?,?,?,?)")
-          .bind(await createAuditEventId(db),user.id,action === "confirm_result" ? "match_result_confirmed_by_opponent" : "match_result_disputed","match",id,JSON.stringify({score_a:submission.score_a,score_b:submission.score_b,reason:disputeReason||null,status:nextStatus}))
+      const decisionWrites = action === "confirm_result" ? [
+        db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='judge_verified',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress') AND team_a_id IS NOT NULL AND team_b_id IS NOT NULL AND EXISTS (SELECT 1 FROM match_result_submissions s WHERE s.match_id=matches.id AND s.status='pending' AND s.score_a=? AND s.score_b=?)")
+          .bind(submission.score_a,submission.score_b,submission.winner_team_id,timestamp,timestamp,id,submission.score_a,submission.score_b),
+        db.prepare("UPDATE match_result_submissions SET status='confirmed',decided_by=?,decided_at=? WHERE match_id=? AND status='pending' AND EXISTS (SELECT 1 FROM matches m WHERE m.id=match_result_submissions.match_id AND m.status='completed' AND m.result_source='judge_verified' AND m.score_a=? AND m.score_b=?)")
+          .bind(user.id,timestamp,id,submission.score_a,submission.score_b),
+        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'match_result_confirmed_by_opponent','match',?,?)")
+          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({score_a:submission.score_a,score_b:submission.score_b,status:"confirmed"}))
+      ] : [
+        db.prepare("UPDATE match_result_submissions SET status='disputed',decided_by=?,decided_at=?,dispute_reason=? WHERE match_id=? AND status='pending'")
+          .bind(user.id,timestamp,disputeReason,id),
+        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'match_result_disputed','match',?,?)")
+          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({score_a:submission.score_a,score_b:submission.score_b,reason:disputeReason,status:"disputed"}))
       ];
-      if (action === "confirm_result") decisionWrites.push(
-        db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='judge_verified',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress') AND team_a_id IS NOT NULL AND team_b_id IS NOT NULL")
-          .bind(submission.score_a,submission.score_b,submission.winner_team_id,timestamp,timestamp,id)
-      );
       const decisionResults = await db.batch(decisionWrites);
-      if (!decisionResults[0]?.meta?.changes || (action === "confirm_result" && !decisionResults[2]?.meta?.changes))
+      if (!decisionResults[0]?.meta?.changes || (action === "confirm_result" && !decisionResults[1]?.meta?.changes))
         return fail("RESULT_DECISION_CONFLICT","Матч или результат уже изменился другим запросом. Организатору нужно проверить состояние.",409);
       if (action === "dispute_result") {
         const organizers = await db.prepare("SELECT user_id FROM tournament_staff WHERE tournament_id=? AND staff_role IN ('organizer','admin')").bind(match.tournament_id).all();
@@ -293,10 +296,10 @@ export async function onRequestPost({ request, env }) {
       const winner = scoreA>scoreB?match.team_a_id:match.team_b_id;
       if (!["scheduled","in_progress"].includes(match.status)) return fail("MATCH_NOT_PLAYABLE","Матч уже нельзя завершить обычным решением.",409);
       const writes = await db.batch([
-        db.prepare("UPDATE match_result_submissions SET status='confirmed',score_a=?,score_b=?,winner_team_id=?,decided_by=?,decided_at=?,dispute_reason=NULL WHERE match_id=? AND status='disputed'")
-          .bind(scoreA,scoreB,winner,user.id,timestamp,id),
-        db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='organizer_resolved',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress')")
+        db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='organizer_resolved',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress') AND EXISTS (SELECT 1 FROM match_result_submissions s WHERE s.match_id=matches.id AND s.status='disputed')")
           .bind(scoreA,scoreB,winner,timestamp,timestamp,id),
+        db.prepare("UPDATE match_result_submissions SET status='confirmed',score_a=?,score_b=?,winner_team_id=?,decided_by=?,decided_at=?,dispute_reason=NULL WHERE match_id=? AND status='disputed' AND EXISTS (SELECT 1 FROM matches m WHERE m.id=match_result_submissions.match_id AND m.status='completed' AND m.result_source='organizer_resolved' AND m.score_a=? AND m.score_b=?)")
+          .bind(scoreA,scoreB,winner,user.id,timestamp,id,scoreA,scoreB),
         db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'organizer_resolved_match_result','match',?,?,?)")
           .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:"disputed",score_a:submission.score_a,score_b:submission.score_b,reason:submission.dispute_reason}),JSON.stringify({status:"confirmed",score_a:scoreA,score_b:scoreB,winner_team_id:winner}))
       ]);
