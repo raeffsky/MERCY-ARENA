@@ -160,3 +160,13 @@ test('result confirmation and match completion are committed in one conditional 
   expect(api).toContain('const writes = await db.batch([');
   expect(api).toContain('RESULT_DECISION_CONFLICT');
 });
+
+test('organizer cabinet cannot bypass referee and opponent result confirmation', () => {
+  const organizer = source('functions/api/v1/organizer.js');
+  const page = source('index.html');
+  expect(organizer).toContain('MATCH_ROOM_REQUIRED');
+  expect(organizer).not.toContain("result_source='organizer_manual'");
+  expect(organizer).toContain('LEFT JOIN match_result_submissions rs ON rs.match_id=m.id');
+  expect(page).not.toContain('org-match-result');
+  expect(page).toContain('/match.html?id=');
+});
