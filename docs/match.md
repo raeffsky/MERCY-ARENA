@@ -41,4 +41,5 @@ After the check-in window closes, staff can mark a team as a no-show. A referee 
 - `pending`: referee submitted a score; only the captain of the opposing team can confirm or dispute it.
 - `confirmed`: the opposing captain confirmed the score; the match is completed and bracket progression runs.
 - `disputed`: the opposing captain supplied a reason; the organizer must resolve the dispute before the match can be completed.
+- Organizers can also resolve a still-pending submission if the opposing captain does not respond. The organizer must enter a note, and both team captains receive a notification.
 - A referee cannot overwrite a pending, confirmed or disputed submission. Corrections to finalized results remain an organizer/platform-owner operation with an audit trail.
