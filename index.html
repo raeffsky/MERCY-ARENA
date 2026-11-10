@@ -1822,7 +1822,7 @@ await loadCrown();
 if(key==='seasons'){var seasons=await apiList('seasons');var target=document.getElementById('seasonResults');if(target)target.innerHTML=seasons.length?seasons.map(function(item){return '<a class="season-list-card" href="#/season/'+encodeURIComponent(item.id)+'"><div><div class="kicker">MERCY CIRCUIT / СЕЗОН '+esc(item.season_number||'—')+'</div><h3>'+esc(item.title)+'</h3><p>'+esc(dateLabel(item.starts_at))+' · Открыть турниры сезона</p></div><iconify-icon icon="mdi:arrow-right" style="font-size:22px;color:var(--lime)"></iconify-icon></a>'}).join(''):'<div class="empty"><b>Сезоны ещё не запущены</b><p>После объявления первого сезона здесь появится его календарь и каталог турниров.</p></div>'}
 }catch(error){console.warn('MERCY ARENA API unavailable:',error.message)}
 }
-window.addEventListener('hashchange',route);route();refreshNotificationBadge();
+window.addEventListener('hashchange',route);route();refreshNotificationBadge();window.addEventListener('focus',refreshNotificationBadge);document.addEventListener('visibilitychange',function(){if(!document.hidden)refreshNotificationBadge()});window.setInterval(refreshNotificationBadge,60000);
 })();
 </script>
 </body></html>
