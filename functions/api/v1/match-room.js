@@ -152,8 +152,10 @@ export async function onRequestPost({ request, env }) {
       if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_READY", "Готовность можно сбрасывать только для запланированного или текущего матча.", 409);
       const side = String(body.side || "both");
       if (!["a", "b", "both"].includes(side)) return fail("INVALID_SIDE", "Некорректная сторона матча.");
-      if (side === "a" || side === "both") await db.prepare("UPDATE match_rooms SET team_a_ready_at=NULL,updated_at=? WHERE match_id=?").bind(timestamp, id).run();
-      if (side === "b" || side === "both") await db.prepare("UPDATE match_rooms SET team_b_ready_at=NULL,updated_at=? WHERE match_id=?").bind(timestamp, id).run();
+      const resetWrites = [];
+      if (side === "a" || side === "both") resetWrites.push(db.prepare("UPDATE match_rooms SET team_a_ready_at=NULL,updated_at=? WHERE match_id=?").bind(timestamp,id));
+      if (side === "b" || side === "both") resetWrites.push(db.prepare("UPDATE match_rooms SET team_b_ready_at=NULL,updated_at=? WHERE match_id=?").bind(timestamp,id));
+      if (resetWrites.length) await db.batch(resetWrites);
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
       await audit(db, user.id, "match_readiness_reset", id, { side });
       return json({ data: publicRoom(match, room, access) }, 200, { "Cache-Control": "no-store, private" });
