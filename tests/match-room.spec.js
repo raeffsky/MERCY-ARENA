@@ -49,3 +49,10 @@ test('MERCY MATCH page hides credentials and manager controls after a match is n
   expect(page).toContain("Данные игровой комнаты скрыты, поскольку матч больше не активен.");
   expect(page).toContain("!p.can_manage||!['scheduled','in_progress'].includes(m.status)");
 });
+
+test('assigned observers can read a match room without receiving management or readiness permissions', () => {
+  const api = source('functions/api/v1/match-room.js');
+  expect(api).toContain('const observer = staff?.staff_role === "observer"');
+  expect(api).toContain('!access.observer');
+  expect(api).toContain('canManage: owner || organizer || judge');
+});
