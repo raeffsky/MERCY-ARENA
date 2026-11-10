@@ -184,7 +184,7 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(admin).toContain('"organizer_id","max_teams"');
     expect(page).toContain("['organizer_id','Ответственный организатор','select',false,'organizers']");
     expect(page).toContain("opts==='organizers'?users.filter(function(u){return String(u.roles||'').split(',').includes('organizer')})");
-    expect(page).toContain("users=(tab==='players'||tab==='teams'||tab==='tournaments')?await request('users'):");
+    expect(page).toContain("users=tab==='tournaments'?await request('users'):");
   });
 
   test('organizer can retry bracket progression after an identical manual result was saved', () => {
