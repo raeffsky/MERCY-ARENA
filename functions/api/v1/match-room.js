@@ -85,7 +85,8 @@ export async function onRequestGet({ request, env }) {
   if (auth.response) return auth.response;
   try {
     const room = await auth.db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
-    return json({ data: publicRoom(auth.match, room, auth.access) }, 200, { "Cache-Control": "no-store, private" });
+    const submission = await auth.db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
+    return json({ data: publicRoom(auth.match, room, auth.access, submission) }, 200, { "Cache-Control": "no-store, private" });
   } catch (error) {
     console.error("MERCY MATCH room read failed:", error);
     return fail("MATCH_ROOM_READ_FAILED", "Не удалось загрузить игровую комнату.", 500);
@@ -130,8 +131,9 @@ export async function onRequestPost({ request, env }) {
         "room_published_at=excluded.room_published_at,judge_contact=excluded.judge_contact,instructions=excluded.instructions,updated_at=excluded.updated_at"
       ).bind(id, format, roomId || null, password || null, publishedAt, judge || null, instructions || null, user.id, timestamp, timestamp).run();
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+      const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
       await audit(db, user.id, "match_room_configured", id, { series_format: format, published: !!publishedAt, readiness_reset: readinessReset });
-      return json({ data: publicRoom(match, room, access) }, 200, { "Cache-Control": "no-store, private" });
+      return json({ data: publicRoom(match, room, access, submission) }, 200, { "Cache-Control": "no-store, private" });
     }
     if (action === "ready") {
       if (!access.canReady || !access.side) return fail("CAPTAIN_REQUIRED", "Готовность может подтвердить только капитан одной из команд.", 403);
@@ -150,8 +152,9 @@ export async function onRequestPost({ request, env }) {
       await db.prepare("UPDATE match_rooms SET " + column + "=COALESCE(" + column + ",?),updated_at=? WHERE match_id=?")
         .bind(timestamp, timestamp, id).run();
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+      const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
       await audit(db, user.id, "match_team_ready", id, { side: access.side });
-      return json({ data: publicRoom(match, room, access) }, 200, { "Cache-Control": "no-store, private" });
+      return json({ data: publicRoom(match, room, access, submission) }, 200, { "Cache-Control": "no-store, private" });
     }
     if (action === "reset_ready") {
       if (!access.canManage) return fail("MANAGER_REQUIRED", "Сбросить готовность может организатор, судья или администратор.", 403);
@@ -164,8 +167,9 @@ export async function onRequestPost({ request, env }) {
       if (side === "b" || side === "both") resetWrites.push(db.prepare("UPDATE match_rooms SET team_b_ready_at=NULL,updated_at=? WHERE match_id=?").bind(timestamp,id));
       if (resetWrites.length) await db.batch(resetWrites);
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+      const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
       await audit(db, user.id, "match_readiness_reset", id, { side });
-      return json({ data: publicRoom(match, room, access) }, 200, { "Cache-Control": "no-store, private" });
+      return json({ data: publicRoom(match, room, access, submission) }, 200, { "Cache-Control": "no-store, private" });
     }
     if (action === "forfeit_no_show") {
       if (!access.owner && !access.organizer && !access.judge) return fail("REFEREE_REQUIRED", "Техническое поражение может назначить только организатор или судья.", 403);
