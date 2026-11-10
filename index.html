@@ -973,6 +973,7 @@ th{background:var(--panel)!important}
 <a href="#/seasons" data-route="seasons"><iconify-icon icon="mdi:calendar-star-outline"></iconify-icon>Сезоны</a>
 <a href="#/my-profile" data-route="my-profile"><iconify-icon icon="mdi:account-circle-outline"></iconify-icon>Мой профиль</a>
 <a href="#/organizer" data-route="organizer" hidden><iconify-icon icon="mdi:shield-crown-outline"></iconify-icon>Кабинет организатора</a>
+<a href="/referee.html" data-route="referee" hidden><iconify-icon icon="mdi:gavel"></iconify-icon>Судейский кабинет</a>
 <a href="#/rules" data-route="rules"><iconify-icon icon="mdi:scale-balance"></iconify-icon>Правила</a>
 <a href="#/about" data-route="about"><iconify-icon icon="mdi:information-outline"></iconify-icon>О платформе</a>
 </nav></aside>
@@ -1151,12 +1152,15 @@ if(key==='scout')loadScoutPage();
 refreshOrganizerNav();
 }
 function refreshOrganizerNav(){
-var link=document.querySelector('[data-route="organizer"]');
-if(!link)return;
+var link=document.querySelector('[data-route="organizer"]'),refereeLink=document.querySelector('[data-route="referee"]');
+if(!link&&!refereeLink)return;
 fetch('/api/v1/me',{credentials:'same-origin',cache:'no-store'})
 .then(function(response){return response.json()})
-.then(function(me){link.hidden=!(me.is_owner||(me.roles||[]).includes('organizer')||me.has_organizer_access);})
-.catch(function(){link.hidden=true;});
+.then(function(me){
+if(link)link.hidden=!(me.is_owner||(me.roles||[]).includes('organizer')||me.has_organizer_access);
+if(refereeLink)refereeLink.hidden=!me.has_referee_access;
+})
+.catch(function(){if(link)link.hidden=true;if(refereeLink)refereeLink.hidden=true;});
 }
 function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]})}
 function dateLabel(value){if(!value)return 'Дата уточняется';var d=new Date(value);return Number.isNaN(d.getTime())?'Дата уточняется':new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short'}).format(d)}
