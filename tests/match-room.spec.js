@@ -249,7 +249,7 @@ test('opposing captain confirms the referee result and sees the finalized state'
         can_manage: false, can_ready: false, can_verify_result: false,
         can_confirm_result: false, can_dispute_result: false, can_resolve_result: false, side: 'b'
       }
-    }) } } });
+    }) } });
   });
   await page.goto('/match.html?id=42');
   await expect(page.locator('#resultReviewActions')).toBeVisible();
