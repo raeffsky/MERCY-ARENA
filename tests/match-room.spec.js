@@ -73,11 +73,11 @@ test('assigned referees can verify a match result and advance the tournament bra
   const page = source('match.html');
   expect(api).toContain('action === "verify_result"');
   expect(api).toContain("result_source='judge_verified'");
-  expect(api).toContain('advanceWinner(db,id,winner)');
-  expect(api).toContain('judge_match_result_verified');
-  expect(api).toContain('can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && (matchActive || (match.status === "completed" && !!match.result_verified_at))');
-  expect(api).toContain('progression_retried: true');
-  expect(page).toContain('ПОВТОРИТЬ ПРОДВИЖЕНИЕ ПО СЕТКЕ');
+  expect(api).toContain('advanceWinner(db,id,submission.winner_team_id)');
+  expect(api).toContain('judge_match_result_submitted');
+  expect(api).toContain('can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && matchActive');
+  expect(api).toContain('action === "confirm_result" || action === "dispute_result"');
+  expect(page).toContain('ОТПРАВИТЬ НА ПОДТВЕРЖДЕНИЕ');
   expect(page).toContain('id="judgePanel"');
   expect(page).toContain("action:'verify_result'");
 });
