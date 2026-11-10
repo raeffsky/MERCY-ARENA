@@ -18,8 +18,8 @@ MERCY MATCH is the private operations room for a scheduled MLBB match. It coordi
 2. The credentials stay hidden from participants until the staff member publishes them.
 3. Captains confirm readiness for their own teams.
 4. Staff can reset readiness if the match is delayed or a team must reconnect.
-5. After the game, a referee or organizer verifies the score. The score is the number of maps won: BO1 requires 1 win, BO3 requires 2, and BO5 requires 3. The winner is advanced through the tournament bracket.
-6. If result saving succeeds but bracket progression fails, staff can safely retry the same verified score.
+5. After the game, the assigned referee submits the score. The score is the number of maps won: BO1 requires 1 win, BO3 requires 2, and BO5 requires 3. The opposing team's captain must confirm the submitted score before the match is finalized and the winner advances through the bracket. The captain may dispute the result with a required reason; the dispute is sent to the tournament organizer.
+6. An organizer resolves disputed results by recording the final score. Every submission, confirmation, dispute and organizer resolution is written to the audit log. If finalization succeeds but bracket progression fails, the organizer can retry progression without changing the verified result.
 
 Room credentials and readiness controls are available only while the tournament is published and the match is scheduled or in progress. Credentials are hidden after the match is no longer active.
 
@@ -34,3 +34,10 @@ When `checkin_required` is enabled, each approved team must be checked in by its
 Check-in records are stored per tournament and team, with actor, timestamp and audit history. The match room refuses a captain's readiness confirmation until their team is checked in or excused.
 
 After the check-in window closes, staff can mark a team as a no-show. A referee can award a technical forfeit only when the opponent is checked in or excused; the forfeit is recorded as a verified result and advances the present team automatically. If both teams are absent, the system does not guess a winner.
+
+## Result confirmation states
+
+- `pending`: referee submitted a score; only the captain of the opposing team can confirm or dispute it.
+- `confirmed`: the opposing captain confirmed the score; the match is completed and bracket progression runs.
+- `disputed`: the opposing captain supplied a reason; the organizer must resolve the dispute before the match can be completed.
+- A referee cannot overwrite a pending, confirmed or disputed submission. Corrections to finalized results remain an organizer/platform-owner operation with an audit trail.
