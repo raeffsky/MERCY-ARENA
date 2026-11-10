@@ -72,6 +72,12 @@ export async function onRequestGet({ request, env }) {
       ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END,r.submitted_at DESC LIMIT 200`).all();
     return json({ data: results || [] });
   }
+  if (resource === "tournament_staff") {
+    const tournamentId = String(new URL(request.url).searchParams.get("tournament_id") || "").trim();
+    if (!/^\\d+$/.test(tournamentId)) return bad("Укажи корректный ID турнира.");
+    const { results } = await env.DB.prepare("SELECT s.tournament_id,s.user_id,s.staff_role,s.granted_at,u.email,u.display_name FROM tournament_staff s JOIN users u ON u.id=s.user_id WHERE s.tournament_id=? ORDER BY CASE s.staff_role WHEN 'admin' THEN 0 WHEN 'organizer' THEN 1 WHEN 'referee' THEN 2 ELSE 3 END,u.email COLLATE NOCASE").bind(tournamentId).all();
+    return json({ data: results || [] });
+  }
   if (resource === "users") {
     const { results } = await env.DB.prepare("SELECT u.id,u.email,u.display_name,COALESCE(GROUP_CONCAT(ur.role,','),'') AS roles FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id GROUP BY u.id ORDER BY u.email COLLATE NOCASE LIMIT 200").all();
     return json({ data: results || [] });
@@ -111,6 +117,29 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return bad("Некорректный JSON."); }
   const { resource, action = "create", id, data = {} } = body || {};
+    if (resource === "tournament_staff" && action === "set") {
+      const tournamentId = String(data.tournament_id ?? "").trim(), userId = String(data.user_id ?? "").trim();
+      const enabled = data.enabled, staffRole = String(data.staff_role || "");
+      if (!tournamentId || !/^\\d+$/.test(tournamentId) || !userId) return bad("Укажи турнир и аккаунт.");
+      if (typeof enabled !== "boolean") return bad("Укажи, нужно ли выдать или отозвать доступ.");
+      if (enabled && !["organizer","admin","referee","observer"].includes(staffRole)) return bad("Некорректная роль персонала турнира.");
+      const tournament = await env.DB.prepare("SELECT id FROM tournaments WHERE id=? LIMIT 1").bind(tournamentId).first();
+      if (!tournament) return bad("Турнир не найден.",404);
+      const target = await env.DB.prepare("SELECT id,email FROM users WHERE id=? LIMIT 1").bind(userId).first();
+      if (!target) return bad("Аккаунт не найден.",404);
+      const before = await env.DB.prepare("SELECT tournament_id,user_id,staff_role FROM tournament_staff WHERE tournament_id=? AND user_id=?").bind(tournamentId,userId).first();
+      if (enabled) {
+        await env.DB.prepare("INSERT INTO tournament_staff (tournament_id,user_id,staff_role,granted_by) VALUES (?,?,?,?) ON CONFLICT(tournament_id,user_id) DO UPDATE SET staff_role=excluded.staff_role,granted_by=excluded.granted_by,granted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')")
+          .bind(tournamentId,userId,staffRole,auth.user.id).run();
+      } else if (before) {
+        await env.DB.prepare("DELETE FROM tournament_staff WHERE tournament_id=? AND user_id=?").bind(tournamentId,userId).run();
+      }
+      const after = enabled ? {tournament_id:tournamentId,user_id:userId,staff_role:staffRole} : null;
+      if (JSON.stringify(before || null) !== JSON.stringify(after)) {
+        await audit(env.DB,auth.user.id,enabled?"tournament_staff_granted":"tournament_staff_revoked","tournament_staff",tournamentId+":"+userId,before,after);
+      }
+      return json({data:{tournament_id:tournamentId,user_id:userId,staff_role:enabled?staffRole:null,enabled}});
+    }
     if (resource === "users" && action === "set_organizer") {
       const userId = String(id ?? "").trim(), enabled = data.enabled;
       if (typeof enabled !== "boolean") return bad("Укажи, нужно ли выдать или отозвать роль организатора.");
