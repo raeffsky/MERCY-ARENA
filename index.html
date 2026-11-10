@@ -1768,6 +1768,7 @@ document.getElementById('crownAdminForms').innerHTML=(!current?'<form id="crownA
 var crownChallengeForm=document.getElementById('crownChallengeForm');
 if(crownChallengeForm){
 var crownChallengerSelect=crownChallengeForm.elements.challenger_team_id,crownMatchSelect=crownChallengeForm.elements.match_id;
+if(pending.length){crownChallengerSelect.disabled=true;crownMatchSelect.disabled=true;crownChallengeForm.querySelector('button[type="submit"]').disabled=true;crownChallengeForm.insertAdjacentHTML('beforebegin','<p class="muted">У чемпиона уже назначена защита. Сначала заверши её по подтверждённому результату или отмени, если матч не состоится.</p>')}
 function refreshCrownMatchChoices(){
 var challengerId=String(crownChallengerSelect.value||'');
 var eligibleMatches=challengerId?matches.filter(function(m){
