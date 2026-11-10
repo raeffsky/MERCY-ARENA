@@ -36,7 +36,7 @@ export async function onRequestPost({ request, env }) {
     if (!teamId || !nextPlayerId) return json({ error: { code: "INVALID_TRANSFER", message: "Укажи команду и нового капитана." } }, 400);
     const team = await env.DB.prepare("SELECT id,captain_id FROM teams WHERE id=? AND captain_id=? AND status='active' AND archived_at IS NULL").bind(teamId, auth.user.id).first();
     if (!team) return json({ error: { code: "CAPTAIN_REQUIRED", message: "Передать капитанство может только текущий капитан." } }, 403);
-    const member = await env.DB.prepare("SELECT p.id,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id AND p.archived_at IS NULL WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL AND p.profile_status='approved' AND p.archived_at IS NULL").bind(teamId, nextPlayerId).first();
+    const member = await env.DB.prepare("SELECT p.id,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id AND p.team_id=r.team_id AND p.archived_at IS NULL WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL AND p.profile_status='approved' AND p.archived_at IS NULL").bind(teamId, nextPlayerId).first();
     if (!member) return json({ error: { code: "MEMBER_NOT_FOUND", message: "Новый капитан должен состоять в команде." } }, 404);
     const now = new Date().toISOString();
     const transferWrites = await env.DB.batch([
@@ -54,7 +54,7 @@ export async function onRequestPost({ request, env }) {
   const player = await env.DB.prepare("SELECT id,user_id,nickname,team_id,profile_status FROM players WHERE id=? AND archived_at IS NULL").bind(playerId).first();
   if (!player || player.profile_status !== "approved") return json({ error: { code: "PLAYER_NOT_AVAILABLE", message: "Игрок не найден или профиль не подтверждён." } }, 404);
   if (player.team_id) return json({ error: { code: "PLAYER_IN_TEAM", message: "Этот игрок уже состоит в команде." } }, 409);
-  const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster tr JOIN players p ON p.id=tr.player_id AND p.profile_status='approved' AND p.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL").bind(teamId).first();
+  const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster tr JOIN players p ON p.id=tr.player_id AND p.team_id=tr.team_id AND p.profile_status='approved' AND p.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL").bind(teamId).first();
   if ((count?.total || 0) >= 7) return json({ error: { code: "ROSTER_FULL", message: "В составе уже 7 игроков." } }, 409);
   const old = await env.DB.prepare("SELECT id,status FROM team_invites WHERE team_id=? AND player_id=?").bind(teamId, playerId).first();
   if (old?.status === "pending" || old?.status === "accepted") return json({ error: { code: "INVITE_EXISTS", message: "Приглашение уже существует." } }, 409);
@@ -98,13 +98,13 @@ export async function onRequestPut({ request, env }) {
     return json({ data: { status: "declined" } });
   }
   if (player.team_id) return json({ error: { code: "ALREADY_IN_TEAM", message: "Ты уже состоишь в команде." } }, 409);
-  const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster tr JOIN players p ON p.id=tr.player_id AND p.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL").bind(invite.team_id).first();
+  const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM team_roster tr JOIN players p ON p.id=tr.player_id AND p.team_id=tr.team_id AND p.profile_status='approved' AND p.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL").bind(invite.team_id).first();
   if ((count?.total || 0) >= 7) return json({ error: { code: "ROSTER_FULL", message: "В составе больше нет свободных мест." } }, 409);
   // Enforce the seven-player cap in the same atomic statement that claims the player.
   // Counting players.team_id also closes the race between parallel invite acceptances,
   // before their team_roster rows are written.
   const claimed = await env.DB.prepare(
-    "UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL AND profile_status='approved' AND archived_at IS NULL AND EXISTS (SELECT 1 FROM teams WHERE id=? AND status='active' AND archived_at IS NULL) AND (SELECT COUNT(DISTINCT p.id) FROM players p WHERE p.archived_at IS NULL AND (p.team_id=? OR p.id IN (SELECT tr.player_id FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id AND roster_player.profile_status='approved' AND roster_player.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL)))<7"
+    "UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL AND profile_status='approved' AND archived_at IS NULL AND EXISTS (SELECT 1 FROM teams WHERE id=? AND status='active' AND archived_at IS NULL) AND (SELECT COUNT(DISTINCT p.id) FROM players p WHERE p.archived_at IS NULL AND (p.team_id=? OR p.id IN (SELECT tr.player_id FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id AND roster_player.team_id=tr.team_id AND roster_player.profile_status='approved' AND roster_player.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL)))<7"
   ).bind(invite.team_id, now, player.id, invite.team_id, invite.team_id, invite.team_id).run();
   if (!claimed.meta?.changes) {
     const current = await env.DB.prepare("SELECT team_id,profile_status,archived_at FROM players WHERE id=?").bind(player.id).first();
@@ -145,7 +145,7 @@ export async function onRequestDelete({ request, env }) {
   if (!teamId || !playerId) return json({ error: { code: "INVALID_MEMBER", message: "Укажи команду и игрока." } }, 400);
   const team = await env.DB.prepare("SELECT id,captain_id,name FROM teams WHERE id=? AND status='active' AND archived_at IS NULL").bind(teamId).first();
   if (!team) return json({ error: { code: "TEAM_NOT_FOUND", message: "Команда не найдена." } }, 404);
-  const member = await env.DB.prepare("SELECT r.roster_role,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id AND p.archived_at IS NULL WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL").bind(teamId, playerId).first();
+  const member = await env.DB.prepare("SELECT r.roster_role,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id AND p.team_id=r.team_id AND p.archived_at IS NULL WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL").bind(teamId, playerId).first();
   if (!member) return json({ error: { code: "MEMBER_NOT_FOUND", message: "Игрок не состоит в этой команде." } }, 404);
   const isCaptain = String(team.captain_id) === String(auth.user.id);
   const isSelf = String(member.user_id) === String(auth.user.id);
