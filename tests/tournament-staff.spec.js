@@ -61,3 +61,21 @@ test('assigned referees receive a private dashboard containing only their tourna
   expect(navigation).toContain('data-route="referee"');
   expect(navigation).toContain('if(refereeLink)refereeLink.hidden=!me.has_referee_access');
 });
+
+test('referee dashboard lists assigned matches and filters pending confirmations', async ({ page }) => {
+  await page.route('**/api/v1/referee', route => route.fulfill({ json: { data: [
+    { id: 41, tournament_title: 'MERCY Cup', bracket: 'main', round_number: 1, status: 'in_progress',
+      team_a_name: 'Alpha', team_b_name: 'Bravo', series_format: 'BO3', result_submission_status: 'pending',
+      proposed_score_a: 2, proposed_score_b: 1, scheduled_at: '2026-11-10T12:00:00Z' },
+    { id: 42, tournament_title: 'MERCY Cup', bracket: 'main', round_number: 2, status: 'completed',
+      team_a_name: 'Charlie', team_b_name: 'Delta', series_format: 'BO3', result_submission_status: 'confirmed',
+      score_a: 2, score_b: 0, scheduled_at: '2026-11-10T14:00:00Z' }
+  ] } }));
+  await page.goto('/referee.html');
+  await expect(page.locator('#matches .match')).toHaveCount(2);
+  await expect(page.locator('#matches')).toContainText('Alpha');
+  await expect(page.locator('#matches a[href="/match.html?id=41"]')).toBeVisible();
+  await page.locator('#statusFilter').selectOption('pending');
+  await expect(page.locator('#matches .match')).toHaveCount(1);
+  await expect(page.locator('#matches')).toContainText('ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ');
+});
