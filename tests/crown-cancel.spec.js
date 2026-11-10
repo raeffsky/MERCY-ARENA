@@ -12,6 +12,8 @@ test('only the platform owner can cancel an unresolved scheduled MERCY CROWN def
   const cancelBlock = api.slice(api.indexOf('action === "cancel_challenge"'), api.indexOf('action === "resolve_challenge"'));
   expect(cancelBlock).toContain('/^\\d+$/');
   expect(api).toContain("status='cancelled',decided_at=? WHERE id=? AND status='scheduled'");
+  expect(api).toContain("m.status!='completed'");
+  expect(api).toContain('CROWN_MATCH_COMPLETED');
   expect(api).toContain("'mercy_crown_challenge_cancelled'");
   expect(api).toContain('CHALLENGE_NOT_OPEN');
 });
