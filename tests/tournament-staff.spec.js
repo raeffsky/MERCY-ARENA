@@ -36,3 +36,11 @@ test('admin panel exposes tournament staff assignment and revocation controls', 
   expect(page).toContain('data-remove-tournament-staff');
   expect(page).toContain('Судья / referee');
 });
+
+test('assigned staff can manage only their tournament and cannot create unrelated tournaments', () => {
+  const organizer = source('functions/api/v1/organizer.js');
+  expect(organizer).toContain('STAFF_CANNOT_CREATE_TOURNAMENT');
+  expect(organizer).toContain("s.staff_role IN ('organizer','admin')");
+  expect(organizer).toContain('ownedTournament(env.DB,before.tournament_id,auth.user,auth.owner)');
+  expect(organizer).toContain('ownedTournament(env.DB,match.tournament_id,auth.user,auth.owner)');
+});
