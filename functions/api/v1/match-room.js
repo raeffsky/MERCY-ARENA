@@ -15,7 +15,7 @@ async function loadMatch(db, id) {
   return db.prepare(
     "SELECT m.id,m.tournament_id,m.round_number,m.bracket,m.match_number,m.scheduled_at,m.status," +
     "m.team_a_id,m.team_b_id,m.score_a,m.score_b,m.winner_team_id,m.result_source,m.result_verified_at," +
-    "ta.name AS team_a_name,tb.name AS team_b_name,t.organizer_id,t.status AS tournament_status,t.published_at AS tournament_published_at,t.title AS tournament_title " +
+    "ta.name AS team_a_name,tb.name AS team_b_name,t.organizer_id,t.status AS tournament_status,t.published_at AS tournament_published_at,t.checkin_required,t.title AS tournament_title " +
     "FROM matches m JOIN tournaments t ON t.id=m.tournament_id " +
     "LEFT JOIN teams ta ON ta.id=m.team_a_id LEFT JOIN teams tb ON tb.id=m.team_b_id WHERE m.id=? LIMIT 1"
   ).bind(id).first();
@@ -135,6 +135,11 @@ export async function onRequestPost({ request, env }) {
       if (!access.canReady || !access.side) return fail("CAPTAIN_REQUIRED", "Готовность может подтвердить только капитан одной из команд.", 403);
       if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_PUBLISHED", "Готовность доступна только в опубликованном турнире.", 409);
       if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_READY", "Подтвердить готовность можно только для запланированного или текущего матча.", 409);
+      if (match.checkin_required) {
+        const teamId = access.side === "a" ? match.team_a_id : match.team_b_id;
+        const checkin = await db.prepare("SELECT status FROM tournament_checkins WHERE tournament_id=? AND team_id=?").bind(match.tournament_id,teamId).first();
+        if (!checkin || !["checked_in","excused"].includes(checkin.status)) return fail("TEAM_NOT_CHECKED_IN", "Сначала капитан должен подтвердить участие команды через check-in.", 409);
+      }
       const column = access.side === "a" ? "team_a_ready_at" : "team_b_ready_at";
       await db.prepare(
         "INSERT INTO match_rooms (match_id,created_by,created_at,updated_at) VALUES (?,?,?,?) " +
