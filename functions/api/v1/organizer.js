@@ -1,7 +1,6 @@
 import { createAuditEventId } from "./_lib/audit.js";
 import { json, databaseUnavailable, methodNotAllowed } from "./_lib/http.js";
 import { getSessionUser, isOwnerAccount, sameOrigin } from "./_lib/session-auth.js";
-import { advanceWinner } from "./_lib/match-progression.js";
 
 const FORMATS = new Set(["single_elimination","double_elimination","round_robin"]);
 const now = () => new Date().toISOString();
@@ -67,8 +66,8 @@ export async function onRequestGet({request,env}) {
     ).bind(...bind).all();
     const {results:matches}=await env.DB.prepare(
       "SELECT m.id,m.tournament_id,m.round_number,m.bracket,m.match_number,m.scheduled_at,m.status,m.team_a_id,m.team_b_id,m.score_a,m.score_b,m.winner_team_id,"+
-      "m.result_source,m.result_verified_at,t.title AS tournament_title,ta.name AS team_a_name,tb.name AS team_b_name "+
-      "FROM matches m JOIN tournaments t ON t.id=m.tournament_id LEFT JOIN teams ta ON ta.id=m.team_a_id LEFT JOIN teams tb ON tb.id=m.team_b_id WHERE "+scope+
+      "m.result_source,m.result_verified_at,rs.status AS result_submission_status,rs.score_a AS proposed_score_a,rs.score_b AS proposed_score_b,rs.dispute_reason,t.title AS tournament_title,ta.name AS team_a_name,tb.name AS team_b_name "+
+      "FROM matches m JOIN tournaments t ON t.id=m.tournament_id LEFT JOIN teams ta ON ta.id=m.team_a_id LEFT JOIN teams tb ON tb.id=m.team_b_id LEFT JOIN match_result_submissions rs ON rs.match_id=m.id WHERE "+scope+
       " ORDER BY m.scheduled_at IS NULL,m.scheduled_at,m.tournament_id,m.round_number,m.match_number LIMIT 300"
     ).bind(...bind).all();
     const {results:seasons}=await env.DB.prepare("SELECT id,title,season_number,status FROM seasons WHERE status IN ('planning','active') ORDER BY season_number DESC,id DESC LIMIT 100").all();
@@ -269,44 +268,7 @@ export async function onRequestPost({request,env}) {
       return json({data:after});
     }
     if(action==="submit_result"){
-      const id=String(body.id||"").trim(),scoreA=Number(data.score_a),scoreB=Number(data.score_b);
-      if(!id||!Number.isSafeInteger(scoreA)||!Number.isSafeInteger(scoreB)||scoreA<0||scoreB<0||scoreA===scoreB)
-        return fail("INVALID_RESULT","Укажи два разных целых счёта от нуля.");
-      const match=await env.DB.prepare(
-        "SELECT m.*,t.organizer_id,t.title AS tournament_title,t.status AS tournament_status FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=?"
-      ).bind(id).first();
-      if(!match||!(await ownedTournament(env.DB,match.tournament_id,auth.user,auth.owner)))return fail("MATCH_NOT_FOUND","Матч не найден или недоступен.",404);
-      if(!["published","active"].includes(match.tournament_status))return fail("TOURNAMENT_NOT_ACTIVE","Результат можно внести только в опубликованном или активном турнире.",409);
-      if(match.team_a_id==null||match.team_b_id==null)return fail("MATCH_NOT_PLAYABLE","Матч не готов к внесению результата.",409);
-      const winner=scoreA>scoreB?match.team_a_id:match.team_b_id;
-      if(match.status==="completed"&&match.result_verified_at&&match.result_source==="organizer_manual"&&
-          Number(match.score_a)===scoreA&&Number(match.score_b)===scoreB&&String(match.winner_team_id)===String(winner)){
-        try{
-          const progression=await advanceWinner(env.DB,id,winner);
-          return json({data:match,progression,result_already_saved:true,progression_retried:true});
-        }catch(error){
-          console.error("Organizer match progression retry failed:",error);
-          return json({error:{code:"RESULT_SAVED_PROGRESSION_PENDING",message:"Результат уже сохранён. Продвижение победителя пока не удалось завершить, повтори попытку позже."},data:match,result_saved:true},503);
-        }
-      }
-      const roomConfig=await env.DB.prepare("SELECT series_format FROM match_rooms WHERE match_id=?").bind(id).first();
-      const targetWins=({BO1:1,BO3:2,BO5:3})[roomConfig?.series_format||"BO1"]||1;
-      if(Math.max(scoreA,scoreB)!==targetWins)return fail("SERIES_NOT_FINISHED","Победитель серии должен набрать "+targetWins+" побед"+(targetWins===1?"у":"ы")+" на картах.",409);
-      if(!["scheduled","in_progress"].includes(match.status))return fail("MATCH_NOT_PLAYABLE","Матч уже завершён или не готов к внесению результата.",409);
-      const verifiedAt=now();
-      const write=await env.DB.prepare(
-        "UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='organizer_manual',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress')"
-      ).bind(scoreA,scoreB,winner,verifiedAt,verifiedAt,id).run();
-      if(!write.meta?.changes)return fail("RESULT_ALREADY_SAVED","Результат уже сохранён другим запросом.",409);
-      const after=await env.DB.prepare("SELECT * FROM matches WHERE id=?").bind(id).first();
-      await audit(env.DB,auth.user.id,"organizer_match_result_submitted","match",id,match,after);
-      try{
-        const progression=await advanceWinner(env.DB,id,winner);
-        return json({data:after,progression});
-      }catch(error){
-        console.error("Organizer match progression failed:",error);
-        return json({error:{code:"RESULT_SAVED_PROGRESSION_PENDING",message:"Результат сохранён, но продвижение победителя не завершилось. Владелец платформы увидит ошибку в журнале."},data:after,result_saved:true},503);
-      }
+      return fail("MATCH_ROOM_REQUIRED","Результат матча подаёт назначенный судья в комнате матча. Капитан команды-соперника подтверждает счёт, а спор рассматривает организатор.",409);
     }
     return fail("UNKNOWN_ACTION","Неизвестное действие.");
   }catch(error){
