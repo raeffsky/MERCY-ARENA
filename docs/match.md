@@ -4,6 +4,7 @@ MERCY MATCH is the private operations room for a scheduled MLBB match. It coordi
 
 ## Access
 
+- Assigned referees can open the private Referee Dashboard at `/referee.html`; it lists only matches from tournaments where they hold the `referee` staff role.
 - Players with an approved profile and active membership in either match team can read the room.
 - The team captain can confirm readiness for their own side.
 - The tournament organizer and assigned tournament staff with the `organizer` or `admin` role can configure the room and reset readiness.
