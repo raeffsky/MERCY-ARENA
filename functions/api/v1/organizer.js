@@ -88,6 +88,7 @@ export async function onRequestPost({request,env}) {
   const data=body?.data&&typeof body.data==="object"?body.data:{};
   try {
     if(action==="create_tournament"){
+      if(!auth.owner&&!auth.user.roles.includes("organizer"))return fail("STAFF_CANNOT_CREATE_TOURNAMENT","Назначенный персонал может управлять только своими турнирами.",403);
       const title=String(data.title||"").trim().slice(0,120);
       const format=String(data.format||"");
       if(title.length<3)return fail("INVALID_TITLE","Название турнира должно содержать минимум 3 символа.");
@@ -160,9 +161,9 @@ export async function onRequestPost({request,env}) {
         if(!season)return fail("SEASON_NOT_FOUND","Выбранный сезон не найден или уже закрыт.",409);
       }
       const writes=await env.DB.prepare(
-        "UPDATE tournaments SET title=?,description=?,region=?,format=?,max_teams=?,registration_open_at=?,registration_close_at=?,starts_at=?,ends_at=?,rules_url=?,poster_url=?,stream_url=?,prize_pool=?,season_id=?,updated_at=? WHERE id=? AND (?=1 OR organizer_id=?) AND status NOT IN ('completed','cancelled')"
+        "UPDATE tournaments SET title=?,description=?,region=?,format=?,max_teams=?,registration_open_at=?,registration_close_at=?,starts_at=?,ends_at=?,rules_url=?,poster_url=?,stream_url=?,prize_pool=?,season_id=?,updated_at=? WHERE id=? AND (?=1 OR organizer_id=? OR EXISTS (SELECT 1 FROM tournament_staff s WHERE s.tournament_id=tournaments.id AND s.user_id=? AND s.staff_role IN ('organizer','admin'))) AND status NOT IN ('completed','cancelled')"
       ).bind(next.title,next.description,next.region,next.format,next.max_teams,next.registration_open_at,next.registration_close_at,next.starts_at,next.ends_at,
-        next.rules_url,next.poster_url,next.stream_url,next.prize_pool,next.season_id,next.updated_at,id,auth.owner?1:0,auth.user.id).run();
+        next.rules_url,next.poster_url,next.stream_url,next.prize_pool,next.season_id,next.updated_at,id,auth.owner?1:0,auth.user.id,auth.user.id).run();
       if(!writes.meta?.changes)return fail("TOURNAMENT_UPDATE_CONFLICT","Турнир изменился или больше недоступен.",409);
       const after=await env.DB.prepare("SELECT * FROM tournaments WHERE id=?").bind(id).first();
       await audit(env.DB,auth.user.id,"organizer_tournament_updated","tournament",id,before,after);
@@ -177,8 +178,8 @@ export async function onRequestPost({request,env}) {
       if(!before.title||!FORMATS.has(before.format))return fail("TOURNAMENT_INCOMPLETE","Заполни название и формат турнира.");
       const dates=validateDates(before);
       const publishedAt=now();
-      const write=await env.DB.prepare("UPDATE tournaments SET status='published',published_at=?,updated_at=? WHERE id=? AND status='draft' AND (?=1 OR organizer_id=?)")
-        .bind(publishedAt,publishedAt,id,auth.owner?1:0,auth.user.id).run();
+      const write=await env.DB.prepare("UPDATE tournaments SET status='published',published_at=?,updated_at=? WHERE id=? AND status='draft' AND (?=1 OR organizer_id=? OR EXISTS (SELECT 1 FROM tournament_staff s WHERE s.tournament_id=tournaments.id AND s.user_id=? AND s.staff_role IN ('organizer','admin')))")
+        .bind(publishedAt,publishedAt,id,auth.owner?1:0,auth.user.id,auth.user.id).run();
       if(!write.meta?.changes)return fail("TOURNAMENT_PUBLISH_CONFLICT","Турнир уже изменился.",409);
       const after=await env.DB.prepare("SELECT * FROM tournaments WHERE id=?").bind(id).first();
       await audit(env.DB,auth.user.id,"organizer_tournament_published","tournament",id,before,after);
@@ -191,7 +192,7 @@ export async function onRequestPost({request,env}) {
         "SELECT r.*,t.status AS tournament_status,t.max_teams,t.organizer_id,tm.status AS team_status,tm.archived_at AS team_archived_at "+
         "FROM tournament_registrations r JOIN tournaments t ON t.id=r.tournament_id JOIN teams tm ON tm.id=r.team_id WHERE r.id=?"
       ).bind(id).first();
-      if(!before||(!auth.owner&&String(before.organizer_id)!==String(auth.user.id)))return fail("APPLICATION_NOT_FOUND","Заявка не найдена или недоступна.",404);
+      if(!before||!(await ownedTournament(env.DB,before.tournament_id,auth.user,auth.owner)))return fail("APPLICATION_NOT_FOUND","Заявка не найдена или недоступна.",404);
       if(before.status!=="pending")return fail("APPLICATION_REVIEWED","Заявка уже рассмотрена.",409);
       if(status==="approved"&&(!["published","active"].includes(before.tournament_status)||before.team_status!=="active"||before.team_archived_at!=null))
         return fail("APPLICATION_NOT_ELIGIBLE","Нельзя одобрить заявку: турнир или команда закрыты.",409);
@@ -222,7 +223,7 @@ export async function onRequestPost({request,env}) {
       const match=await env.DB.prepare(
         "SELECT m.*,t.organizer_id,t.status AS tournament_status FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=?"
       ).bind(id).first();
-      if(!match||(!auth.owner&&String(match.organizer_id)!==String(auth.user.id)))return fail("MATCH_NOT_FOUND","Матч не найден или недоступен.",404);
+      if(!match||!(await ownedTournament(env.DB,match.tournament_id,auth.user,auth.owner)))return fail("MATCH_NOT_FOUND","Матч не найден или недоступен.",404);
       if(match.status==="completed")return fail("MATCH_COMPLETED","Завершённый матч нельзя изменить. Для исправления результата обратись к владельцу платформы.",409);
       if(!["published","active"].includes(match.tournament_status))return fail("TOURNAMENT_NOT_ACTIVE","Управлять матчами можно только в опубликованном или активном турнире.",409);
       const status=String(data.status||match.status);
@@ -243,7 +244,7 @@ export async function onRequestPost({request,env}) {
       const match=await env.DB.prepare(
         "SELECT m.*,t.organizer_id,t.title AS tournament_title,t.status AS tournament_status FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=?"
       ).bind(id).first();
-      if(!match||(!auth.owner&&String(match.organizer_id)!==String(auth.user.id)))return fail("MATCH_NOT_FOUND","Матч не найден или недоступен.",404);
+      if(!match||!(await ownedTournament(env.DB,match.tournament_id,auth.user,auth.owner)))return fail("MATCH_NOT_FOUND","Матч не найден или недоступен.",404);
       if(!["published","active"].includes(match.tournament_status))return fail("TOURNAMENT_NOT_ACTIVE","Результат можно внести только в опубликованном или активном турнире.",409);
       if(match.team_a_id==null||match.team_b_id==null)return fail("MATCH_NOT_PLAYABLE","Матч не готов к внесению результата.",409);
       const winner=scoreA>scoreB?match.team_a_id:match.team_b_id;
