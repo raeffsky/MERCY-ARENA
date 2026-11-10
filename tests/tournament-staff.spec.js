@@ -44,3 +44,18 @@ test('assigned staff can manage only their tournament and cannot create unrelate
   expect(organizer).toContain('ownedTournament(env.DB,before.tournament_id,auth.user,auth.owner)');
   expect(organizer).toContain('ownedTournament(env.DB,match.tournament_id,auth.user,auth.owner)');
 });
+
+test('assigned referees receive a private dashboard containing only their tournament matches', () => {
+  const me = source('functions/api/v1/me.js');
+  const api = source('functions/api/v1/referee.js');
+  const page = source('referee.html');
+  const navigation = source('index.html');
+  expect(me).toContain('has_referee_access: !!assignedReferee');
+  expect(api).toContain("s.user_id=? AND s.staff_role='referee'");
+  expect(api).toContain('LEFT JOIN match_result_submissions rs ON rs.match_id=m.id');
+  expect(api).toContain('"Cache-Control": "no-store, private"');
+  expect(page).toContain('/api/v1/referee');
+  expect(page).toContain('/match.html?id=');
+  expect(navigation).toContain('data-route="referee"');
+  expect(navigation).toContain('if(refereeLink)refereeLink.hidden=!me.has_referee_access');
+});
