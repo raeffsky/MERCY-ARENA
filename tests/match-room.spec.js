@@ -252,6 +252,7 @@ test('opposing captain confirms the referee result and sees the finalized state'
   });
   await page.goto('/match.html?id=42');
   await expect(page.locator('#resultReviewActions')).toBeVisible();
+  page.once('dialog', dialog => dialog.accept());
   await page.locator('#confirmResultButton').click();
   await expect(page.locator('#resultReviewText')).toContainText('РЕЗУЛЬТАТ ПОДТВЕРЖДЁН');
   expect(decision.action).toBe('confirm_result');
