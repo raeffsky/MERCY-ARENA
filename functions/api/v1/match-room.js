@@ -258,7 +258,7 @@ export async function onRequestPost({ request, env }) {
       if (action === "dispute_result") {
         const organizers = await db.prepare("SELECT user_id FROM tournament_staff WHERE tournament_id=? AND staff_role IN ('organizer','admin')").bind(match.tournament_id).all();
         const recipients = new Set((organizers.results||[]).map(row=>String(row.user_id)));
-        recipients.add(String(match.organizer_id));
+        if (match.organizer_id != null) recipients.add(String(match.organizer_id));
         disputeRecipients = [...recipients].filter(Boolean);
       }
       const decisionWrites = action === "confirm_result" ? [
