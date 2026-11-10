@@ -137,7 +137,7 @@ export async function onRequestPost({ request, env }) {
       if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_READY", "Подтвердить готовность можно только для запланированного или текущего матча.", 409);
       if (match.checkin_required) {
         const teamId = access.side === "a" ? match.team_a_id : match.team_b_id;
-        const checkin = await db.prepare("SELECT status FROM tournament_checkins WHERE tournament_id=? AND team_id=?").bind(match.tournament_id,teamId).first();
+        const checkin = await db.prepare("SELECT c.status FROM tournament_checkins c JOIN tournament_registrations r ON r.id=c.registration_id AND r.status='approved' WHERE c.tournament_id=? AND c.team_id=?").bind(match.tournament_id,teamId).first();
         if (!checkin || !["checked_in","excused"].includes(checkin.status)) return fail("TEAM_NOT_CHECKED_IN", "Сначала капитан должен подтвердить участие команды через check-in.", 409);
       }
       const column = access.side === "a" ? "team_a_ready_at" : "team_b_ready_at";
@@ -171,7 +171,7 @@ export async function onRequestPost({ request, env }) {
       if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_ACTIVE", "Техническое поражение доступно только в опубликованном турнире.", 409);
       const absentTeamId = String(body.team_id || "");
       if (![String(match.team_a_id),String(match.team_b_id)].includes(absentTeamId)) return fail("INVALID_FORFEIT_TEAM", "Команда не участвует в этом матче.");
-      const checkin = await db.prepare("SELECT status FROM tournament_checkins WHERE tournament_id=? AND team_id=?").bind(match.tournament_id,absentTeamId).first();
+      const checkin = await db.prepare("SELECT c.status FROM tournament_checkins c JOIN tournament_registrations r ON r.id=c.registration_id AND r.status='approved' WHERE c.tournament_id=? AND c.team_id=?").bind(match.tournament_id,absentTeamId).first();
       if (!checkin || checkin.status !== "no_show") return fail("NO_SHOW_NOT_CONFIRMED", "Сначала отметь команду как неявившуюся в check-in.", 409);
       const winner = absentTeamId === String(match.team_a_id) ? match.team_b_id : match.team_a_id;
       const roomConfig = await db.prepare("SELECT series_format FROM match_rooms WHERE match_id=?").bind(id).first();
