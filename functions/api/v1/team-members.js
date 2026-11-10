@@ -105,13 +105,14 @@ export async function onRequestPut({ request, env }) {
     return json({ error: { code: "ROSTER_FULL", message: "В составе больше нет свободных мест." } }, 409);
   }
   try {
-    const accepted = await env.DB.prepare("UPDATE team_invites SET status='accepted',responded_at=? WHERE id=? AND player_id=? AND status='pending'").bind(now, inviteId, player.id).run();
-    if (!accepted.meta?.changes) throw new Error("INVITE_ALREADY_PROCESSED");
-    await env.DB.batch([
-      env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at,left_at) VALUES (?,?,'player',?,NULL) ON CONFLICT(team_id,player_id) DO UPDATE SET roster_role='player',joined_at=excluded.joined_at,left_at=NULL").bind(invite.team_id, player.id, now),
-      env.DB.prepare("UPDATE team_invites SET status='cancelled',responded_at=? WHERE player_id=? AND team_id!=? AND status='pending'").bind(now, player.id, invite.team_id),
-      env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'team_invite_accepted','Игрок принял приглашение',?,?, 'team',?)").bind(invite.captain_id,"Игрок "+player.nickname+" вступил в команду "+invite.team_name+".","#/teams",invite.team_id)
+    const writes = await env.DB.batch([
+      env.DB.prepare("UPDATE team_invites SET status='accepted',responded_at=? WHERE id=? AND player_id=? AND status='pending' AND EXISTS (SELECT 1 FROM teams WHERE id=team_invites.team_id AND status='active' AND archived_at IS NULL)").bind(now, inviteId, player.id),
+      env.DB.prepare("INSERT INTO team_roster (team_id,player_id,roster_role,joined_at,left_at) SELECT ?,?,'player',?,NULL WHERE EXISTS (SELECT 1 FROM teams WHERE id=? AND status='active' AND archived_at IS NULL) AND EXISTS (SELECT 1 FROM players WHERE id=? AND team_id=?) AND EXISTS (SELECT 1 FROM team_invites WHERE id=? AND player_id=? AND status='accepted' AND responded_at=?) ON CONFLICT(team_id,player_id) DO UPDATE SET roster_role='player',joined_at=excluded.joined_at,left_at=NULL").bind(invite.team_id, player.id, now, invite.team_id, player.id, invite.team_id, inviteId, player.id, now),
+      env.DB.prepare("UPDATE team_invites SET status='cancelled',responded_at=? WHERE player_id=? AND team_id!=? AND status='pending' AND EXISTS (SELECT 1 FROM team_roster WHERE team_id=? AND player_id=? AND left_at IS NULL)").bind(now, player.id, invite.team_id, invite.team_id, player.id),
+      env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) SELECT ?,'team_invite_accepted','Игрок принял приглашение',?,?, 'team',? WHERE EXISTS (SELECT 1 FROM team_roster WHERE team_id=? AND player_id=? AND left_at IS NULL) AND EXISTS (SELECT 1 FROM teams WHERE id=? AND status='active' AND archived_at IS NULL)").bind(invite.captain_id,"Игрок "+player.nickname+" вступил в команду "+invite.team_name+".","#/teams",invite.team_id,invite.team_id,player.id,invite.team_id)
     ]);
+    if (!writes[0]?.meta?.changes) throw new Error("INVITE_ALREADY_PROCESSED");
+    if (!writes[1]?.meta?.changes) throw new Error("TEAM_ARCHIVED_DURING_ACCEPT");
   } catch (error) {
     // Roll back both sides of the claim if roster creation or notification fails.
     // The timestamp guard prevents reverting an invite changed by another request.
