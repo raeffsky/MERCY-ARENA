@@ -225,11 +225,18 @@ export async function onRequestPost({ request, env }) {
     ));
     writes.push(
       env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'application_submitted','Заявка отправлена',?,?, 'tournament',?)")
-        .bind(auth.user.id, "Заявка команды " + team.name + " отправлена на рассмотрение.", "#/tournament/" + tournamentId, tournamentId),
-      ...(tournament.organizer_id && String(tournament.organizer_id) !== String(auth.user.id) ? [
-        env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'application_received','Новая заявка на турнир',?,?, 'tournament_registration',?)")
-          .bind(tournament.organizer_id, "Команда " + team.name + " подала заявку на турнир «" + tournament.title + "».", "#/organizer", registrationId)
-      ] : []),
+        .bind(auth.user.id, "Заявка команды " + team.name + " отправлена на рассмотрение.", "#/tournament/" + tournamentId, tournamentId)
+    );
+    const staffRecipients = await env.DB.prepare("SELECT user_id FROM tournament_staff WHERE tournament_id=? AND staff_role IN ('organizer','admin')")
+      .bind(tournamentId).all();
+    const recipientIds = new Set((staffRecipients.results || []).map((row) => String(row.user_id)));
+    if (tournament.organizer_id != null) recipientIds.add(String(tournament.organizer_id));
+    recipientIds.delete(String(auth.user.id));
+    for (const recipientId of recipientIds) {
+      writes.push(env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'application_received','Новая заявка на турнир',?,?, 'tournament_registration',?)")
+        .bind(recipientId, "Команда " + team.name + " подала заявку на турнир «" + tournament.title + "».", "#/organizer", registrationId));
+    }
+    writes.push(
       env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'tournament_application_submitted','tournament_registration',?,?)")
         .bind(await createAuditEventId(env.DB), auth.user.id, registrationId, JSON.stringify({ tournament_id: tournamentId, team_id: teamId, player_ids: requestedIds, selected_slot: selectedSlot || null }))
     );
