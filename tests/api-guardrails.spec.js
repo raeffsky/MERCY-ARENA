@@ -194,6 +194,15 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(admin).toContain("capacity_team.status='active' AND capacity_team.archived_at IS NULL");
   });
 
+  test('team archive is blocked while the team has active matches or holds/defends MERCY CROWN', () => {
+    const admin = source('functions/api/v1/admin.js');
+    expect(admin).toContain("AS active_matches");
+    expect(admin).toContain("AS active_reign");
+    expect(admin).toContain("AS active_challenges");
+    expect(admin).toContain("status IN ('scheduled','in_progress')");
+    expect(admin).toContain('Команду нельзя архивировать');
+  });
+
   test('admin archives entities without deleting history and restores them safely', () => {
     const admin = source('functions/api/v1/admin.js');
     const page = source('index.html');
