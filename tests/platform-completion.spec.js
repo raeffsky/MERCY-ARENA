@@ -211,3 +211,10 @@ test.describe('MERCY ARENA completion flows', () => {
     await expect(page.locator('#adminTableCount')).toContainText('1 из 2');
   });
 });
+
+test('unread notification badge refreshes on focus, tab visibility and periodically', () => {
+  const page = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
+  expect(page).toContain('window.addEventListener(\'focus\',refreshNotificationBadge)');
+  expect(page).toContain("document.addEventListener('visibilitychange'");
+  expect(page).toContain('window.setInterval(refreshNotificationBadge,60000)');
+});
