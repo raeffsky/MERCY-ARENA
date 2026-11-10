@@ -18,7 +18,7 @@ async function getRanking(db, seasonId) {
       (SELECT COUNT(*) FROM matches m JOIN tournaments mt ON mt.id=m.tournament_id
         WHERE mt.season_id=? AND m.status='completed' AND m.result_verified_at IS NOT NULL AND m.winner_team_id=t.id AND NOT EXISTS (SELECT 1 FROM circuit_qualifiers cq WHERE cq.tournament_id=m.tournament_id)) AS verified_wins
     FROM teams t
-    WHERE (EXISTS (SELECT 1 FROM circuit_point_transactions tx WHERE tx.team_id=t.id AND tx.season_id=?)
+    WHERE t.archived_at IS NULL AND (EXISTS (SELECT 1 FROM circuit_point_transactions tx WHERE tx.team_id=t.id AND tx.season_id=?)
         OR EXISTS (SELECT 1 FROM circuit_tournament_results r WHERE r.team_id=t.id AND r.season_id=? AND r.is_qualifier=0))
   `).bind(seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId,seasonId).all();
   const { results: matches } = await db.prepare(
