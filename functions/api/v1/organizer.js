@@ -35,19 +35,20 @@ async function authorize(request,env) {
   if(session.error)return {response:session.error};
   if(!session.user)return {response:fail("UNAUTHORIZED","Войди в аккаунт организатора.",401)};
   const owner=session.user.roles.includes("administrator")&&isOwnerAccount(session.user,env);
-  if(!owner&&!session.user.roles.includes("organizer"))return {response:fail("FORBIDDEN","Кабинет доступен только назначенным организаторам.",403)};
+  const assigned=await env.DB.prepare("SELECT 1 FROM tournament_staff WHERE user_id=? AND staff_role IN ('organizer','admin') LIMIT 1").bind(session.user.id).first().catch(()=>null);
+  if(!owner&&!session.user.roles.includes("organizer")&&!assigned)return {response:fail("FORBIDDEN","Кабинет доступен только назначенным организаторам.",403)};
   return {user:session.user,owner};
 }
 async function ownedTournament(db,id,user,owner) {
-  return db.prepare("SELECT * FROM tournaments WHERE id=? AND (?=1 OR organizer_id=?) LIMIT 1")
-    .bind(String(id),owner?1:0,user.id).first();
+  return db.prepare("SELECT t.* FROM tournaments t WHERE t.id=? AND (?=1 OR t.organizer_id=? OR EXISTS (SELECT 1 FROM tournament_staff s WHERE s.tournament_id=t.id AND s.user_id=? AND s.staff_role IN ('organizer','admin'))) LIMIT 1")
+    .bind(String(id),owner?1:0,user.id,user.id).first();
 }
 export async function onRequestGet({request,env}) {
   const auth=await authorize(request,env);
   if(auth.response)return auth.response;
   try {
-    const scope=auth.owner?"1=1":"t.organizer_id=?";
-    const bind=auth.owner?[]:[auth.user.id];
+    const scope=auth.owner?"1=1":"(t.organizer_id=? OR EXISTS (SELECT 1 FROM tournament_staff s WHERE s.tournament_id=t.id AND s.user_id=? AND s.staff_role IN ('organizer','admin')))";
+    const bind=auth.owner?[]:[auth.user.id,auth.user.id];
     const {results:tournaments}=await env.DB.prepare(
       "SELECT t.*,(SELECT COUNT(*) FROM tournament_registrations r WHERE r.tournament_id=t.id) AS applications_count,"+
       "(SELECT COUNT(*) FROM tournament_registrations r JOIN teams tm ON tm.id=r.team_id AND tm.status='active' AND tm.archived_at IS NULL WHERE r.tournament_id=t.id AND r.status='approved') AS approved_teams,"+
