@@ -83,6 +83,25 @@ test.describe('MERCY ARENA completion flows', () => {
     await expect(rows.first()).toContainText('ЗАВЕРШЁН');
   });
 
+  test('expired tournament registration is labeled closed in the public catalogue', async ({ page }) => {
+    await page.route('**/api/v1/tournaments', route => route.fulfill({ json: { data: [{
+      id: 782,
+      title: 'MERCY Expired Registration Cup',
+      format: 'single_elimination',
+      status: 'published',
+      registration_open_at: '2026-01-01T10:00:00Z',
+      registration_close_at: '2026-01-02T10:00:00Z',
+      starts_at: '2026-01-03T10:00:00Z',
+      max_teams: 8,
+      occupied_slots: 2
+    }] } }));
+    await page.goto('/#/tournaments');
+    const card = page.locator('.tournament-list-card');
+    await expect(card).toContainText('Регистрация закрыта');
+    await expect(card).not.toContainText('Регистрация открыта');
+    await expect(card.locator('.tournament-list-apply')).toHaveCount(0);
+  });
+
   test('match center uses bracket progression order and readable empty team slots', async ({ page }) => {
     await page.route('**/api/v1/tournaments', route => route.fulfill({ json: { data: [
       { id: 55, title: 'MERCY Test Cup', format: 'double_elimination', status: 'active' }
