@@ -16,7 +16,7 @@ export async function onRequestGet({ env }) {
       "SELECT r.id,r.team_id,r.started_at,r.ended_at,r.defenses_count,t.name AS team_name,t.tag AS team_tag,t.logo_url AS team_logo FROM mercy_crown_reigns r JOIN teams t ON t.id=r.team_id ORDER BY r.started_at DESC,r.id DESC LIMIT 50"
     ).all();
     const { results: challenges } = await env.DB.prepare(
-      "SELECT c.id,c.reign_id,c.champion_team_id,c.challenger_team_id,c.match_id,c.status,c.winner_team_id,c.created_at,c.decided_at,champion.name AS champion_name,challenger.name AS challenger_name,winner.name AS winner_name,m.scheduled_at,m.score_a,m.score_b FROM mercy_crown_challenges c JOIN teams champion ON champion.id=c.champion_team_id JOIN teams challenger ON challenger.id=c.challenger_team_id LEFT JOIN teams winner ON winner.id=c.winner_team_id JOIN matches m ON m.id=c.match_id ORDER BY c.created_at DESC,c.id DESC LIMIT 50"
+      "SELECT c.id,c.reign_id,c.champion_team_id,c.challenger_team_id,c.match_id,c.status,c.winner_team_id,c.created_at,c.decided_at,champion.name AS champion_name,challenger.name AS challenger_name,winner.name AS winner_name,m.tournament_id,m.scheduled_at,m.score_a,m.score_b FROM mercy_crown_challenges c JOIN teams champion ON champion.id=c.champion_team_id JOIN teams challenger ON challenger.id=c.challenger_team_id LEFT JOIN teams winner ON winner.id=c.winner_team_id JOIN matches m ON m.id=c.match_id ORDER BY c.created_at DESC,c.id DESC LIMIT 50"
     ).all();
     return json({ current: current || null, history: history || [], challenges: challenges || [] });
   } catch (error) {
