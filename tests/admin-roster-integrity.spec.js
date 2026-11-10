@@ -9,5 +9,7 @@ test('generic admin editor cannot bypass team roster invariants by editing playe
   expect(page).not.toContain("['team_id','ID команды','number']");
   expect(page).toContain("players:[['user_id','Аккаунт пользователя'");
   expect(api).toContain('teams: { table: "teams", fields: ["name","tag","logo_url","region","status"] }');
+  expect(api).toContain('players: { table: "players", fields: ["game_id","nickname","role","region","profile_status"] }');
+  expect(page).not.toContain("['user_id','Аккаунт пользователя','select'");
   expect(page).not.toContain("['captain_id','Аккаунт капитана'");
 });
