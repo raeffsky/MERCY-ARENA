@@ -59,7 +59,7 @@ MERCY CIRCUIT рассчитывает места по завершённым т
 
 Auto Result Engine имеет защищённый HMAC webhook и provider-neutral Cloudflare relay. Это транспорт для доверенного поставщика результатов, а не источник данных: реальный провайдер MLBB пока не выбран и не подключён, поэтому автоматическое получение live-результатов не включено. См. [контракт webhook результатов](docs/results-webhook.md).
 
-Игровые комнаты, check-in, live-судейство и автоматическое получение результатов из клиента MLBB не реализованы. Backend: Cloudflare Pages Functions + Cloudflare D1. См. [контракт интеграции backend](docs/BACKEND-INTEGRATION.md).
+MERCY MATCH уже поддерживает приватную координацию Custom Room, готовность команд и подтверждение результата назначенным судьёй с продвижением по сетке. MERCY ARENA пока не создаёт Custom Room внутри клиента MLBB, не имеет отдельного турнирного check-in и полноценного арбитража спорных результатов. Автоматические результаты через webhook заработают после подключения реального провайдера MLBB. Backend: Cloudflare Pages Functions + Cloudflare D1. См. [контракт MERCY MATCH](docs/match.md), [контракт webhook результатов](docs/results-webhook.md) и [контракт интеграции backend](docs/BACKEND-INTEGRATION.md).
 
 ## Бренд
 
