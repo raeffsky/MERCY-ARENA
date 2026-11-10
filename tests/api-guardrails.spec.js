@@ -169,7 +169,8 @@ test.describe('MERCY ARENA API guardrails', () => {
     const organizer = source('functions/api/v1/organizer.js');
     expect(organizer).toContain('session.user.roles.includes("organizer")');
     expect(organizer).toContain('organizer_id=?');
-    expect(organizer).toContain('String(before.organizer_id)!==String(auth.user.id)');
+    expect(organizer).toContain('ownedTournament(env.DB,before.tournament_id,auth.user,auth.owner)');
+    expect(organizer).toContain("s.staff_role IN ('organizer','admin')");
     expect(organizer).toContain('sameOrigin(request,env)');
     expect(organizer).toContain("result_source='organizer_manual'");
     expect(organizer).toContain('advanceWinner(env.DB,id,winner)');
