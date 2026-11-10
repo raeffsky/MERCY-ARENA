@@ -59,10 +59,17 @@ export async function onRequestPost({ request, env }) {
   const old = await env.DB.prepare("SELECT id,status FROM team_invites WHERE team_id=? AND player_id=?").bind(teamId, playerId).first();
   if (old?.status === "pending" || old?.status === "accepted") return json({ error: { code: "INVITE_EXISTS", message: "Приглашение уже существует." } }, 409);
   const now = new Date().toISOString();
-  if (old) await env.DB.prepare("UPDATE team_invites SET status='pending',invited_by=?,created_at=?,responded_at=NULL WHERE id=?").bind(auth.user.id, now, old.id).run();
-  else await env.DB.prepare("INSERT INTO team_invites (team_id,player_id,invited_by,status,created_at) VALUES (?,?,?,'pending',?)").bind(teamId, playerId, auth.user.id, now).run();
-  await env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,'team_invite','Приглашение в команду',?,?, 'team',?)")
-    .bind(player.user_id,"Тебя пригласили в команду "+team.name+".","#/teams",teamId).run();
+  let inviteWrite;
+  if (old) {
+    inviteWrite = await env.DB.prepare("UPDATE team_invites SET status='pending',invited_by=?,created_at=?,responded_at=NULL WHERE id=? AND EXISTS (SELECT 1 FROM teams WHERE id=team_invites.team_id AND captain_id=? AND status='active' AND archived_at IS NULL) AND EXISTS (SELECT 1 FROM players WHERE id=team_invites.player_id AND profile_status='approved' AND archived_at IS NULL AND team_id IS NULL)")
+      .bind(auth.user.id, now, old.id, auth.user.id).run();
+  } else {
+    inviteWrite = await env.DB.prepare("INSERT INTO team_invites (team_id,player_id,invited_by,status,created_at) SELECT ?,?,?,'pending',? WHERE EXISTS (SELECT 1 FROM teams WHERE id=? AND captain_id=? AND status='active' AND archived_at IS NULL) AND EXISTS (SELECT 1 FROM players WHERE id=? AND profile_status='approved' AND archived_at IS NULL AND team_id IS NULL)")
+      .bind(teamId, playerId, auth.user.id, now, teamId, auth.user.id, playerId).run();
+  }
+  if (!inviteWrite.meta?.changes) return json({ error: { code: "TEAM_OR_PLAYER_CHANGED", message: "Команда или игрок изменились. Обнови страницу и попробуй снова." } }, 409);
+  await env.DB.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) SELECT ?,'team_invite','Приглашение в команду',?,?, 'team',? WHERE EXISTS (SELECT 1 FROM team_invites WHERE team_id=? AND player_id=? AND status='pending') AND EXISTS (SELECT 1 FROM teams WHERE id=? AND status='active' AND archived_at IS NULL)")
+    .bind(player.user_id,"Тебя пригласили в команду "+team.name+".","#/teams",teamId,teamId,playerId,teamId).run();
   return json({ data: { team_id: teamId, player_id: playerId, status: "pending" } }, 201);
 }
 
@@ -137,7 +144,7 @@ export async function onRequestDelete({ request, env }) {
   if (!teamId || !playerId) return json({ error: { code: "INVALID_MEMBER", message: "Укажи команду и игрока." } }, 400);
   const team = await env.DB.prepare("SELECT id,captain_id,name FROM teams WHERE id=? AND status='active' AND archived_at IS NULL").bind(teamId).first();
   if (!team) return json({ error: { code: "TEAM_NOT_FOUND", message: "Команда не найдена." } }, 404);
-  const member = await env.DB.prepare("SELECT r.roster_role,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL").bind(teamId, playerId).first();
+  const member = await env.DB.prepare("SELECT r.roster_role,p.user_id,p.nickname FROM team_roster r JOIN players p ON p.id=r.player_id AND p.archived_at IS NULL WHERE r.team_id=? AND r.player_id=? AND r.left_at IS NULL").bind(teamId, playerId).first();
   if (!member) return json({ error: { code: "MEMBER_NOT_FOUND", message: "Игрок не состоит в этой команде." } }, 404);
   const isCaptain = String(team.captain_id) === String(auth.user.id);
   const isSelf = String(member.user_id) === String(auth.user.id);
