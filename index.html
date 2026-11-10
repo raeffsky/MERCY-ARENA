@@ -1418,6 +1418,8 @@ return '<details class="org-edit-details"><summary>Настройки турни
 '<label class="admin-field">РЕГИОН<input class="field" name="region" value="'+esc(t.region||'')+'"></label>'+
 '<label class="admin-field">ЛИМИТ КОМАНД<input class="field" name="max_teams" type="number" min="2" max="32" value="'+esc(t.max_teams||'')+'"></label>'+
 dateField('registration_open_at','ОТКРЫТИЕ РЕГИСТРАЦИИ',t.registration_open_at)+dateField('registration_close_at','ЗАКРЫТИЕ РЕГИСТРАЦИИ',t.registration_close_at)+dateField('starts_at','НАЧАЛО ТУРНИРА',t.starts_at)+dateField('ends_at','ОКОНЧАНИЕ ТУРНИРА',t.ends_at)+
+'<label class="admin-field">ОБЯЗАТЕЛЬНЫЙ CHECK-IN<select class="field" name="checkin_required"><option value="0" '+(!Number(t.checkin_required)?'selected':'')+'>Нет</option><option value="1" '+(Number(t.checkin_required)?'selected':'')+'>Да</option></select></label>'+
+dateField('checkin_open_at','ОТКРЫТИЕ CHECK-IN',t.checkin_open_at)+dateField('checkin_close_at','ЗАКРЫТИЕ CHECK-IN',t.checkin_close_at)+
 '<label class="admin-field">ССЫЛКА НА ПОСТЕР<input class="field" name="poster_url" type="url" value="'+esc(t.poster_url||'')+'"></label>'+
 '<label class="admin-field">ССЫЛКА НА ПРАВИЛА<input class="field" name="rules_url" type="url" value="'+esc(t.rules_url||'')+'"></label>'+
 '<label class="admin-field">YOUTUBE ТРАНСЛЯЦИЯ<input class="field" name="stream_url" type="url" value="'+esc(t.stream_url||'')+'"></label>'+
