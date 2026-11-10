@@ -9,7 +9,7 @@ function source(file) {
 test('owner can grant and revoke tournament-specific staff roles with an audit record', () => {
   const admin = source('functions/api/v1/admin.js');
   expect(admin).toContain('resource === "tournament_staff" && action === "set"');
-  expect(admin).toContain('staff_role IN (\'organizer\',\'admin\',\'referee\',\'observer\')');
+  expect(admin).toContain('["organizer","admin","referee","observer"].includes(staffRole)');
   expect(admin).toContain('ON CONFLICT(tournament_id,user_id) DO UPDATE SET staff_role=excluded.staff_role');
   expect(admin).toContain('tournament_staff_granted');
   expect(admin).toContain('tournament_staff_revoked');
