@@ -150,8 +150,8 @@ export async function onRequestPost({request,env}) {
       const checkinOpen=dateValue(fieldValue("checkin_open_at"),"открытие check-in");
       const checkinClose=dateValue(fieldValue("checkin_close_at"),"закрытие check-in");
       if(checkinOpen&&checkinClose&&Date.parse(checkinOpen)>Date.parse(checkinClose))return fail("INVALID_CHECKIN_WINDOW","Check-in не может закрываться раньше открытия.");
-      if((checkinOpen||checkinClose)&&!dates.starts_at)return fail("CHECKIN_START_REQUIRED","Для настраиваемого окна check-in сначала укажи время начала турнира.");
-      if(checkinRequired&&!dates.starts_at)return fail("CHECKIN_START_REQUIRED","Для обязательного check-in укажи время начала турнира.");
+      if((checkinOpen||checkinClose)&&!(checkinOpen&&checkinClose)&&!dates.starts_at)return fail("CHECKIN_WINDOW_INCOMPLETE","Укажи оба времени check-in или задай начало турнира для стандартного окна.");
+      if(checkinRequired&&!dates.starts_at&&!(checkinOpen&&checkinClose))return fail("CHECKIN_START_REQUIRED","Для обязательного check-in укажи время начала турнира или оба времени check-in.");
       if(!isHttpsUrl(data.poster_url??before.poster_url)||!isHttpsUrl(data.rules_url??before.rules_url))return fail("INVALID_URL","Постер и правила должны использовать HTTPS.");
       const stream=data.stream_url??before.stream_url;
       if(stream&&!/^https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(String(stream).trim()))return fail("INVALID_STREAM_URL","Для трансляции укажи HTTPS-ссылку YouTube.");
