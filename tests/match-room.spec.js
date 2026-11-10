@@ -143,6 +143,7 @@ test('judge results remain pending until the opposing captain confirms them', ()
   expect(api).toContain('INSERT INTO match_result_submissions');
   expect(api).toContain('action === "confirm_result" || action === "dispute_result"');
   expect(api).toContain('OPPONENT_CONFIRMATION_REQUIRED');
+  expect(api).toContain('OPPONENT_CAPTAIN_REQUIRED');
   expect(api).toContain('action === "resolve_result"');
   expect(api).toContain('advanceWinner(db,id,submission.winner_team_id)');
   expect(migration).toContain("status IN ('pending','confirmed','disputed')");
