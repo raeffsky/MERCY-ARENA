@@ -34,6 +34,7 @@ $('matchTime').textContent=m.scheduled_at?new Date(m.scheduled_at).toLocaleStrin
 $('matchStatus').textContent=({scheduled:'ЗАПЛАНИРОВАН',in_progress:'ИДЁТ',completed:'ЗАВЕРШЁН',postponed:'ПЕРЕНЕСЁН',cancelled:'ОТМЕНЁН'})[m.status]||m.status;
 $('format').textContent=r.series_format;$('matchPanel').hidden=false;$('roomPanel').hidden=false;$('readyPanel').hidden=false;
 $('unpublished').hidden=!!r.published;$('credentials').hidden=!r.published;
+if(!r.published)$('unpublished').textContent=['scheduled','in_progress'].includes(m.status)?'Организатор ещё не опубликовал ID и пароль комнаты. Они появятся здесь перед началом матча.':'Данные игровой комнаты скрыты, поскольку матч больше не активен.';
 $('roomId').textContent=r.room_id||'';$('roomPassword').textContent=r.room_password||'';
 $('judge').textContent=r.judge_contact?'СУДЬЯ / СВЯЗЬ: '+r.judge_contact:'Контакт судьи пока не указан';
 $('instructions').textContent=r.instructions||'';
@@ -41,7 +42,7 @@ $('readyTeamA').textContent=m.team_a_name||'Команда A';$('readyTeamB').te
 $('readyStateA').textContent=r.team_a_ready?'ГОТОВА ✓':'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ';$('readyStateB').textContent=r.team_b_ready?'ГОТОВА ✓':'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ';
 $('readyA').classList.toggle('done',r.team_a_ready);$('readyB').classList.toggle('done',r.team_b_ready);
 $('readyButton').hidden=!p.can_ready||r[p.side==='a'?'team_a_ready':'team_b_ready'];
-$('managePanel').hidden=!p.can_manage;
+$('managePanel').hidden=!p.can_manage||!['scheduled','in_progress'].includes(m.status);
 if(p.can_manage){var f=$('manageForm');f.elements.series_format.value=r.series_format;f.elements.room_id.value=r.room_id||'';f.elements.room_password.value=r.room_password||'';f.elements.judge_contact.value=r.judge_contact||'';f.elements.instructions.value=r.instructions||'';f.elements.publish.checked=r.published}
 message('Доступ подтверждён. Комната матча готова к координации.');
 }
