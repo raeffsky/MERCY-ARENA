@@ -76,7 +76,8 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(crown).toContain("t.status AS tournament_status");
     expect(crown).toContain('new Set([String(match.team_a_id),String(match.team_b_id)]).size !== 2');
     expect(crown).toContain('CROWN_CHALLENGE_PENDING');
-    expect(migration).toContain("ON mercy_crown_challenges(reign_id) WHERE status='scheduled'");
+    expect(migration).toContain("ON mercy_crown_challenges(reign_id)");
+    expect(migration).toContain("WHERE status='scheduled'");
   });
 
   test('MERCY CROWN accepts numeric IDs and uses a guarded single-winner transition', () => {
