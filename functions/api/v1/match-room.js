@@ -28,7 +28,7 @@ async function accessFor(db, user, match, env) {
   const observer = staff?.staff_role === "observer";
   const player = await db.prepare(
     "SELECT p.id,p.team_id,t.captain_id FROM players p " +
-    "LEFT JOIN teams t ON t.id=p.team_id AND t.status='active' AND t.archived_at IS NULL " +
+    "JOIN teams t ON t.id=p.team_id AND t.status='active' AND t.archived_at IS NULL " +
     "WHERE p.user_id=? AND p.profile_status='approved' AND p.archived_at IS NULL LIMIT 1"
   ).bind(user.id).first().catch(() => null);
   const roster = player ? await db.prepare(
