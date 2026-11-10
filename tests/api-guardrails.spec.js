@@ -172,8 +172,9 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(organizer).toContain('ownedTournament(env.DB,before.tournament_id,auth.user,auth.owner)');
     expect(organizer).toContain("s.staff_role IN ('organizer','admin')");
     expect(organizer).toContain('sameOrigin(request,env)');
-    expect(organizer).toContain("result_source='organizer_manual'");
-    expect(organizer).toContain('advanceWinner(env.DB,id,winner)');
+    expect(organizer).toContain("MATCH_ROOM_REQUIRED");
+    expect(organizer).not.toContain("result_source='organizer_manual'");
+    expect(organizer).toContain("LEFT JOIN match_result_submissions rs ON rs.match_id=m.id");
     expect(organizer).toContain('BRACKET_FORMAT_LOCKED');
     expect(organizer).toContain('TEAM_LIMIT_BELOW_OCCUPIED');
   });
@@ -188,12 +189,13 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(page).toContain("users=tab==='tournaments'?await request('users'):");
   });
 
-  test('organizer can retry bracket progression after an identical manual result was saved', () => {
-    const organizer = source('functions/api/v1/organizer.js');
-    expect(organizer).toContain('match.status==="completed"&&match.result_verified_at&&match.result_source==="organizer_manual"');
-    expect(organizer).toContain('Number(match.score_a)===scoreA&&Number(match.score_b)===scoreB');
-    expect(organizer).toContain('progression_retried:true');
-    expect(organizer).toContain('RESULT_SAVED_PROGRESSION_PENDING');
+  test('judge and organizer can retry bracket progression after a confirmed result', () => {
+    const room = source('functions/api/v1/match-room.js');
+    expect(room).toContain('action === "retry_progression"');
+    expect(room).toContain('match.status !== "completed" || !match.result_verified_at');
+    expect(room).toContain('advanceWinner(db,id,match.winner_team_id)');
+    expect(room).toContain('progression_retried:true');
+    expect(room).toContain('RESULT_SAVED_PROGRESSION_PENDING');
   });
 
   test('only the platform owner can grant or revoke organizer access', () => {
