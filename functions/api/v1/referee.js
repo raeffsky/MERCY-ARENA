@@ -6,6 +6,8 @@ export async function onRequestGet({ request, env }) {
   const session = await getSessionUser(request, env);
   if (session.error) return session.error;
   if (!session.user) return json({ error: { code: "UNAUTHORIZED", message: "Войди в аккаунт судьи." } }, 401);
+  const assigned = await env.DB.prepare("SELECT 1 FROM tournament_staff WHERE user_id=? AND staff_role='referee' LIMIT 1").bind(session.user.id).first();
+  if (!assigned) return json({ error: { code: "REFEREE_ACCESS_REQUIRED", message: "Доступ к судейскому кабинету есть только у назначенных судей." } }, 403);
   const { results } = await env.DB.prepare(
     "SELECT m.id,m.tournament_id,m.round_number,m.bracket,m.match_number,m.scheduled_at,m.status," +
     "m.team_a_id,m.team_b_id,m.score_a,m.score_b,m.winner_team_id,m.result_source,m.result_verified_at," +
