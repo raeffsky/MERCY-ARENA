@@ -52,6 +52,7 @@ test('assigned referees receive a private dashboard containing only their tourna
   const api = source('functions/api/v1/referee.js');
   const page = source('referee.html');
   const navigation = source('index.html');
+  const build = source('scripts/build-pages.sh');
   expect(me).toContain('has_referee_access: !!assignedReferee');
   expect(api).toContain("s.user_id=? AND s.staff_role='referee'");
   expect(api).toContain('LEFT JOIN match_result_submissions rs ON rs.match_id=m.id');
@@ -60,6 +61,7 @@ test('assigned referees receive a private dashboard containing only their tourna
   expect(page).toContain('/match.html?id=');
   expect(navigation).toContain('data-route="referee"');
   expect(navigation).toContain('if(refereeLink)refereeLink.hidden=!me.has_referee_access');
+  expect(build).toContain('cp "$ROOT_DIR/referee.html" "$OUTPUT_DIR/referee.html"');
 });
 
 test('referee dashboard lists assigned matches and filters pending confirmations', async ({ page }) => {
