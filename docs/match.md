@@ -32,3 +32,5 @@ MERCY ARENA does not create the in-game MLBB Custom Room. The organizer or refer
 When `checkin_required` is enabled, each approved team must be checked in by its captain before confirming match readiness. The default window opens 60 minutes before `starts_at` and closes 15 minutes after it; organizers may override both timestamps. An organizer, tournament administrator or referee can mark a team as a no-show after the window closes, excuse it, or reset the attendance state. A team marked `excused` may still confirm match readiness.
 
 Check-in records are stored per tournament and team, with actor, timestamp and audit history. The match room refuses a captain's readiness confirmation until their team is checked in or excused.
+
+After the check-in window closes, staff can mark a team as a no-show. A referee can award a technical forfeit only when the opponent is checked in or excused; the forfeit is recorded as a verified result and advances the present team automatically. If both teams are absent, the system does not guess a winner.
