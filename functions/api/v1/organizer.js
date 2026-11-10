@@ -151,6 +151,7 @@ export async function onRequestPost({request,env}) {
       const checkinClose=dateValue(fieldValue("checkin_close_at"),"закрытие check-in");
       if(checkinOpen&&checkinClose&&Date.parse(checkinOpen)>Date.parse(checkinClose))return fail("INVALID_CHECKIN_WINDOW","Check-in не может закрываться раньше открытия.");
       if((checkinOpen||checkinClose)&&!dates.starts_at)return fail("CHECKIN_START_REQUIRED","Для настраиваемого окна check-in сначала укажи время начала турнира.");
+      if(checkinRequired&&!dates.starts_at)return fail("CHECKIN_START_REQUIRED","Для обязательного check-in укажи время начала турнира.");
       if(!isHttpsUrl(data.poster_url??before.poster_url)||!isHttpsUrl(data.rules_url??before.rules_url))return fail("INVALID_URL","Постер и правила должны использовать HTTPS.");
       const stream=data.stream_url??before.stream_url;
       if(stream&&!/^https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(String(stream).trim()))return fail("INVALID_STREAM_URL","Для трансляции укажи HTTPS-ссылку YouTube.");
