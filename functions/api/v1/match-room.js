@@ -293,7 +293,7 @@ export async function onRequestPost({ request, env }) {
       return json({ data:publicRoom(updatedMatch,room,access,updatedSubmission), decision:nextStatus },200,{"Cache-Control":"no-store, private"});
     }
     if (action === "resolve_result") {
-      if (!access.owner && !access.organizer) return fail("ORGANIZER_REQUIRED","Спорный результат может разрешить только организатор турнира.",403);
+      if (!access.owner && !access.organizer) return fail("ORGANIZER_REQUIRED","Результат матча может разрешить только организатор турнира.",403);
       const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
       if (!submission || !["pending","disputed"].includes(submission.status)) return fail("RESULT_NOT_PENDING","Нет результата, ожидающего решения организатора.",409);\n      const resolutionReason = String(body.reason || "").trim().slice(0,500);\n      if (resolutionReason.length < 5) return fail("RESOLUTION_REASON_REQUIRED","Добавь комментарий к решению минимум из пяти символов.");
       const scoreA = Number(body.score_a), scoreB = Number(body.score_b);
@@ -304,7 +304,7 @@ export async function onRequestPost({ request, env }) {
       const winner = scoreA>scoreB?match.team_a_id:match.team_b_id;
       if (!["scheduled","in_progress"].includes(match.status)) return fail("MATCH_NOT_PLAYABLE","Матч уже нельзя завершить обычным решением.",409);
       const writes = await db.batch([
-        db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='organizer_resolved',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress') AND EXISTS (SELECT 1 FROM match_result_submissions s WHERE s.match_id=matches.id AND s.status='disputed')")
+        db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='organizer_resolved',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress') AND EXISTS (SELECT 1 FROM match_result_submissions s WHERE s.match_id=matches.id AND s.status IN ('pending','disputed'))")
           .bind(scoreA,scoreB,winner,timestamp,timestamp,id),
         db.prepare("UPDATE match_result_submissions SET status='confirmed',score_a=?,score_b=?,winner_team_id=?,decided_by=?,decided_at=?,dispute_reason=NULL WHERE match_id=? AND status IN ('pending','disputed') AND EXISTS (SELECT 1 FROM matches m WHERE m.id=match_result_submissions.match_id AND m.status='completed' AND m.result_source='organizer_resolved' AND m.score_a=? AND m.score_b=?)")
           .bind(scoreA,scoreB,winner,user.id,timestamp,id,scoreA,scoreB),
