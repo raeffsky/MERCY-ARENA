@@ -19,7 +19,8 @@ test('MERCY MATCH room access is limited to authenticated match participants and
 
 test('room credentials are hidden from participants until published and hidden after the match ends', () => {
   const api = source('functions/api/v1/match-room.js');
-  expect(api).toContain('const matchActive = ["scheduled", "in_progress"].includes(match.status)');
+  expect(api).toContain('const tournamentActive = !!match.tournament_published_at && ["published", "active"].includes(match.tournament_status)');
+  expect(api).toContain('const matchActive = tournamentActive && ["scheduled", "in_progress"].includes(match.status)');
   expect(api).toContain('const credentialsVisible = !!room && matchActive && (access.canManage || !!room.room_published_at)');
   expect(api).toContain('room_id: credentialsVisible ? room.room_id : null');
   expect(api).toContain('room_password: credentialsVisible ? room.room_password : null');
