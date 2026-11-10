@@ -416,6 +416,14 @@ export async function onRequestPost({ request, env }) {
     if (["teams","players"].includes(resource) && before.archived_at) return bad("Запись уже находится в архиве.", 409);
     // Preserve foreign-key history: retire records instead of physically deleting them.
     if (resource === "teams") {
+      const blockers = await env.DB.prepare(
+        "SELECT (SELECT COUNT(*) FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE (m.team_a_id=? OR m.team_b_id=?) AND m.status IN ('scheduled','in_progress') AND t.status IN ('published','active')) AS active_matches,"+
+        "(SELECT COUNT(*) FROM mercy_crown_reigns WHERE team_id=? AND ended_at IS NULL) AS active_reign,"+
+        "(SELECT COUNT(*) FROM mercy_crown_challenges WHERE (champion_team_id=? OR challenger_team_id=?) AND status='scheduled') AS active_challenges"
+      ).bind(recordId,recordId,recordId,recordId,recordId).first();
+      if (Number(blockers?.active_matches||0)>0 || Number(blockers?.active_reign||0)>0 || Number(blockers?.active_challenges||0)>0) {
+        return bad("Команду нельзя архивировать: сначала заверши активные матчи и защиты MERCY CROWN.",409);
+      }
       const retiredAt = now();
       const writes = await env.DB.batch([
         env.DB.prepare("UPDATE teams SET status='dissolved',archived_at=?,updated_at=? WHERE id=? AND archived_at IS NULL").bind(retiredAt,retiredAt,recordId),
