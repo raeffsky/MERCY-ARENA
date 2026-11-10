@@ -226,15 +226,18 @@ export async function onRequestPost({ request, env }) {
       const existing = await db.prepare("SELECT status FROM match_result_submissions WHERE match_id=?").bind(id).first();
       if (existing) return fail("RESULT_SUBMISSION_EXISTS", existing.status === "disputed" ? "Результат оспорен. Решение принимает организатор." : "По этому матчу уже есть поданный результат.", 409);
       const submittedAt = timestamp;
-      const writes = await db.batch([
+      const captain = await db.prepare("SELECT captain_id FROM teams WHERE id=?").bind(confirmingTeam).first();
+      const submitWrites = [
         db.prepare("INSERT INTO match_result_submissions (match_id,proposed_by,score_a,score_b,winner_team_id,confirming_team_id,status,submitted_at) VALUES (?,?,?,?,?,?,'pending',?)")
           .bind(id,user.id,scoreA,scoreB,winner,confirmingTeam,submittedAt),
         db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'judge_match_result_submitted','match',?,?,?)")
           .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:match.status}),JSON.stringify({score_a:scoreA,score_b:scoreB,winner_team_id:winner,confirming_team_id:confirmingTeam,status:"pending"}))
-      ]);
-      const captain = await db.prepare("SELECT captain_id FROM teams WHERE id=?").bind(confirmingTeam).first();
-      if (captain?.captain_id) await db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'match',?)")
-        .bind(captain.captain_id,"match_result_confirmation","Подтверди результат матча","Судья отправил результат матча #"+id+". Проверь счёт и подтверди его или открой спор.","/match.html?id="+encodeURIComponent(id),String(id)).run();
+      ];
+      if (captain?.captain_id) submitWrites.push(
+        db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'match',?)")
+          .bind(captain.captain_id,"match_result_confirmation","Подтверди результат матча","Судья отправил результат матча #"+id+". Проверь счёт и подтверди его или открой спор.","/match.html?id="+encodeURIComponent(id),String(id))
+      );
+      const writes = await db.batch(submitWrites);
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
       const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
       return json({ data: publicRoom(match,room,access,submission), submitted:true },202,{"Cache-Control":"no-store, private"});
@@ -248,6 +251,13 @@ export async function onRequestPost({ request, env }) {
       const disputeReason = String(body.reason || "").trim().slice(0,500);
       if (action === "dispute_result" && disputeReason.length < 5) return fail("DISPUTE_REASON_REQUIRED","Опиши причину спора минимум пятью символами.");
       const nextStatus = action === "confirm_result" ? "confirmed" : "disputed";
+      let disputeRecipients = [];
+      if (action === "dispute_result") {
+        const organizers = await db.prepare("SELECT user_id FROM tournament_staff WHERE tournament_id=? AND staff_role IN ('organizer','admin')").bind(match.tournament_id).all();
+        const recipients = new Set((organizers.results||[]).map(row=>String(row.user_id)));
+        recipients.add(String(match.organizer_id));
+        disputeRecipients = [...recipients].filter(Boolean);
+      }
       const decisionWrites = action === "confirm_result" ? [
         db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='judge_verified',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress') AND team_a_id IS NOT NULL AND team_b_id IS NOT NULL AND EXISTS (SELECT 1 FROM match_result_submissions s WHERE s.match_id=matches.id AND s.status='pending' AND s.score_a=? AND s.score_b=?)")
           .bind(submission.score_a,submission.score_b,submission.winner_team_id,timestamp,timestamp,id,submission.score_a,submission.score_b),
@@ -261,17 +271,14 @@ export async function onRequestPost({ request, env }) {
         db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'match_result_disputed','match',?,?)")
           .bind(await createAuditEventId(db),user.id,id,JSON.stringify({score_a:submission.score_a,score_b:submission.score_b,reason:disputeReason,status:"disputed"}))
       ];
+      if (action === "dispute_result") for (const userId of disputeRecipients) decisionWrites.push(
+        db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'match',?)")
+          .bind(userId,"match_result_disputed","Спор по результату матча","Команда оспорила результат матча #"+id+". Требуется решение организатора.","/match.html?id="+encodeURIComponent(id),String(id))
+      );
       const decisionResults = await db.batch(decisionWrites);
       if (!decisionResults[0]?.meta?.changes || (action === "confirm_result" && !decisionResults[1]?.meta?.changes))
         return fail("RESULT_DECISION_CONFLICT","Матч или результат уже изменился другим запросом. Организатору нужно проверить состояние.",409);
-      if (action === "dispute_result") {
-        const organizers = await db.prepare("SELECT user_id FROM tournament_staff WHERE tournament_id=? AND staff_role IN ('organizer','admin')").bind(match.tournament_id).all();
-        const recipients = new Set((organizers.results||[]).map(row=>String(row.user_id)));
-        recipients.add(String(match.organizer_id));
-        const statements = [...recipients].filter(Boolean).map(userId=>db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'match',?)")
-          .bind(userId,"match_result_disputed","Спор по результату матча","Команда оспорила результат матча #"+id+". Требуется решение организатора.","/match.html?id="+encodeURIComponent(id),String(id)));
-        if(statements.length) await db.batch(statements);
-      } else {
+      if (action === "confirm_result") {
         const after = await loadMatch(db,id);
         try { await advanceWinner(db,id,submission.winner_team_id); }
         catch (error) {
