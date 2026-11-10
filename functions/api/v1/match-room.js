@@ -45,7 +45,7 @@ async function accessFor(db, user, match, env) {
     side: captainA ? "a" : captainB ? "b" : teamIds.includes(String(match.team_a_id)) ? "a" : teamIds.includes(String(match.team_b_id)) ? "b" : null };
 }
 
-function publicRoom(match, room, access) {
+function publicRoom(match, room, access, submission = null) {
   const tournamentActive = !!match.tournament_published_at && ["published", "active"].includes(match.tournament_status);
   const matchActive = tournamentActive && ["scheduled", "in_progress"].includes(match.status);
   const credentialsVisible = !!room && matchActive && (access.canManage || !!room.room_published_at);
@@ -61,7 +61,7 @@ function publicRoom(match, room, access) {
       team_a_ready_at: room.team_a_ready_at, team_b_ready_at: room.team_b_ready_at } :
       { series_format: "BO1", room_id: null, room_password: null, published: false, judge_contact: null,
         instructions: null, team_a_ready: false, team_b_ready: false },
-    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && (matchActive || (match.status === "completed" && !!match.result_verified_at)), side: access.side }
+    result_submission: submission ? { status: submission.status, score_a: submission.score_a, score_b: submission.score_b, winner_team_id: submission.winner_team_id, confirming_team_id: submission.confirming_team_id, submitted_at: submission.submitted_at, dispute_reason: submission.dispute_reason, decided_at: submission.decided_at } : null,\n    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && matchActive, can_confirm_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_dispute_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_resolve_result: (access.owner || access.organizer) && !!submission && submission.status === "disputed", side: access.side }
   };
 }
 
@@ -210,43 +210,95 @@ export async function onRequestPost({ request, env }) {
       }
     }
     if (action === "verify_result") {
-      if (!access.owner && !access.organizer && !access.judge) return fail("REFEREE_REQUIRED", "Подтвердить результат может только назначенный судья или организатор.", 403);
-      if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_PUBLISHED", "Результат можно подтвердить только в опубликованном турнире.", 409);
+      if (!access.owner && !access.organizer && !access.judge) return fail("REFEREE_REQUIRED", "Подать результат может только назначенный судья или организатор.", 403);
+      if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_PUBLISHED", "Результат можно подать только в опубликованном турнире.", 409);
+      if (!["scheduled", "in_progress"].includes(match.status) || match.team_a_id == null || match.team_b_id == null) return fail("MATCH_NOT_PLAYABLE", "Матч не готов к внесению результата.", 409);
       const scoreA = Number(body.score_a), scoreB = Number(body.score_b);
       if (!Number.isSafeInteger(scoreA) || !Number.isSafeInteger(scoreB) || scoreA < 0 || scoreB < 0 || scoreA === scoreB)
         return fail("INVALID_RESULT", "Укажи два разных целых счёта от нуля.");
-      if (match.team_a_id == null || match.team_b_id == null) return fail("MATCH_NOT_PLAYABLE", "Матч не готов к внесению результата.", 409);
-      const winner = scoreA > scoreB ? match.team_a_id : match.team_b_id;
-      if (match.status === "completed" && match.result_verified_at && Number(match.score_a) === scoreA && Number(match.score_b) === scoreB && String(match.winner_team_id) === String(winner)) {
-        try {
-          const progression = await advanceWinner(db, id, winner);
-          const updatedMatch = await loadMatch(db, id);
-          const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
-          return json({ data: publicRoom(updatedMatch, room, access), progression, result_already_saved: true, progression_retried: true }, 200, { "Cache-Control": "no-store, private" });
-        } catch (error) {
-          console.error("MERCY MATCH result progression retry failed:", error);
-          return json({ error: { code: "RESULT_SAVED_PROGRESSION_PENDING", message: "Результат уже сохранён. Продвижение победителя пока не удалось завершить, повтори попытку позже." } }, 503);
-        }
-      }
       const roomConfig = await db.prepare("SELECT series_format FROM match_rooms WHERE match_id=?").bind(id).first();
       const targetWins = ({ BO1: 1, BO3: 2, BO5: 3 })[roomConfig?.series_format || "BO1"] || 1;
-      if (Math.max(scoreA, scoreB) !== targetWins) return fail("SERIES_NOT_FINISHED", "Победитель серии должен набрать "+targetWins+" побед"+(targetWins===1?"у":"ы")+" на картах.", 409);
-      if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_PLAYABLE", "Матч уже завершён или не готов к внесению результата.", 409);
-      const verifiedAt = timestamp;
-      const write = await db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='judge_verified',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress')")
-        .bind(scoreA,scoreB,winner,verifiedAt,verifiedAt,id).run();
-      if (!write.meta?.changes) return fail("RESULT_ALREADY_SAVED", "Результат уже сохранён другим запросом.", 409);
-      const after = await loadMatch(db,id);
-      await db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'judge_match_result_verified','match',?,?,?)")
-        .bind(await createAuditEventId(db),user.id,id,JSON.stringify(match),JSON.stringify(after)).run();
+      if (Math.max(scoreA, scoreB) !== targetWins || Math.min(scoreA, scoreB) >= targetWins)
+        return fail("SERIES_NOT_FINISHED", "Проверь счёт серии: формат " + (roomConfig?.series_format || "BO1") + " требует ровно " + targetWins + " побед на картах.");
+      const winner = scoreA > scoreB ? match.team_a_id : match.team_b_id;
+      const confirmingTeam = String(winner) === String(match.team_a_id) ? match.team_b_id : match.team_a_id;
+      const existing = await db.prepare("SELECT status FROM match_result_submissions WHERE match_id=?").bind(id).first();
+      if (existing) return fail("RESULT_SUBMISSION_EXISTS", existing.status === "disputed" ? "Результат оспорен. Решение принимает организатор." : "По этому матчу уже есть поданный результат.", 409);
+      const submittedAt = timestamp;
+      const writes = await db.batch([
+        db.prepare("INSERT INTO match_result_submissions (match_id,proposed_by,score_a,score_b,winner_team_id,confirming_team_id,status,submitted_at) VALUES (?,?,?,?,?,?,'pending',?)")
+          .bind(id,user.id,scoreA,scoreB,winner,confirmingTeam,submittedAt),
+        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'judge_match_result_submitted','match',?,?,?)")
+          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:match.status}),JSON.stringify({score_a:scoreA,score_b:scoreB,winner_team_id:winner,confirming_team_id:confirmingTeam,status:"pending"}))
+      ]);
+      const captain = await db.prepare("SELECT captain_id FROM teams WHERE id=?").bind(confirmingTeam).first();
+      if (captain?.captain_id) await db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'match',?)")
+        .bind(captain.captain_id,"match_result_confirmation","Подтверди результат матча","Судья отправил результат матча #"+id+". Проверь счёт и подтверди его или открой спор.","/match.html?id="+encodeURIComponent(id),String(id)).run();
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
-      try {
-        const progression = await advanceWinner(db,id,winner);
-        return json({ data: publicRoom(after,room,access), progression }, 200, { "Cache-Control": "no-store, private" });
-      } catch (error) {
-        console.error("MERCY MATCH result progression failed:",error);
-        return json({ error: { code: "RESULT_SAVED_PROGRESSION_PENDING", message: "Результат сохранён, но продвижение победителя не завершилось. Повтори попытку позже." } }, 503);
+      const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
+      return json({ data: publicRoom(match,room,access,submission), submitted:true },202,{"Cache-Control":"no-store, private"});
+    }
+    if (action === "confirm_result" || action === "dispute_result") {
+      const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
+      if (!submission || submission.status !== "pending") return fail("RESULT_NOT_PENDING","Нет результата, ожидающего подтверждения.",409);
+      if (!access.canReady || !access.side) return fail("TEAM_CAPTAIN_REQUIRED","Подтвердить результат может только капитан команды-соперника.",403);
+      const ownTeamId = access.side === "a" ? match.team_a_id : match.team_b_id;
+      if (String(ownTeamId) !== String(submission.confirming_team_id)) return fail("OPPONENT_CONFIRMATION_REQUIRED","Подтвердить или оспорить результат может только капитан проигравшей по протоколу команды.",403);
+      const disputeReason = String(body.reason || "").trim().slice(0,500);
+      if (action === "dispute_result" && disputeReason.length < 5) return fail("DISPUTE_REASON_REQUIRED","Опиши причину спора минимум пятью символами.");
+      const nextStatus = action === "confirm_result" ? "confirmed" : "disputed";
+      const decision = await db.prepare("UPDATE match_result_submissions SET status=?,decided_by=?,decided_at=?,dispute_reason=? WHERE match_id=? AND status='pending'")
+        .bind(nextStatus,user.id,timestamp,action === "dispute_result" ? disputeReason : null,id).run();
+      if (!decision.meta?.changes) return fail("RESULT_DECISION_CONFLICT","Результат уже обработан другим запросом.",409);
+      await audit(db,user.id,action === "confirm_result" ? "match_result_confirmed_by_opponent" : "match_result_disputed",id,{score_a:submission.score_a,score_b:submission.score_b,reason:disputeReason||null});
+      if (action === "dispute_result") {
+        const organizers = await db.prepare("SELECT user_id FROM tournament_staff WHERE tournament_id=? AND staff_role IN ('organizer','admin')").bind(match.tournament_id).all();
+        const recipients = new Set((organizers.results||[]).map(row=>String(row.user_id)));
+        recipients.add(String(match.organizer_id));
+        const statements = [...recipients].filter(Boolean).map(userId=>db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'match',?)")
+          .bind(userId,"match_result_disputed","Спор по результату матча","Команда оспорила результат матча #"+id+". Требуется решение организатора.","/match.html?id="+encodeURIComponent(id),String(id)));
+        if(statements.length) await db.batch(statements);
+      } else {
+        const write = await db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='judge_verified',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress') AND team_a_id IS NOT NULL AND team_b_id IS NOT NULL")
+          .bind(submission.score_a,submission.score_b,submission.winner_team_id,timestamp,timestamp,id).run();
+        if (!write.meta?.changes) return fail("RESULT_FINALIZE_CONFLICT","Матч изменился до фиксации результата. Организатору нужно проверить его вручную.",409);
+        const after = await loadMatch(db,id);
+        await db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'judge_match_result_finalized','match',?,?,?)")
+          .bind(await createAuditEventId(db),user.id,id,JSON.stringify(match),JSON.stringify(after)).run();
+        try { await advanceWinner(db,id,submission.winner_team_id); }
+        catch (error) {
+          console.error("MERCY MATCH result progression failed:",error);
+          return fail("RESULT_SAVED_PROGRESSION_PENDING","Результат подтверждён и сохранён. Продвижение победителя по сетке нужно повторить из кабинета организатора.",503);
+        }
       }
+      const updatedMatch = await loadMatch(db,id);
+      const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+      const updatedSubmission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
+      return json({ data:publicRoom(updatedMatch,room,access,updatedSubmission), decision:nextStatus },200,{"Cache-Control":"no-store, private"});
+    }
+    if (action === "resolve_result") {
+      if (!access.owner && !access.organizer) return fail("ORGANIZER_REQUIRED","Спорный результат может разрешить только организатор турнира.",403);
+      const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
+      if (!submission || submission.status !== "disputed") return fail("RESULT_NOT_DISPUTED","По этому матчу нет открытого спора.",409);
+      const scoreA = Number(body.score_a), scoreB = Number(body.score_b);
+      if (!Number.isSafeInteger(scoreA)||!Number.isSafeInteger(scoreB)||scoreA<0||scoreB<0||scoreA===scoreB) return fail("INVALID_RESULT","Укажи корректный итоговый счёт.");
+      const roomConfig = await db.prepare("SELECT series_format FROM match_rooms WHERE match_id=?").bind(id).first();
+      const targetWins = ({BO1:1,BO3:2,BO5:3})[roomConfig?.series_format||"BO1"]||1;
+      if (Math.max(scoreA,scoreB)!==targetWins||Math.min(scoreA,scoreB)>=targetWins) return fail("SERIES_NOT_FINISHED","Счёт не соответствует формату серии.");
+      const winner = scoreA>scoreB?match.team_a_id:match.team_b_id;
+      if (!["scheduled","in_progress"].includes(match.status)) return fail("MATCH_NOT_PLAYABLE","Матч уже нельзя завершить обычным решением.",409);
+      const writes = await db.batch([
+        db.prepare("UPDATE match_result_submissions SET status='confirmed',score_a=?,score_b=?,winner_team_id=?,decided_by=?,decided_at=?,dispute_reason=NULL WHERE match_id=? AND status='disputed'")
+          .bind(scoreA,scoreB,winner,user.id,timestamp,id),
+        db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='organizer_resolved',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress')")
+          .bind(scoreA,scoreB,winner,timestamp,timestamp,id),
+        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'organizer_resolved_match_result','match',?,?,?)")
+          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:"disputed",score_a:submission.score_a,score_b:submission.score_b,reason:submission.dispute_reason}),JSON.stringify({status:"confirmed",score_a:scoreA,score_b:scoreB,winner_team_id:winner}))
+      ]);
+      try { await advanceWinner(db,id,winner); }
+      catch (error) { console.error("MERCY MATCH organizer resolution progression failed:",error); return fail("RESULT_SAVED_PROGRESSION_PENDING","Решение сохранено. Продвижение по сетке нужно повторить.",503); }
+      const updatedMatch=await loadMatch(db,id),room=await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first(),updatedSubmission=await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
+      return json({data:publicRoom(updatedMatch,room,access,updatedSubmission),decision:"confirmed",resolved_by_organizer:true},200,{"Cache-Control":"no-store, private"});
     }
     return fail("UNKNOWN_ACTION", "Неизвестное действие.");
   } catch (error) {
