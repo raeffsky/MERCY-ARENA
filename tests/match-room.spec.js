@@ -134,3 +134,29 @@ test('referees can award a forfeit only after an approved team is confirmed as a
   expect(page).toContain('data-checkin-forfeit');
   expect(page).toContain('ПРИСУДИТЬ ТЕХНИЧЕСКОЕ ПОРАЖЕНИЕ');
 });
+
+test('judge results remain pending until the opposing captain confirms them', () => {
+  const api = source('functions/api/v1/match-room.js');
+  const migration = source('migrations/0025_match_result_confirmation.sql');
+  const page = source('match.html');
+  expect(api).toContain('action === "verify_result"');
+  expect(api).toContain('INSERT INTO match_result_submissions');
+  expect(api).toContain('action === "confirm_result" || action === "dispute_result"');
+  expect(api).toContain('OPPONENT_CONFIRMATION_REQUIRED');
+  expect(api).toContain('action === "resolve_result"');
+  expect(api).toContain('advanceWinner(db,id,submission.winner_team_id)');
+  expect(migration).toContain("status IN ('pending','confirmed','disputed')");
+  expect(migration).toContain('confirming_team_id TEXT NOT NULL');
+  expect(page).toContain('id="resultReviewPanel"');
+  expect(page).toContain("action:'confirm_result'");
+  expect(page).toContain("action:'dispute_result'");
+  expect(page).toContain("action:'resolve_result'");
+});
+
+test('result confirmation and match completion are committed in one conditional D1 batch', () => {
+  const api = source('functions/api/v1/match-room.js');
+  expect(api).toContain('const decisionResults = await db.batch(decisionWrites)');
+  expect(api).toContain('decisionResults[2]?.meta?.changes');
+  expect(api).toContain('const writes = await db.batch([');
+  expect(api).toContain('RESULT_DECISION_CONFLICT');
+});
