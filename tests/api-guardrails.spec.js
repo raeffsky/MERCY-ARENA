@@ -160,7 +160,7 @@ test.describe('MERCY ARENA API guardrails', () => {
 
   test('team roster limits do not count archived players as active members', () => {
     const members = source('functions/api/v1/team-members.js');
-    expect(members).toContain("JOIN players p ON p.id=tr.player_id AND p.archived_at IS NULL");
+    expect(members).toContain("JOIN players p ON p.id=tr.player_id AND p.team_id=tr.team_id");
     expect(members).toContain("p.archived_at IS NULL AND (p.team_id=? OR p.id IN");
     expect(members).toContain("roster_player.archived_at IS NULL");
   });
