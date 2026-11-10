@@ -60,3 +60,15 @@ test('assigned observers can read a match room without receiving management or r
   expect(api).toContain('!access.observer');
   expect(api).toContain('canManage: owner || organizer || judge');
 });
+
+test('assigned referees can verify a match result and advance the tournament bracket', () => {
+  const api = source('functions/api/v1/match-room.js');
+  const page = source('match.html');
+  expect(api).toContain('action === "verify_result"');
+  expect(api).toContain("result_source='judge_verified'");
+  expect(api).toContain('advanceWinner(db,id,winner)');
+  expect(api).toContain('judge_match_result_verified');
+  expect(api).toContain('can_verify_result: (access.owner || access.organizer || access.judge) && matchActive');
+  expect(page).toContain('id="judgePanel"');
+  expect(page).toContain("action:'verify_result'");
+});
