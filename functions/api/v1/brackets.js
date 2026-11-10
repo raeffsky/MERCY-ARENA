@@ -109,7 +109,7 @@ export async function onRequestPost({ request, env }) {
   if (!["published","active"].includes(tournament.status)) return json({ error: { code: "TOURNAMENT_NOT_OPEN", message: "Сначала опубликуй турнир." } }, 409);
   const existing = await env.DB.prepare("SELECT COUNT(*) AS total FROM matches WHERE tournament_id=?").bind(tournamentId).first();
   if ((existing?.total || 0) > 0) return json({ error: { code: "BRACKET_EXISTS", message: "Сетка уже создана. Удалять существующие матчи автоматически небезопасно." } }, 409);
-  const { results: registrations } = await env.DB.prepare("SELECT tm.id,tm.name,tm.tag FROM tournament_registrations r JOIN teams tm ON tm.id=r.team_id WHERE r.tournament_id=? AND r.status='approved' AND tm.status='active' ORDER BY r.submitted_at ASC,tm.id ASC").bind(tournamentId).all();
+  const { results: registrations } = await env.DB.prepare("SELECT tm.id,tm.name,tm.tag FROM tournament_registrations r JOIN teams tm ON tm.id=r.team_id WHERE r.tournament_id=? AND r.status='approved' AND tm.status='active' AND tm.archived_at IS NULL ORDER BY r.submitted_at ASC,tm.id ASC").bind(tournamentId).all();
   const teams = registrations || [];
   if (teams.length < 2) return json({ error: { code: "NOT_ENOUGH_TEAMS", message: "Для сетки нужны минимум две одобренные команды." } }, 409);
   if (teams.length > 32) return json({ error: { code: "BRACKET_TEAM_LIMIT", message: "Автогенерация сетки поддерживает максимум 32 команды." } }, 409);
