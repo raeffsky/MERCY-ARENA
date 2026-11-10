@@ -70,6 +70,15 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(page).toContain('Сначала выбери претендента');
   });
 
+  test('MERCY CROWN permits only one pending defense per reign and requires a public match', () => {
+    const crown = source('functions/api/v1/crown.js');
+    const migration = source('migrations/0022_mercy_crown_single_pending_challenge.sql');
+    expect(crown).toContain("t.status AS tournament_status");
+    expect(crown).toContain('new Set([String(match.team_a_id),String(match.team_b_id)]).size !== 2');
+    expect(crown).toContain('CROWN_CHALLENGE_PENDING');
+    expect(migration).toContain("ON mercy_crown_challenges(reign_id) WHERE status='scheduled'");
+  });
+
   test('MERCY CROWN accepts numeric IDs and uses a guarded single-winner transition', () => {
     const crown = source('functions/api/v1/crown.js');
     expect(crown).toContain('/^\\d+$/');
