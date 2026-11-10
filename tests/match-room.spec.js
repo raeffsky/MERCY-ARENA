@@ -14,6 +14,7 @@ test('MERCY MATCH room access is limited to authenticated match participants and
   expect(api).toContain('const judge = staff?.staff_role === "referee"');
   expect(api).toContain('const staff = await db.prepare("SELECT staff_role FROM tournament_staff');
   expect(api).toContain('String(match.organizer_id) === String(user.id)');
+  expect(api).toContain("JOIN teams t ON t.id=p.team_id AND t.status='active' AND t.archived_at IS NULL");
 });
 
 test('room credentials are hidden from participants until published and hidden after the match ends', () => {
