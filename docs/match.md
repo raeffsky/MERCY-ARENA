@@ -18,7 +18,7 @@ MERCY MATCH is the private operations room for a scheduled MLBB match. It coordi
 2. The credentials stay hidden from participants until the staff member publishes them.
 3. Captains confirm readiness for their own teams.
 4. Staff can reset readiness if the match is delayed or a team must reconnect.
-5. After the game, a referee or organizer verifies the score. The winner is advanced through the tournament bracket.
+5. After the game, a referee or organizer verifies the score. The score is the number of maps won: BO1 requires 1 win, BO3 requires 2, and BO5 requires 3. The winner is advanced through the tournament bracket.
 6. If result saving succeeds but bracket progression fails, staff can safely retry the same verified score.
 
 Room credentials and readiness controls are available only while the tournament is published and the match is scheduled or in progress. Credentials are hidden after the match is no longer active.
