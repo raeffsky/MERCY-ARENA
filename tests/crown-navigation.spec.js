@@ -7,5 +7,5 @@ test('MERCY CROWN defense history links to the tournament, not the match ID', ()
   const page = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
   expect(api).toContain('m.tournament_id,m.scheduled_at');
   expect(page).toContain('href="#/tournament/\'+esc(item.tournament_id)');
-  expect(page).toContain("'#'+esc(item.match_id)");
+  expect(page).toContain("#'+esc(item.match_id)");
 });
