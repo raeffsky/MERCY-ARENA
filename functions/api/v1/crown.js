@@ -62,8 +62,9 @@ export async function onRequestPost({ request, env }) {
       if (String(reign.team_id) === challengerId) return fail("INVALID_CHALLENGER", "Действующий чемпион не может бросить вызов сам себе.",409);
       const challenger = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND status='active' AND archived_at IS NULL").bind(challengerId).first();
       if (!challenger) return fail("INVALID_CHALLENGER", "Команда-претендент должна быть активной и неархивной.",409);
-      const match = await env.DB.prepare("SELECT id,tournament_id,status,team_a_id,team_b_id,scheduled_at FROM matches WHERE id=?").bind(matchId).first();
-      if (!match || !["scheduled","in_progress"].includes(match.status) ||
+      const match = await env.DB.prepare("SELECT m.id,m.tournament_id,m.status,m.team_a_id,m.team_b_id,m.scheduled_at,t.status AS tournament_status FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=?").bind(matchId).first();
+      if (!match || !["published","active"].includes(match.tournament_status) || !["scheduled","in_progress"].includes(match.status) ||
+          new Set([String(match.team_a_id),String(match.team_b_id)]).size !== 2 ||
           ![String(reign.team_id),challengerId].every(id => [String(match.team_a_id),String(match.team_b_id)].includes(id))) {
         return fail("MATCH_NOT_ELIGIBLE", "Матч должен быть запланирован между действующим чемпионом и выбранным претендентом.",409);
       }
@@ -120,6 +121,7 @@ export async function onRequestPost({ request, env }) {
     console.error("MERCY CROWN action failed:", error);
     if (/UNIQUE constraint failed.*match_id/i.test(String(error?.message || error))) return fail("MATCH_ALREADY_LINKED", "Этот матч уже назначен защитой короны.",409);
     if (/UNIQUE constraint failed.*idx_mercy_crown_one_active_reign/i.test(String(error?.message || error))) return fail("CROWN_ALREADY_HELD", "У короны уже есть действующий чемпион.",409);
+    if (/UNIQUE constraint failed.*idx_mercy_crown_one_scheduled_challenge/i.test(String(error?.message || error))) return fail("CROWN_CHALLENGE_PENDING", "У действующего чемпиона уже назначена защита. Сначала заверши её.",409);
     return fail("CROWN_ACTION_FAILED", "Не удалось обработать действие MERCY CROWN.",500);
   }
 }
