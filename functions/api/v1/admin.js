@@ -518,9 +518,9 @@ export async function onRequestPost({ request, env }) {
   }
   if (resource === "tournaments" && action === "create") {
     payload.game = payload.game || "Mobile Legends: Bang Bang";
-    payload.organizer_id = auth.user.id;
+    payload.organizer_id = payload.organizer_id ?? auth.user.id;
   }
-  if (resource === "tournaments" && action === "update" && Object.prototype.hasOwnProperty.call(data, "organizer_id") && payload.organizer_id != null) {
+  if (resource === "tournaments" && ["create","update"].includes(action) && Object.prototype.hasOwnProperty.call(data, "organizer_id") && payload.organizer_id != null && String(payload.organizer_id) !== String(auth.user.id)) {
     const assignedOrganizer = await env.DB.prepare("SELECT user_id FROM user_roles WHERE user_id=? AND role='organizer' LIMIT 1").bind(payload.organizer_id).first();
     if (!assignedOrganizer) return bad("Назначить турнир можно только пользователю с активной ролью организатора.", 409);
   }
