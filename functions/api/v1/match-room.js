@@ -24,8 +24,8 @@ async function accessFor(db, user, match, env) {
     "WHERE p.user_id=? AND p.profile_status='approved' AND p.archived_at IS NULL LIMIT 1"
   ).bind(user.id).first().catch(() => null);
   const roster = player ? await db.prepare(
-    "SELECT team_id FROM team_roster WHERE player_id=? AND left_at IS NULL AND team_id IN (?,?)"
-  ).bind(player.id, match.team_a_id || "", match.team_b_id || "").all() : { results: [] };
+    "SELECT team_id FROM team_roster WHERE player_id=? AND left_at IS NULL AND team_id IN (?,?) AND team_id=?"
+  ).bind(player.id, match.team_a_id || "", match.team_b_id || "", player.team_id || "").all() : { results: [] };
   const teamIds = (roster.results || []).map(row => String(row.team_id));
   const captainA = !!(player && String(match.team_a_id) && String(player.team_id) === String(match.team_a_id) && String(player.captain_id) === String(user.id));
   const captainB = !!(player && String(match.team_b_id) && String(player.team_id) === String(match.team_b_id) && String(player.captain_id) === String(user.id));
@@ -35,19 +35,21 @@ async function accessFor(db, user, match, env) {
 }
 
 function publicRoom(match, room, access) {
+  const matchActive = ["scheduled", "in_progress"].includes(match.status);
+  const credentialsVisible = !!room && matchActive && (access.canManage || !!room.room_published_at);
   return {
     match: { id: match.id, tournament_id: match.tournament_id, tournament_title: match.tournament_title,
       round_number: match.round_number, bracket: match.bracket, match_number: match.match_number,
       scheduled_at: match.scheduled_at, status: match.status, team_a_id: match.team_a_id,
       team_b_id: match.team_b_id, team_a_name: match.team_a_name, team_b_name: match.team_b_name },
-    room: room ? { series_format: room.series_format, room_id: room.room_published_at ? room.room_id : null,
-      room_password: room.room_published_at ? room.room_password : null, published: !!room.room_published_at,
+    room: room ? { series_format: room.series_format, room_id: credentialsVisible ? room.room_id : null,
+      room_password: credentialsVisible ? room.room_password : null, published: !!room.room_published_at && matchActive,
       judge_contact: room.judge_contact, instructions: room.instructions,
       team_a_ready: !!room.team_a_ready_at, team_b_ready: !!room.team_b_ready_at,
       team_a_ready_at: room.team_a_ready_at, team_b_ready_at: room.team_b_ready_at } :
       { series_format: "BO1", room_id: null, room_password: null, published: false, judge_contact: null,
         instructions: null, team_a_ready: false, team_b_ready: false },
-    permissions: { can_manage: access.canManage, can_ready: access.canReady, side: access.side }
+    permissions: { can_manage: access.canManage, can_ready: access.canReady && matchActive, side: access.side }
   };
 }
 
@@ -91,6 +93,7 @@ export async function onRequestPost({ request, env }) {
   try {
     if (action === "configure") {
       if (!access.canManage) return fail("MANAGER_REQUIRED", "Настраивать комнату может организатор, судья или администратор.", 403);
+      if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_CONFIGURABLE", "Комнату можно настраивать только для запланированного или текущего матча.", 409);
       const data = body.data && typeof body.data === "object" ? body.data : {};
       const format = String(data.series_format || "BO1").toUpperCase();
       if (!FORMATS.has(format)) return fail("INVALID_FORMAT", "Формат серии должен быть BO1, BO3 или BO5.");
@@ -113,6 +116,7 @@ export async function onRequestPost({ request, env }) {
     }
     if (action === "ready") {
       if (!access.canReady || !access.side) return fail("CAPTAIN_REQUIRED", "Готовность может подтвердить только капитан одной из команд.", 403);
+      if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_READY", "Подтвердить готовность можно только для запланированного или текущего матча.", 409);
       const column = access.side === "a" ? "team_a_ready_at" : "team_b_ready_at";
       await db.prepare(
         "INSERT INTO match_rooms (match_id,created_by,created_at,updated_at) VALUES (?,?,?,?) " +
@@ -125,6 +129,7 @@ export async function onRequestPost({ request, env }) {
     }
     if (action === "reset_ready") {
       if (!access.canManage) return fail("MANAGER_REQUIRED", "Сбросить готовность может организатор, судья или администратор.", 403);
+      if (!["scheduled", "in_progress"].includes(match.status)) return fail("MATCH_NOT_READY", "Готовность можно сбрасывать только для запланированного или текущего матча.", 409);
       const side = String(body.side || "both");
       if (!["a", "b", "both"].includes(side)) return fail("INVALID_SIDE", "Некорректная сторона матча.");
       if (side === "a" || side === "both") await db.prepare("UPDATE match_rooms SET team_a_ready_at=NULL,updated_at=? WHERE match_id=?").bind(timestamp, id).run();
