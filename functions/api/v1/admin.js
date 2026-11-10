@@ -5,7 +5,7 @@ import { advanceWinner, completeTournamentIfReady, finalizeCircuitTournament, pr
 import { prepareMatchCorrectionCascade } from "./_lib/match-correction-cascade.mjs";
 
 const TABLES = {
-  tournaments: { table: "tournaments", fields: ["title","description","game","region","format","status","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","organizer_id","prize_pool","poster_url","stream_url"] },
+  tournaments: { table: "tournaments", fields: ["title","description","game","region","format","status","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","checkin_required","checkin_open_at","checkin_close_at","rules_url","season_id","organizer_id","prize_pool","poster_url","stream_url"] },
   teams: { table: "teams", fields: ["name","tag","logo_url","region","status"] },
   players: { table: "players", fields: ["game_id","nickname","role","region","profile_status"] },
   matches: { table: "matches", fields: ["tournament_id","round_number","bracket","match_number","scheduled_at","status","team_a_id","team_b_id","score_a","score_b","winner_team_id"] },
@@ -34,8 +34,8 @@ function bad(message, status = 400) {
   return json({ error: { code: "INVALID_REQUEST", message } }, status);
 }
 function cleanValue(field, value) {
-  const integerFields = new Set(["id","max_teams","round_number","match_number","score_a","score_b","season_number","organizer_id"]);
-  const nullableFields = new Set(["description","region","logo_url","poster_url","stream_url","image_url","prize_pool","captain_id","organizer_id","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","role","team_id","scheduled_at","team_a_id","team_b_id","score_a","score_b","winner_team_id"]);
+  const integerFields = new Set(["id","max_teams","round_number","match_number","score_a","score_b","season_number","organizer_id","checkin_required"]);
+  const nullableFields = new Set(["description","region","logo_url","poster_url","stream_url","image_url","prize_pool","captain_id","organizer_id","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","checkin_open_at","checkin_close_at","rules_url","season_id","role","team_id","scheduled_at","team_a_id","team_b_id","score_a","score_b","winner_team_id"]);
   if (value === "" && nullableFields.has(field)) return null;
   if (integerFields.has(field)) {
     if (value === null && nullableFields.has(field)) return null;
