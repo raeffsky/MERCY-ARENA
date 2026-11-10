@@ -265,17 +265,17 @@ export async function onRequestPost({ request, env }) {
           .bind(submission.score_a,submission.score_b,submission.winner_team_id,timestamp,timestamp,id,submission.score_a,submission.score_b),
         db.prepare("UPDATE match_result_submissions SET status='confirmed',decided_by=?,decided_at=? WHERE match_id=? AND status='pending' AND EXISTS (SELECT 1 FROM matches m WHERE m.id=match_result_submissions.match_id AND m.status='completed' AND m.result_source='judge_verified' AND m.score_a=? AND m.score_b=?)")
           .bind(user.id,timestamp,id,submission.score_a,submission.score_b),
-        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'match_result_confirmed_by_opponent','match',?,?)")
-          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({score_a:submission.score_a,score_b:submission.score_b,status:"confirmed"}))
+        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,'match_result_confirmed_by_opponent','match',?,? WHERE EXISTS (SELECT 1 FROM match_result_submissions WHERE match_id=? AND status='confirmed' AND decided_by=? AND decided_at=?)")
+          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({score_a:submission.score_a,score_b:submission.score_b,status:"confirmed"}),id,user.id,timestamp)
       ] : [
         db.prepare("UPDATE match_result_submissions SET status='disputed',decided_by=?,decided_at=?,dispute_reason=? WHERE match_id=? AND status='pending'")
           .bind(user.id,timestamp,disputeReason,id),
-        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,'match_result_disputed','match',?,?)")
-          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({score_a:submission.score_a,score_b:submission.score_b,reason:disputeReason,status:"disputed"}))
+        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,'match_result_disputed','match',?,? WHERE EXISTS (SELECT 1 FROM match_result_submissions WHERE match_id=? AND status='disputed' AND decided_by=? AND decided_at=?)")
+          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({score_a:submission.score_a,score_b:submission.score_b,reason:disputeReason,status:"disputed"}),id,user.id,timestamp)
       ];
       if (action === "dispute_result") for (const userId of disputeRecipients) decisionWrites.push(
-        db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'match',?)")
-          .bind(userId,"match_result_disputed","Спор по результату матча","Команда оспорила результат матча #"+id+". Требуется решение организатора.","/match.html?id="+encodeURIComponent(id),String(id))
+        db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) SELECT ?,?,?,?,?, 'match',? WHERE EXISTS (SELECT 1 FROM match_result_submissions WHERE match_id=? AND status='disputed' AND decided_by=? AND decided_at=?)")
+          .bind(userId,"match_result_disputed","Спор по результату матча","Команда оспорила результат матча #"+id+". Требуется решение организатора.","/match.html?id="+encodeURIComponent(id),String(id),id,user.id,timestamp)
       );
       const decisionResults = await db.batch(decisionWrites);
       if (!decisionResults[0]?.meta?.changes || (action === "confirm_result" && !decisionResults[1]?.meta?.changes))
