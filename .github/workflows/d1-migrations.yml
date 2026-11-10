@@ -144,4 +144,4 @@ jobs:
         run: |
           set -euo pipefail
           npx --yes wrangler@4 d1 migrations list DB --remote --config wrangler.migrations.json
-          npx --yes wrangler@4 d1 execute DB --remote --config wrangler.migrations.json --command "SELECT name, sql FROM sqlite_master WHERE type='table' AND name IN ('match_advancement'); SELECT registration_slots, stream_url FROM tournaments LIMIT 0; SELECT archived_at FROM teams LIMIT 0; SELECT archived_at FROM players LIMIT 0;"
+          npx --yes wrangler@4 d1 execute DB --remote --config wrangler.migrations.json --command "SELECT name, sql FROM sqlite_master WHERE type='table' AND name IN ('match_advancement','mercy_crown_reigns','mercy_crown_challenges'); SELECT registration_slots, stream_url FROM tournaments LIMIT 0; SELECT archived_at FROM teams LIMIT 0; SELECT archived_at FROM players LIMIT 0; SELECT defenses_count,ended_at FROM mercy_crown_reigns LIMIT 0; SELECT champion_team_id,challenger_team_id,match_id FROM mercy_crown_challenges LIMIT 0;"
