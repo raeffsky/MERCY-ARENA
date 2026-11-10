@@ -218,6 +218,13 @@ export async function onRequestPost({ request, env }) {
         return bad("Этот Circuit-турнир уже завершён. Каскад потребует переиграть зависимые матчи и отдельно пересчитать очки сезона, поэтому автоматическая корректировка остановлена.", 409);
       }
       writes.push(...cascade.statements);
+      const invalidatedMatches = new Set([...cascade.summary.reset_matches,...cascade.summary.cancelled_matches].map(String));
+      for (const invalidatedId of invalidatedMatches) {
+        writes.push(env.DB.prepare(
+          "INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) SELECT ?,?,'match_result_submission_superseded','match',match_id,json_object('score_a',score_a,'score_b',score_b,'winner_team_id',winner_team_id,'status',status),json_object('status','superseded','reason','Upstream result corrected') FROM match_result_submissions WHERE match_id=?"
+        ).bind(await createAuditEventId(env.DB),auth.user.id,invalidatedId));
+        writes.push(env.DB.prepare("DELETE FROM match_result_submissions WHERE match_id=?").bind(invalidatedId));
+      }
     }
     // Grand Final reset is a dependent fixture. If the first final is corrected,
     // any played reset game must be invalidated and replayed (or cancelled).
@@ -301,6 +308,9 @@ export async function onRequestPost({ request, env }) {
       "UPDATE matches SET score_a=?,score_b=?,winner_team_id=?,result_source='admin_correction',result_verified_at=?,updated_at=? WHERE id=? AND status='completed' AND score_a=? AND score_b=? AND winner_team_id=?"
     ).bind(scoreA,scoreB,newWinner,timestamp,timestamp,matchId,before.score_a,before.score_b,before.winner_team_id));
     guardSuccessfulWrite();
+    writes.push(env.DB.prepare(
+      "UPDATE match_result_submissions SET status='confirmed',score_a=?,score_b=?,winner_team_id=?,decided_by=?,decided_at=?,dispute_reason=NULL WHERE match_id=?"
+    ).bind(scoreA,scoreB,newWinner,auth.user.id,timestamp,matchId));
     writes.push(env.DB.prepare(
       "UPDATE result_events SET validation_status='reviewed',decision_reason=?,reviewed_at=? WHERE match_id=? AND validation_status='valid'"
     ).bind("Superseded by manual result correction",timestamp,matchId));
