@@ -80,7 +80,7 @@ export async function onRequestPost({ request, env }) {
 
     if (action === "cancel_challenge") {
       const challengeId = String(body.challenge_id || "").trim();
-      if (!/^\\d+$/.test(challengeId)) return fail("INVALID_CHALLENGE", "Укажи ID защиты.");
+      if (!/^\d+$/.test(challengeId)) return fail("INVALID_CHALLENGE", "Укажи ID защиты.");
       const result = await env.DB.batch([
         env.DB.prepare("UPDATE mercy_crown_challenges SET status='cancelled',decided_at=? WHERE id=? AND status='scheduled'").bind(now,challengeId),
         env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,'mercy_crown_challenge_cancelled','mercy_crown_challenge',?,? WHERE EXISTS (SELECT 1 FROM mercy_crown_challenges WHERE id=? AND status='cancelled' AND decided_at=?)")
