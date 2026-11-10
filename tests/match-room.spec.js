@@ -141,6 +141,8 @@ test('judge results remain pending until the opposing captain confirms them', ()
   const page = source('match.html');
   expect(api).toContain('action === "verify_result"');
   expect(api).toContain('INSERT INTO match_result_submissions');
+  expect(api).toContain('publicRoom(auth.match, room, auth.access, submission)');
+  expect(api).toContain('const existingSubmission = await db.prepare("SELECT status FROM match_result_submissions WHERE match_id=?")');
   expect(api).toContain('action === "confirm_result" || action === "dispute_result"');
   expect(api).toContain('OPPONENT_CONFIRMATION_REQUIRED');
   expect(api).toContain('OPPONENT_CAPTAIN_REQUIRED');
