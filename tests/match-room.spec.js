@@ -156,7 +156,7 @@ test('judge results remain pending until the opposing captain confirms them', ()
 test('result confirmation and match completion are committed in one conditional D1 batch', () => {
   const api = source('functions/api/v1/match-room.js');
   expect(api).toContain('const decisionResults = await db.batch(decisionWrites)');
-  expect(api).toContain('decisionResults[2]?.meta?.changes');
+  expect(api).toContain('decisionResults[1]?.meta?.changes');
   expect(api).toContain('const writes = await db.batch([');
   expect(api).toContain('RESULT_DECISION_CONFLICT');
 });
