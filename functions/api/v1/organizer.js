@@ -244,9 +244,20 @@ export async function onRequestPost({request,env}) {
       ).bind(id).first();
       if(!match||(!auth.owner&&String(match.organizer_id)!==String(auth.user.id)))return fail("MATCH_NOT_FOUND","Матч не найден или недоступен.",404);
       if(!["published","active"].includes(match.tournament_status))return fail("TOURNAMENT_NOT_ACTIVE","Результат можно внести только в опубликованном или активном турнире.",409);
-      if(!["scheduled","in_progress"].includes(match.status)||match.team_a_id==null||match.team_b_id==null)
-        return fail("MATCH_NOT_PLAYABLE","Матч не готов к внесению результата.",409);
-      const winner=scoreA>scoreB?match.team_a_id:match.team_b_id,verifiedAt=now();
+      if(match.team_a_id==null||match.team_b_id==null)return fail("MATCH_NOT_PLAYABLE","Матч не готов к внесению результата.",409);
+      const winner=scoreA>scoreB?match.team_a_id:match.team_b_id;
+      if(match.status==="completed"&&match.result_verified_at&&match.result_source==="organizer_manual"&&
+          Number(match.score_a)===scoreA&&Number(match.score_b)===scoreB&&String(match.winner_team_id)===String(winner)){
+        try{
+          const progression=await advanceWinner(env.DB,id,winner);
+          return json({data:match,progression,result_already_saved:true,progression_retried:true});
+        }catch(error){
+          console.error("Organizer match progression retry failed:",error);
+          return json({error:{code:"RESULT_SAVED_PROGRESSION_PENDING",message:"Результат уже сохранён. Продвижение победителя пока не удалось завершить, повтори попытку позже."},data:match,result_saved:true},503);
+        }
+      }
+      if(!["scheduled","in_progress"].includes(match.status))return fail("MATCH_NOT_PLAYABLE","Матч уже завершён или не готов к внесению результата.",409);
+      const verifiedAt=now();
       const write=await env.DB.prepare(
         "UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='organizer_manual',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress')"
       ).bind(scoreA,scoreB,winner,verifiedAt,verifiedAt,id).run();
