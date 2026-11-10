@@ -55,6 +55,7 @@ test('assigned referees receive a private dashboard containing only their tourna
   const build = source('scripts/build-pages.sh');
   expect(me).toContain('has_referee_access: !!assignedReferee');
   expect(api).toContain("s.user_id=? AND s.staff_role='referee'");
+  expect(api).toContain('REFEREE_ACCESS_REQUIRED');
   expect(api).toContain('LEFT JOIN match_result_submissions rs ON rs.match_id=m.id');
   expect(api).toContain('"Cache-Control": "no-store, private"');
   expect(page).toContain('/api/v1/referee');
