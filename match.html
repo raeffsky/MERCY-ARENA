@@ -36,9 +36,9 @@ var win=data.window;
 windowText.textContent=win.configured?'Окно check-in: '+new Date(win.open_at).toLocaleString('ru-RU')+' — '+new Date(win.close_at).toLocaleString('ru-RU')+(win.is_open?' · ОТКРЫТО':win.is_closed?' · ЗАКРЫТО':' · ОЖИДАЕТСЯ'):'Время начала турнира не задано. Организатор должен настроить окно check-in.';
 var current=data.checkins||[],match=data.match||null;
 var a=current.find(function(x){return String(x.team_id)===String(window.matchRoomData.match.team_a_id)}),b=current.find(function(x){return String(x.team_id)===String(window.matchRoomData.match.team_b_id)});
-var labels={pending:'ОЖИДАЕТ CHECK-IN',checked_in:'ПРИБЫТИЕ ПОДТВЕРЖДЕНО ✓',no_show:'НЕЯВКА',excused:'ОСВОБОЖДЕНА'};
+var labels={pending:'ОЖИДАЕТ CHECK-IN',checked_in:'ПРИБЫТИЕ ПОДТВЕРЖДЕНО ✓',no_show:'НЕЯВКА',excused:'ОСВОБОЖДЕНА',no_registration:'НЕТ ОДОБРЕННОЙ ЗАЯВКИ'};
 function row(item,teamId,teamName){
-var state=item?item.status:'pending',html='<div class="ready-card"><b>'+esc(teamName||'Команда')+'</b><em>'+esc(labels[state]||state)+'</em>';
+var state=item?item.status:'no_registration',html='<div class="ready-card"><b>'+esc(teamName||'Команда')+'</b><em>'+esc(labels[state]||state)+'</em>';
 if(item&&item.checked_in_at)html+='<small>'+new Date(item.checked_in_at).toLocaleString('ru-RU')+'</small>';
 if(data.permissions.can_check_in&&String(data.permissions.own_team_id)===String(teamId)&&state==='pending')html+='<button class="btn primary" type="button" data-checkin-action="check_in" data-team-id="'+esc(teamId)+'">ПОДТВЕРДИТЬ УЧАСТИЕ</button>';
 if(item&&data.permissions.can_manage&&state==='pending'&&win.is_closed)html+='<button class="btn secondary" type="button" data-checkin-action="mark_no_show" data-team-id="'+esc(teamId)+'">ОТМЕТИТЬ НЕЯВКУ</button>';
