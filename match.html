@@ -42,13 +42,14 @@ function row(item,teamId,teamName){
 var state=item?item.status:'no_registration',html='<div class="ready-card"><b>'+esc(teamName||'Команда')+'</b><em>'+esc(labels[state]||state)+'</em>';
 if(item&&item.checked_in_at)html+='<small>'+new Date(item.checked_in_at).toLocaleString('ru-RU')+'</small>';
 if(data.permissions.can_check_in&&String(data.permissions.own_team_id)===String(teamId)&&state==='pending')html+='<button class="btn primary" type="button" data-checkin-action="check_in" data-team-id="'+esc(teamId)+'">ПОДТВЕРДИТЬ УЧАСТИЕ</button>';
-if(item&&data.permissions.can_manage&&state==='pending'&&win.is_closed)html+='<button class="btn secondary" type="button" data-checkin-action="mark_no_show" data-team-id="'+esc(teamId)+'">ОТМЕТИТЬ НЕЯВКУ</button>';
+if(item&&data.permissions.can_manage&&state==='pending'&&win.is_closed)html+='<button class="btn secondary" type="button" data-checkin-action="mark_no_show" data-team-id="'+esc(teamId)+'">ОТМЕТИТЬ НЕЯВКУ</button>';if(item&&data.permissions.can_manage&&window.matchRoomData.permissions.can_manage&&state==='no_show')html+='<button class="btn danger" type="button" data-checkin-forfeit="'+esc(teamId)+'">ПРИСУДИТЬ ТЕХНИЧЕСКОЕ ПОРАЖЕНИЕ</button>';
 if(item&&data.permissions.can_manage&&['pending','no_show'].includes(state))html+='<button class="btn secondary" type="button" data-checkin-action="excuse" data-team-id="'+esc(teamId)+'">ОСВОБОДИТЬ ОТ CHECK-IN</button>';
 if(item&&data.permissions.can_manage&&state!=='pending')html+='<button class="btn secondary" type="button" data-checkin-action="reset" data-team-id="'+esc(teamId)+'">СБРОСИТЬ ОТМЕТКУ</button>';
 return html+'</div>';
 }
 status.innerHTML='<div class="ready">'+row(a,window.matchRoomData.match.team_a_id,window.matchRoomData.match.team_a_name)+row(b,window.matchRoomData.match.team_b_id,window.matchRoomData.match.team_b_name)+'</div>';
 status.querySelectorAll('[data-checkin-action]').forEach(function(button){button.addEventListener('click',async function(){button.disabled=true;try{await request('/api/v1/checkins',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:button.dataset.checkinAction,tournament_id:tournamentId,team_id:button.dataset.teamId})});await loadCheckins(tournamentId)}catch(error){message(error.message,true);button.disabled=false}})});
+status.querySelectorAll('[data-checkin-forfeit]').forEach(function(button){button.addEventListener('click',async function(){if(!confirm('Присудить команде техническое поражение и завершить матч?'))return;button.disabled=true;try{var result=await request('/api/v1/match-room',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'forfeit_no_show',match_id:id,team_id:button.dataset.checkinForfeit})});paint(result);message('Техническое поражение зафиксировано. Победитель продвинут по сетке.')}catch(error){message(error.message,true);button.disabled=false}})});
 }catch(error){panel.hidden=true;console.error('MERCY check-in unavailable:',error)}
 }
 function paint(d){
