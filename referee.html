@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090b0d">
+<title>СУДЕЙСКИЙ КАБИНЕТ · MERCY ARENA</title>
+<style>
+:root{color-scheme:dark;--bg:#090b0d;--panel:#11151a;--line:#29313a;--lime:#d7ff5e;--muted:#89929d;--text:#f4f6f8}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% 0,#d7ff5e12,transparent 38%),var(--bg);color:var(--text);font:14px/1.6 Manrope,Arial,sans-serif}
+.wrap{width:min(1120px,calc(100% - 32px));margin:auto}.top{padding:20px 0;border-bottom:1px solid var(--line)}a{color:inherit}.brand{color:var(--lime);font-weight:900;letter-spacing:2px;text-decoration:none}.brand small{display:block;color:var(--muted);font-size:9px;letter-spacing:3px}
+.hero{padding:42px 0 20px}.kicker{color:var(--lime);font-size:10px;font-weight:900;letter-spacing:2px}.hero h1{font-size:clamp(36px,7vw,62px);line-height:.95;margin:12px 0}.muted{color:var(--muted)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0}.filter{background:#10151a;border:1px solid var(--line);color:var(--text);padding:10px 12px}
+.notice{padding:14px 16px;border:1px solid var(--line);background:var(--panel);color:var(--muted)}.matches{display:grid;gap:12px;margin:18px 0 50px}
+.match{border:1px solid var(--line);background:linear-gradient(110deg,#12171d,#0e1216);padding:18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}
+.meta{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:10px;letter-spacing:.5px}.tournament{color:var(--lime);font-size:10px;font-weight:900;letter-spacing:1.5px}
+.teams{display:flex;align-items:center;gap:14px;margin:10px 0;font-weight:900;font-size:clamp(16px,2.5vw,22px)}.vs{color:var(--lime);font-size:11px}
+.score{color:var(--lime);font-weight:900;font-size:22px}.status{font-size:10px;font-weight:900;letter-spacing:1px;color:var(--muted)}.status.pending{color:#f5d77b}.status.disputed{color:#ff9292}.status.completed{color:var(--lime)}
+.btn{display:inline-flex;align-items:center;justify-content:center;background:var(--lime);color:#10130b;text-decoration:none;font-weight:900;font-size:10px;letter-spacing:1px;padding:12px 16px;white-space:nowrap}
+@media(max-width:640px){.match{grid-template-columns:1fr}.match .btn{width:100%}.teams{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="brand" href="/#/home">MERCY ARENA<small>REFEREE OPERATIONS</small></a></div></header>
+<main class="wrap">
+<section class="hero"><div class="kicker">TOURNAMENT STAFF / REFEREE</div><h1>СУДЕЙСКИЙ КАБИНЕТ</h1><p class="muted">Только турниры, в которых тебе назначена роль судьи. Открывай матч, публикуй данные комнаты и отправляй результат на подтверждение капитану соперника.</p></section>
+<div class="toolbar"><select id="statusFilter" class="filter"><option value="all">Все матчи</option><option value="active">Предстоящие и текущие</option><option value="pending">Ожидают подтверждения</option><option value="disputed">Спорные</option><option value="completed">Завершённые</option></select><span id="count" class="muted"></span></div>
+<div id="notice" class="notice">Загружаем назначенные матчи…</div><section id="matches" class="matches"></section>
+</main>
+<script>
+(function(){
+'use strict';
+var all=[],byId=function(id){return document.getElementById(id)};
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function date(v){if(!v)return 'Время не назначено';var d=new Date(v);return Number.isNaN(d.getTime())?'Время не назначено':d.toLocaleString('ru-RU',{dateStyle:'medium',timeStyle:'short'})}
+function status(m){if(m.result_submission_status==='disputed')return ['disputed','СПОР · НУЖНО РЕШЕНИЕ'];if(m.result_submission_status==='pending')return ['pending','ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ'];if(m.status==='completed')return ['completed','ЗАВЕРШЁН'];return ['',({scheduled:'ЗАПЛАНИРОВАН',in_progress:'ИДЁТ',postponed:'ПЕРЕНЕСЁН',cancelled:'ОТМЕНЁН'})[m.status]||m.status.toUpperCase()]}
+function render(){
+var filter=byId('statusFilter').value,rows=all.filter(function(m){if(filter==='active')return ['scheduled','in_progress'].includes(m.status);if(filter==='pending')return m.result_submission_status==='pending';if(filter==='disputed')return m.result_submission_status==='disputed';if(filter==='completed')return m.status==='completed';return true});
+byId('count').textContent=rows.length+' / '+all.length+' матчей';
+byId('matches').innerHTML=rows.map(function(m){var st=status(m),score=m.score_a==null?'— : —':m.score_a+' : '+m.score_b;return '<article class="match"><div><div class="tournament">'+esc(m.tournament_title)+'</div><div class="teams"><span>'+esc(m.team_a_name||'Ожидает команду')+'</span><span class="vs">VS</span><span>'+esc(m.team_b_name||'Ожидает команду')+'</span></div><div class="meta"><span>МАТЧ #'+esc(m.id)+'</span><span>'+esc(m.bracket.toUpperCase())+' · РАУНД '+esc(m.round_number)+'</span><span>'+esc(date(m.scheduled_at))+'</span><span>'+esc(m.series_format||'BO1')+'</span></div></div><div><div class="status '+st[0]+'">'+esc(st[1])+'</div><div class="score">'+esc(m.status==='completed'?score:(m.proposed_score_a==null?'— : —':m.proposed_score_a+' : '+m.proposed_score_b))+'</div><a class="btn" href="/match.html?id='+encodeURIComponent(m.id)+'">ОТКРЫТЬ МАТЧ</a></div></article>'}).join('');
+if(!rows.length)byId('matches').innerHTML='<div class="notice">По выбранному фильтру матчей нет.</div>';
+}
+async function load(){try{var response=await fetch('/api/v1/referee',{credentials:'same-origin',cache:'no-store'}),payload=await response.json();if(!response.ok){var e=new Error(payload.error&&payload.error.message||'Не удалось загрузить матчи');e.status=response.status;throw e}all=payload.data||[];byId('notice').hidden=true;render()}catch(e){byId('notice').textContent=e.status===401?'Войди в аккаунт, которому назначена роль судьи.':e.message;}}
+byId('statusFilter').addEventListener('change',render);load();
+})();
+</script>
+</body></html>
