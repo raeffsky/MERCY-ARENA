@@ -48,6 +48,14 @@ test.describe('Tournament application server guardrails', () => {
     expect(source('migrations/0001_initial_schema.sql')).toContain('UNIQUE (tournament_id, team_id)');
   });
 
+  test('new applications notify the tournament organizer as well as confirming receipt to the captain', () => {
+    const code = api();
+    expect(code).toContain('"organizer_id"');
+    expect(code).toContain("type,title,message,link,entity_type,entity_id) VALUES (?,'application_received'");
+    expect(code).toContain('tournament.organizer_id');
+    expect(code).toContain('String(tournament.organizer_id) !== String(auth.user.id)');
+  });
+
   test('roster replacement, notification and audit writes are batched together', () => {
     const code = api();
     expect(code).toContain('DELETE FROM tournament_registration_roster WHERE registration_id=?');
