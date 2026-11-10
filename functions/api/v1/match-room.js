@@ -194,6 +194,8 @@ export async function onRequestPost({ request, env }) {
           return fail("RESULT_SAVED_PROGRESSION_PENDING","Техническое поражение уже сохранено. Повтори продвижение победителя позже.",503);
         }
       }
+      const existingSubmission = await db.prepare("SELECT status FROM match_result_submissions WHERE match_id=?").bind(id).first();
+      if (existingSubmission) return fail("RESULT_SUBMISSION_EXISTS","По матчу уже подан результат. Организатор должен разрешить текущую запись.",409);
       if (!["scheduled","in_progress"].includes(match.status)) return fail("MATCH_NOT_PLAYABLE","Техническое поражение можно назначить только для текущего матча.",409);
       const checkin = await db.prepare("SELECT c.status FROM tournament_checkins c JOIN tournament_registrations r ON r.id=c.registration_id AND r.status='approved' WHERE c.tournament_id=? AND c.team_id=?").bind(match.tournament_id,absentTeamId).first();
       if (!checkin || checkin.status !== "no_show") return fail("NO_SHOW_NOT_CONFIRMED", "Сначала отметь команду как неявившуюся в check-in.", 409);
@@ -251,6 +253,7 @@ export async function onRequestPost({ request, env }) {
     if (action === "confirm_result" || action === "dispute_result") {
       const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
       if (!submission || submission.status !== "pending") return fail("RESULT_NOT_PENDING","Нет результата, ожидающего подтверждения.",409);
+      if (!["scheduled","in_progress"].includes(match.status)) return fail("MATCH_NOT_PLAYABLE","Матч уже завершён или остановлен.",409);
       if (!access.canReady || !access.side) return fail("TEAM_CAPTAIN_REQUIRED","Подтвердить результат может только капитан команды-соперника.",403);
       if (String(user.id) === String(submission.proposed_by)) return fail("SUBMITTER_CANNOT_CONFIRM","Судья, отправивший результат, не может подтверждать его от имени команды.",403);
       const ownTeamId = access.side === "a" ? match.team_a_id : match.team_b_id;
