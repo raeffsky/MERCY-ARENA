@@ -177,6 +177,16 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(organizer).toContain('TEAM_LIMIT_BELOW_OCCUPIED');
   });
 
+  test('platform owner can assign existing tournaments to users with organizer role', () => {
+    const admin = source('functions/api/v1/admin.js');
+    const page = source('index.html');
+    expect(admin).toContain('"organizer_id"');
+    expect(admin).toContain('"organizer_id","max_teams"');
+    expect(page).toContain("['organizer_id','Ответственный организатор','select',false,'organizers']");
+    expect(page).toContain("opts==='organizers'?users.filter(function(u){return String(u.roles||'').split(',').includes('organizer')})");
+    expect(page).toContain("users=(tab==='players'||tab==='teams'||tab==='tournaments')?await request('users'):");
+  });
+
   test('only the platform owner can grant or revoke organizer access', () => {
     const admin = source('functions/api/v1/admin.js');
     const page = source('index.html');
