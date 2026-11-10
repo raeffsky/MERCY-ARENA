@@ -87,7 +87,8 @@ if(submission){
  $('resultDisputeReason').hidden=!submission.dispute_reason;
  $('resultDisputeReason').textContent=submission.dispute_reason||'';
  $('resultReviewActions').hidden=!p.can_confirm_result;
- $('organizerResolve').hidden=!p.can_resolve_result;\n $('retryProgressionButton').hidden=!p.can_retry_progression;
+ $('organizerResolve').hidden=!p.can_resolve_result;
+ $('retryProgressionButton').hidden=!p.can_retry_progression;
  $('resolveScoreA').value=submission.score_a;$('resolveScoreB').value=submission.score_b;
 }
 if(p.can_manage){var f=$('manageForm');f.elements.series_format.value=r.series_format;f.elements.room_id.value=r.room_id||'';f.elements.room_password.value=r.room_password||'';f.elements.judge_contact.value=r.judge_contact||'';f.elements.instructions.value=r.instructions||'';f.elements.publish.checked=r.published}
