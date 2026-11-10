@@ -229,16 +229,17 @@ export async function onRequestPost({ request, env }) {
       const captain = await db.prepare("SELECT captain_id FROM teams WHERE id=?").bind(confirmingTeam).first();
       if (!captain?.captain_id) return fail("OPPONENT_CAPTAIN_REQUIRED","У команды-соперника не назначен капитан, который может подтвердить результат.",409);
       const submitWrites = [
-        db.prepare("INSERT INTO match_result_submissions (match_id,proposed_by,score_a,score_b,winner_team_id,confirming_team_id,status,submitted_at) VALUES (?,?,?,?,?,?,'pending',?)")
-          .bind(id,user.id,scoreA,scoreB,winner,confirmingTeam,submittedAt),
-        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'judge_match_result_submitted','match',?,?,?)")
-          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:match.status}),JSON.stringify({score_a:scoreA,score_b:scoreB,winner_team_id:winner,confirming_team_id:confirmingTeam,status:"pending"}))
+        db.prepare("INSERT INTO match_result_submissions (match_id,proposed_by,score_a,score_b,winner_team_id,confirming_team_id,status,submitted_at) SELECT ?,?,?,?,?,?,'pending',? WHERE NOT EXISTS (SELECT 1 FROM match_result_submissions WHERE match_id=?)")
+          .bind(id,user.id,scoreA,scoreB,winner,confirmingTeam,submittedAt,id),
+        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) SELECT ?,?,'judge_match_result_submitted','match',?,?,? WHERE EXISTS (SELECT 1 FROM match_result_submissions WHERE match_id=? AND proposed_by=? AND score_a=? AND score_b=? AND submitted_at=?)")
+          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:match.status}),JSON.stringify({score_a:scoreA,score_b:scoreB,winner_team_id:winner,confirming_team_id:confirmingTeam,status:"pending"}),id,user.id,scoreA,scoreB,submittedAt)
       ];
       if (captain?.captain_id) submitWrites.push(
-        db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) VALUES (?,?,?,?,?,'match',?)")
-          .bind(captain.captain_id,"match_result_confirmation","Подтверди результат матча","Судья отправил результат матча #"+id+". Проверь счёт и подтверди его или открой спор.","/match.html?id="+encodeURIComponent(id),String(id))
+        db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) SELECT ?,?,?,?,?, 'match',? WHERE EXISTS (SELECT 1 FROM match_result_submissions WHERE match_id=? AND proposed_by=? AND score_a=? AND score_b=? AND submitted_at=?)")
+          .bind(captain.captain_id,"match_result_confirmation","Подтверди результат матча","Судья отправил результат матча #"+id+". Проверь счёт и подтверди его или открой спор.","/match.html?id="+encodeURIComponent(id),String(id),id,user.id,scoreA,scoreB,submittedAt)
       );
       const writes = await db.batch(submitWrites);
+      if (!writes[0]?.meta?.changes) return fail("RESULT_SUBMISSION_EXISTS","По этому матчу уже есть поданный результат.",409);
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
       const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
       return json({ data: publicRoom(match,room,access,submission), submitted:true },202,{"Cache-Control":"no-store, private"});
