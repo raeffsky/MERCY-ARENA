@@ -17,6 +17,12 @@ test('MERCY MATCH room access is limited to authenticated match participants and
   expect(api).toContain("JOIN teams t ON t.id=p.team_id AND t.status='active' AND t.archived_at IS NULL");
 });
 
+test('readiness identity requires an approved player profile with active team roster membership', () => {
+  const api = source('functions/api/v1/match-room.js');
+  expect(api).toContain("AND EXISTS (SELECT 1 FROM team_roster tr WHERE tr.player_id=p.id AND tr.team_id=t.id AND tr.left_at IS NULL)");
+  expect(api).toContain("SELECT team_id FROM team_roster WHERE player_id=? AND left_at IS NULL AND team_id IN (?,?) AND team_id=?");
+});
+
 test('room credentials are hidden from participants until published and hidden after the match ends', () => {
   const api = source('functions/api/v1/match-room.js');
   expect(api).toContain('const tournamentActive = !!match.tournament_published_at && ["published", "active"].includes(match.tournament_status)');
