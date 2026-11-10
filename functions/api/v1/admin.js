@@ -519,6 +519,10 @@ export async function onRequestPost({ request, env }) {
     payload.game = payload.game || "Mobile Legends: Bang Bang";
     payload.organizer_id = auth.user.id;
   }
+  if (resource === "tournaments" && action === "update" && Object.prototype.hasOwnProperty.call(data, "organizer_id") && payload.organizer_id != null) {
+    const assignedOrganizer = await env.DB.prepare("SELECT user_id FROM user_roles WHERE user_id=? AND role='organizer' LIMIT 1").bind(payload.organizer_id).first();
+    if (!assignedOrganizer) return bad("Назначить турнир можно только пользователю с активной ролью организатора.", 409);
+  }
   if (resource === "tournaments" && (payload.status === "published" || payload.status === "active") && action !== "update") payload.published_at = now();
   if (resource === "matches" && action === "update") {
     const existing = await env.DB.prepare("SELECT team_a_id,team_b_id,status FROM matches WHERE id=? LIMIT 1").bind(String(id || "")).first();
