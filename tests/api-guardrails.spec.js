@@ -85,6 +85,14 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(applications).toContain("tr.roster_role='captain' AND p.user_id=?");
   });
 
+  test('players cannot reactivate an archived profile through the self-service endpoint', () => {
+    const players = source('functions/api/v1/players.js');
+    expect(players).toContain('SELECT id,archived_at FROM players WHERE user_id=?');
+    expect(players).toContain('PROFILE_ARCHIVED');
+    expect(players).toContain('profile_status=?,updated_at=? WHERE user_id=?');
+    expect(players).not.toContain('archived_at=NULL,updated_at=? WHERE user_id=?');
+  });
+
   test('public player and team directories consistently hide archived entities', () => {
     const players = source('functions/api/v1/players.js');
     const teams = source('functions/api/v1/teams.js');
@@ -115,6 +123,14 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(brackets).toContain("tm.status='active' AND tm.archived_at IS NULL");
     expect(qualify).toContain("WHERE t.archived_at IS NULL AND (EXISTS");
     expect(ranking).toContain("WHERE t.archived_at IS NULL AND (EXISTS");
+  });
+
+  test('invite acceptance is atomic with active-team and roster state', () => {
+    const members = source('functions/api/v1/team-members.js');
+    expect(members).toContain("status='pending' AND EXISTS (SELECT 1 FROM teams WHERE id=team_invites.team_id AND status='active' AND archived_at IS NULL)");
+    expect(members).toContain("status='accepted' AND responded_at=?");
+    expect(members).toContain("status='active' AND archived_at IS NULL)").toBeTruthy();
+    expect(members).toContain('TEAM_ARCHIVED_DURING_ACCEPT');
   });
 
   test('team captain transfer and invite acceptance recheck active team state atomically', () => {
