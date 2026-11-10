@@ -227,6 +227,7 @@ export async function onRequestPost({ request, env }) {
       if (existing) return fail("RESULT_SUBMISSION_EXISTS", existing.status === "disputed" ? "Результат оспорен. Решение принимает организатор." : "По этому матчу уже есть поданный результат.", 409);
       const submittedAt = timestamp;
       const captain = await db.prepare("SELECT captain_id FROM teams WHERE id=?").bind(confirmingTeam).first();
+      if (!captain?.captain_id) return fail("OPPONENT_CAPTAIN_REQUIRED","У команды-соперника не назначен капитан, который может подтвердить результат.",409);
       const submitWrites = [
         db.prepare("INSERT INTO match_result_submissions (match_id,proposed_by,score_a,score_b,winner_team_id,confirming_team_id,status,submitted_at) VALUES (?,?,?,?,?,?,'pending',?)")
           .bind(id,user.id,scoreA,scoreB,winner,confirmingTeam,submittedAt),
