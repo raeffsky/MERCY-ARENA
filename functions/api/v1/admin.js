@@ -6,7 +6,7 @@ import { prepareMatchCorrectionCascade } from "./_lib/match-correction-cascade.m
 
 const TABLES = {
   tournaments: { table: "tournaments", fields: ["title","description","game","region","format","status","max_teams","registration_open_at","registration_close_at","starts_at","ends_at","rules_url","season_id","organizer_id","prize_pool","poster_url","stream_url"] },
-  teams: { table: "teams", fields: ["name","tag","logo_url","captain_id","region","status"] },
+  teams: { table: "teams", fields: ["name","tag","logo_url","region","status"] },
   players: { table: "players", fields: ["user_id","game_id","nickname","role","region","profile_status"] },
   matches: { table: "matches", fields: ["tournament_id","round_number","bracket","match_number","scheduled_at","status","team_a_id","team_b_id","score_a","score_b","winner_team_id"] },
   seasons: { table: "seasons", fields: ["id","title","season_number","starts_at","ends_at","status","image_url"] }
