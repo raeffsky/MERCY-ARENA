@@ -1,4 +1,6 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
+const path = require('node:path');
 
 async function openOwnerAdmin(page, adminData = {}) {
   await page.route('**/api/v1/me', route => route.fulfill({ json: {
