@@ -144,6 +144,13 @@ export async function onRequestPost({request,env}) {
       const fieldValue=function(key){return Object.prototype.hasOwnProperty.call(data,key)?data[key]:before[key]};
       const merged={registration_open_at:fieldValue("registration_open_at"),registration_close_at:fieldValue("registration_close_at"),starts_at:fieldValue("starts_at"),ends_at:fieldValue("ends_at")};
       const dates=validateDates(merged);
+      const checkinRequiredRaw=fieldValue("checkin_required");
+      const checkinRequired=checkinRequiredRaw==null||checkinRequiredRaw===""?0:Number(checkinRequiredRaw);
+      if(![0,1].includes(checkinRequired))return fail("INVALID_CHECKIN_REQUIRED","Обязательный check-in должен быть включён или выключен.");
+      const checkinOpen=dateValue(fieldValue("checkin_open_at"),"открытие check-in");
+      const checkinClose=dateValue(fieldValue("checkin_close_at"),"закрытие check-in");
+      if(checkinOpen&&checkinClose&&Date.parse(checkinOpen)>Date.parse(checkinClose))return fail("INVALID_CHECKIN_WINDOW","Check-in не может закрываться раньше открытия.");
+      if((checkinOpen||checkinClose)&&!dates.starts_at)return fail("CHECKIN_START_REQUIRED","Для настраиваемого окна check-in сначала укажи время начала турнира.");
       if(!isHttpsUrl(data.poster_url??before.poster_url)||!isHttpsUrl(data.rules_url??before.rules_url))return fail("INVALID_URL","Постер и правила должны использовать HTTPS.");
       const stream=data.stream_url??before.stream_url;
       if(stream&&!/^https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(String(stream).trim()))return fail("INVALID_STREAM_URL","Для трансляции укажи HTTPS-ссылку YouTube.");
@@ -152,6 +159,7 @@ export async function onRequestPost({request,env}) {
         region:String(data.region??before.region??"").trim().slice(0,80)||null,format,max_teams:maxTeams,
         registration_open_at:dates.registration_open_at,registration_close_at:dates.registration_close_at,
         starts_at:dates.starts_at,ends_at:dates.ends_at,
+        checkin_required:checkinRequired,checkin_open_at:checkinOpen,checkin_close_at:checkinClose,
         rules_url:(data.rules_url??before.rules_url)||null,poster_url:(data.poster_url??before.poster_url)||null,
         stream_url:stream||null,prize_pool:String(data.prize_pool??before.prize_pool??"").trim().slice(0,120)||null,
         season_id:data.season_id==null?before.season_id:(data.season_id===""?null:Number(data.season_id)),updated_at:now()
@@ -161,8 +169,8 @@ export async function onRequestPost({request,env}) {
         if(!season)return fail("SEASON_NOT_FOUND","Выбранный сезон не найден или уже закрыт.",409);
       }
       const writes=await env.DB.prepare(
-        "UPDATE tournaments SET title=?,description=?,region=?,format=?,max_teams=?,registration_open_at=?,registration_close_at=?,starts_at=?,ends_at=?,rules_url=?,poster_url=?,stream_url=?,prize_pool=?,season_id=?,updated_at=? WHERE id=? AND (?=1 OR organizer_id=? OR EXISTS (SELECT 1 FROM tournament_staff s WHERE s.tournament_id=tournaments.id AND s.user_id=? AND s.staff_role IN ('organizer','admin'))) AND status NOT IN ('completed','cancelled')"
-      ).bind(next.title,next.description,next.region,next.format,next.max_teams,next.registration_open_at,next.registration_close_at,next.starts_at,next.ends_at,
+        "UPDATE tournaments SET title=?,description=?,region=?,format=?,max_teams=?,registration_open_at=?,registration_close_at=?,starts_at=?,ends_at=?,checkin_required=?,checkin_open_at=?,checkin_close_at=?,rules_url=?,poster_url=?,stream_url=?,prize_pool=?,season_id=?,updated_at=? WHERE id=? AND (?=1 OR organizer_id=? OR EXISTS (SELECT 1 FROM tournament_staff s WHERE s.tournament_id=tournaments.id AND s.user_id=? AND s.staff_role IN ('organizer','admin'))) AND status NOT IN ('completed','cancelled')"
+      ).bind(next.title,next.description,next.region,next.format,next.max_teams,next.registration_open_at,next.registration_close_at,next.starts_at,next.ends_at,next.checkin_required,next.checkin_open_at,next.checkin_close_at,
         next.rules_url,next.poster_url,next.stream_url,next.prize_pool,next.season_id,next.updated_at,id,auth.owner?1:0,auth.user.id,auth.user.id).run();
       if(!writes.meta?.changes)return fail("TOURNAMENT_UPDATE_CONFLICT","Турнир изменился или больше недоступен.",409);
       const after=await env.DB.prepare("SELECT * FROM tournaments WHERE id=?").bind(id).first();
