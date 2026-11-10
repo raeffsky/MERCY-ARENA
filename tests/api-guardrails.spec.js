@@ -125,11 +125,19 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(ranking).toContain("WHERE t.archived_at IS NULL AND (EXISTS");
   });
 
+  test('team invitation creation rechecks active team and free player atomically', () => {
+    const members = source('functions/api/v1/team-members.js');
+    expect(members).toContain("INSERT INTO team_invites (team_id,player_id,invited_by,status,created_at) SELECT");
+    expect(members).toContain("WHERE id=team_invites.team_id AND captain_id=? AND status='active' AND archived_at IS NULL");
+    expect(members).toContain("profile_status='approved' AND archived_at IS NULL AND team_id IS NULL");
+    expect(members).toContain('TEAM_OR_PLAYER_CHANGED');
+  });
+
   test('invite acceptance is atomic with active-team and roster state', () => {
     const members = source('functions/api/v1/team-members.js');
     expect(members).toContain("status='pending' AND EXISTS (SELECT 1 FROM teams WHERE id=team_invites.team_id AND status='active' AND archived_at IS NULL)");
     expect(members).toContain("status='accepted' AND responded_at=?");
-    expect(members).toContain("status='active' AND archived_at IS NULL)").toBeTruthy();
+    expect(members).toContain("status='active' AND archived_at IS NULL");
     expect(members).toContain('TEAM_ARCHIVED_DURING_ACCEPT');
   });
 
