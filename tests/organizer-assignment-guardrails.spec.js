@@ -7,6 +7,8 @@ test('tournament organizer assignment is validated against the organizer role on
   expect(admin).toContain('Object.prototype.hasOwnProperty.call(data, "organizer_id")');
   expect(admin).toContain("SELECT user_id FROM user_roles WHERE user_id=? AND role='organizer' LIMIT 1");
   expect(admin).toContain('Назначить турнир можно только пользователю с активной ролью организатора.');
+  expect(admin).toContain('payload.organizer_id = payload.organizer_id ?? auth.user.id');
+  expect(admin).toContain('["create","update"].includes(action)');
 });
 
 test('organizer role changes require an explicit boolean and owner authorization', () => {
