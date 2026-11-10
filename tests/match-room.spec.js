@@ -121,6 +121,7 @@ test('referees can award a forfeit only after an approved team is confirmed as a
   const page = source('match.html');
   expect(api).toContain('action === "forfeit_no_show"');
   expect(api).toContain('NO_SHOW_NOT_CONFIRMED');
+  expect(api).toContain('OPPONENT_NOT_CHECKED_IN');
   expect(api).toContain("r.status='approved'");
   expect(api).toContain("result_source='no_show_forfeit'");
   expect(api).toContain('judge_match_forfeit');
