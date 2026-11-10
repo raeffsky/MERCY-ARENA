@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090b0d"><title>MERCY MATCH · MERCY ARENA</title>
+<style>
+:root{color-scheme:dark;--bg:#090b0d;--panel:#11151a;--line:#29313a;--lime:#d7ff5e;--muted:#89929d;--text:#f4f6f8}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0,#d7ff5e12,transparent 38%),var(--bg);color:var(--text);font:14px/1.6 Manrope,Arial,sans-serif}.wrap{width:min(920px,calc(100% - 32px));margin:auto}.top{padding:22px 0;border-bottom:1px solid var(--line)}.brand{color:var(--lime);font-weight:900;letter-spacing:2px;text-decoration:none}.brand small{display:block;color:var(--muted);font-size:9px;letter-spacing:3px}.hero{padding:48px 0 24px}.kicker{color:var(--lime);font-size:10px;font-weight:900;letter-spacing:2px}.hero h1{font-size:clamp(38px,8vw,68px);line-height:.95;margin:12px 0}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);padding:22px;margin:14px 0}.teams{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;text-align:center}.team{font-size:clamp(16px,3vw,24px);font-weight:900;overflow-wrap:anywhere}.vs{color:var(--lime);font-weight:900}.meta{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:11px;margin-top:16px}.state{padding:5px 9px;border:1px solid #d7ff5e55;color:var(--lime);font-size:10px;font-weight:900;letter-spacing:1px}.room-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.credential{padding:15px;background:#090d10;border:1px solid var(--line);min-width:0}.credential span{display:block;color:var(--muted);font-size:9px;letter-spacing:1.5px}.credential b{display:block;font-size:22px;overflow-wrap:anywhere;margin-top:5px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.btn{border:1px solid var(--line);background:#171d22;color:var(--text);padding:11px 15px;font:800 11px inherit;cursor:pointer;text-decoration:none}.btn.primary{background:var(--lime);border-color:var(--lime);color:#111}.btn:disabled{opacity:.45;cursor:not-allowed}.field{display:grid;gap:6px;margin:10px 0;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:1px}.field input,.field select,.field textarea{width:100%;background:#090d10;border:1px solid var(--line);padding:12px;color:white;font:inherit;letter-spacing:0}.field textarea{min-height:90px;resize:vertical}.ready{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ready-card{border:1px solid var(--line);padding:16px}.ready-card b{display:block}.ready-card em{font-style:normal;color:var(--muted);font-size:10px}.ready-card.done{border-color:#d7ff5e80}.notice{padding:12px 14px;border-left:2px solid var(--lime);background:#d7ff5e0b;color:#cbd2c3;font-size:12px}.error{color:#ff8991}.hidden{display:none!important}@media(max-width:560px){.room-grid,.ready{grid-template-columns:1fr}.panel{padding:16px}.teams{gap:8px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="brand" href="/#/home">MERCY ARENA<small>MERCY MATCH CENTER</small></a></div></header>
+<main class="wrap">
+<section class="hero"><div class="kicker">OFFICIAL MATCH OPERATIONS</div><h1>ИГРОВАЯ КОМНАТА</h1><div class="muted" id="subtitle">Подключаем матч…</div></section>
+<div id="message" class="notice">Загружаем данные матча.</div>
+<section class="panel" id="matchPanel" hidden><div class="kicker" id="tournament"></div><div class="teams"><div class="team" id="teamA">КОМАНДА A</div><div class="vs">VS</div><div class="team" id="teamB">КОМАНДА B</div></div><div class="meta"><span id="matchNumber"></span><span id="matchTime"></span><span class="state" id="matchStatus"></span><span id="format"></span></div></section>
+<section class="panel" id="roomPanel" hidden><div class="kicker">CUSTOM ROOM / MOBILE LEGENDS</div><h2>ДАННЫЕ ИГРОВОЙ КОМНАТЫ</h2><div id="unpublished" class="notice">Организатор ещё не опубликовал ID и пароль комнаты. Они появятся здесь перед началом матча.</div><div class="room-grid" id="credentials" hidden><div class="credential"><span>ROOM ID</span><b id="roomId"></b></div><div class="credential"><span>ROOM PASSWORD</span><b id="roomPassword"></b></div></div><div class="meta" id="judge"></div><p id="instructions" class="muted"></p><div class="notice">Открой Mobile Legends: Bang Bang → Custom Room и введи данные выше. MERCY ARENA координирует матч, но сама игровую комнату не создаёт.</div></section>
+<section class="panel" id="readyPanel" hidden><div class="kicker">TEAM CHECK-IN</div><h2>ГОТОВНОСТЬ КОМАНД</h2><div class="ready"><div class="ready-card" id="readyA"><b id="readyTeamA">Команда A</b><em id="readyStateA">Ожидает подтверждения</em></div><div class="ready-card" id="readyB"><b id="readyTeamB">Команда B</b><em id="readyStateB">Ожидает подтверждения</em></div></div><div class="actions"><button class="btn primary" id="readyButton" hidden>ПОДТВЕРДИТЬ ГОТОВНОСТЬ</button><button class="btn" id="refreshButton">ОБНОВИТЬ ДАННЫЕ</button></div></section>
+<section class="panel" id="managePanel" hidden><div class="kicker">ORGANIZER / JUDGE CONTROL</div><h2>НАСТРОЙКА ИГРОВОЙ КОМНАТЫ</h2><form id="manageForm"><label class="field">ФОРМАТ СЕРИИ<select name="series_format"><option>BO1</option><option>BO3</option><option>BO5</option></select></label><label class="field">ROOM ID<input name="room_id" maxlength="80" autocomplete="off"></label><label class="field">ROOM PASSWORD<input name="room_password" maxlength="80" autocomplete="off"></label><label class="field">КОНТАКТ СУДЬИ / TELEGRAM<input name="judge_contact" maxlength="160" placeholder="@username или ссылка"></label><label class="field">ИНСТРУКЦИИ<textarea name="instructions" maxlength="1200" placeholder="Например: капитаны проверяют состав, судья запускает драфт после готовности обеих команд."></textarea></label><label class="field"><span><input type="checkbox" name="publish" style="width:auto"> Опубликовать ID и пароль участникам матча</span></label><div class="actions"><button class="btn primary" type="submit">СОХРАНИТЬ КОМНАТУ</button><button class="btn" type="button" id="resetReady">СБРОСИТЬ ГОТОВНОСТЬ</button></div></form></section>
+</main>
+<script>
+(function(){
+'use strict';
+var id=new URLSearchParams(location.search).get('id'),$=function(x){return document.getElementById(x)},data=null;
+function message(text,error){$('message').textContent=text;$('message').classList.toggle('error',!!error)}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+async function request(url,options){var r=await fetch(url,Object.assign({credentials:'same-origin',cache:'no-store'},options||{}));var p=await r.json();if(!r.ok)throw new Error(p.error&&p.error.message||'Запрос не выполнен');return p.data}
+function paint(d){
+data=d;var m=d.match,r=d.room,p=d.permissions;
+$('subtitle').textContent=m.tournament_title+' · Матч #'+m.id;
+$('tournament').textContent=m.tournament_title+' / MATCH '+m.id;
+$('teamA').textContent=m.team_a_name||'Ожидает команду';$('teamB').textContent=m.team_b_name||'Ожидает команду';
+$('matchNumber').textContent='РАУНД '+m.round_number+' · '+m.bracket.toUpperCase();
+$('matchTime').textContent=m.scheduled_at?new Date(m.scheduled_at).toLocaleString('ru-RU'):'Время не назначено';
+$('matchStatus').textContent=({scheduled:'ЗАПЛАНИРОВАН',in_progress:'ИДЁТ',completed:'ЗАВЕРШЁН',postponed:'ПЕРЕНЕСЁН',cancelled:'ОТМЕНЁН'})[m.status]||m.status;
+$('format').textContent=r.series_format;$('matchPanel').hidden=false;$('roomPanel').hidden=false;$('readyPanel').hidden=false;
+$('unpublished').hidden=!!r.published;$('credentials').hidden=!r.published;
+$('roomId').textContent=r.room_id||'';$('roomPassword').textContent=r.room_password||'';
+$('judge').textContent=r.judge_contact?'СУДЬЯ / СВЯЗЬ: '+r.judge_contact:'Контакт судьи пока не указан';
+$('instructions').textContent=r.instructions||'';
+$('readyTeamA').textContent=m.team_a_name||'Команда A';$('readyTeamB').textContent=m.team_b_name||'Команда B';
+$('readyStateA').textContent=r.team_a_ready?'ГОТОВА ✓':'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ';$('readyStateB').textContent=r.team_b_ready?'ГОТОВА ✓':'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ';
+$('readyA').classList.toggle('done',r.team_a_ready);$('readyB').classList.toggle('done',r.team_b_ready);
+$('readyButton').hidden=!p.can_ready||r[p.side==='a'?'team_a_ready':'team_b_ready'];
+$('managePanel').hidden=!p.can_manage;
+if(p.can_manage){var f=$('manageForm');f.elements.series_format.value=r.series_format;f.elements.room_id.value=r.room_id||'';f.elements.room_password.value=r.room_password||'';f.elements.judge_contact.value=r.judge_contact||'';f.elements.instructions.value=r.instructions||'';f.elements.publish.checked=r.published}
+message('Доступ подтверждён. Комната матча готова к координации.');
+}
+async function load(){if(!id){message('В ссылке отсутствует ID матча.',true);return}try{paint(await request('/api/v1/match-room?id='+encodeURIComponent(id)))}catch(e){message(e.message,true)}}
+$('readyButton').addEventListener('click',async function(){this.disabled=true;try{paint(await request('/api/v1/match-room',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'ready',match_id:id})}))}catch(e){message(e.message,true)}finally{this.disabled=false}});
+$('refreshButton').addEventListener('click',load);
+$('manageForm').addEventListener('submit',async function(e){e.preventDefault();var f=e.currentTarget,b=f.querySelector('button[type=submit]');b.disabled=true;try{var d=Object.fromEntries(new FormData(f).entries());d.publish=f.elements.publish.checked;paint(await request('/api/v1/match-room',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'configure',match_id:id,data:d})}))}catch(e){message(e.message,true)}finally{b.disabled=false}});
+$('resetReady').addEventListener('click',async function(){if(!confirm('Сбросить подтверждения готовности обеих команд?'))return;try{paint(await request('/api/v1/match-room',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'reset_ready',match_id:id,side:'both'})}))}catch(e){message(e.message,true)}});
+load();
+})();
+</script>
+</body></html>
