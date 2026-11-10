@@ -311,7 +311,9 @@ export async function onRequestPost({ request, env }) {
         db.prepare("UPDATE match_result_submissions SET status='confirmed',score_a=?,score_b=?,winner_team_id=?,decided_by=?,decided_at=?,dispute_reason=NULL WHERE match_id=? AND status IN ('pending','disputed') AND EXISTS (SELECT 1 FROM matches m WHERE m.id=match_result_submissions.match_id AND m.status='completed' AND m.result_source='organizer_resolved' AND m.score_a=? AND m.score_b=?)")
           .bind(scoreA,scoreB,winner,user.id,timestamp,id,scoreA,scoreB),
         db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'organizer_resolved_match_result','match',?,?,?)")
-          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:submission.status,score_a:submission.score_a,score_b:submission.score_b,dispute_reason:submission.dispute_reason}),JSON.stringify({status:"confirmed",score_a:scoreA,score_b:scoreB,winner_team_id:winner,organizer_reason:resolutionReason}))
+          .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:submission.status,score_a:submission.score_a,score_b:submission.score_b,dispute_reason:submission.dispute_reason}),JSON.stringify({status:"confirmed",score_a:scoreA,score_b:scoreB,winner_team_id:winner,organizer_reason:resolutionReason})),
+        db.prepare("INSERT INTO notifications (user_id,type,title,message,link,entity_type,entity_id) SELECT captain_id,'match_result_resolved','Результат матча зафиксирован','Организатор рассмотрел результат матча #'+?+' и зафиксировал итоговый счёт.','/match.html?id='||?,'match',? FROM teams WHERE id IN (?,?) AND captain_id IS NOT NULL AND EXISTS (SELECT 1 FROM matches WHERE id=? AND status='completed' AND result_source='organizer_resolved')")
+          .bind(id,id,String(id),match.team_a_id,match.team_b_id,id)
       ]);
       if (!writes[0]?.meta?.changes || !writes[1]?.meta?.changes) return fail("RESULT_RESOLUTION_CONFLICT","Матч или спор уже изменился. Обнови данные и проверь результат.",409);
       try { await advanceWinner(db,id,winner); }
