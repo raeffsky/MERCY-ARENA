@@ -41,9 +41,9 @@ function row(item,teamId,teamName){
 var state=item?item.status:'pending',html='<div class="ready-card"><b>'+esc(teamName||'Команда')+'</b><em>'+esc(labels[state]||state)+'</em>';
 if(item&&item.checked_in_at)html+='<small>'+new Date(item.checked_in_at).toLocaleString('ru-RU')+'</small>';
 if(data.permissions.can_check_in&&String(data.permissions.own_team_id)===String(teamId)&&state==='pending')html+='<button class="btn primary" type="button" data-checkin-action="check_in" data-team-id="'+esc(teamId)+'">ПОДТВЕРДИТЬ УЧАСТИЕ</button>';
-if(data.permissions.can_manage&&state==='pending'&&win.is_closed)html+='<button class="btn secondary" type="button" data-checkin-action="mark_no_show" data-team-id="'+esc(teamId)+'">ОТМЕТИТЬ НЕЯВКУ</button>';
-if(data.permissions.can_manage&&['pending','no_show'].includes(state))html+='<button class="btn secondary" type="button" data-checkin-action="excuse" data-team-id="'+esc(teamId)+'">ОСВОБОДИТЬ ОТ CHECK-IN</button>';
-if(data.permissions.can_manage&&state!=='pending')html+='<button class="btn secondary" type="button" data-checkin-action="reset" data-team-id="'+esc(teamId)+'">СБРОСИТЬ ОТМЕТКУ</button>';
+if(item&&data.permissions.can_manage&&state==='pending'&&win.is_closed)html+='<button class="btn secondary" type="button" data-checkin-action="mark_no_show" data-team-id="'+esc(teamId)+'">ОТМЕТИТЬ НЕЯВКУ</button>';
+if(item&&data.permissions.can_manage&&['pending','no_show'].includes(state))html+='<button class="btn secondary" type="button" data-checkin-action="excuse" data-team-id="'+esc(teamId)+'">ОСВОБОДИТЬ ОТ CHECK-IN</button>';
+if(item&&data.permissions.can_manage&&state!=='pending')html+='<button class="btn secondary" type="button" data-checkin-action="reset" data-team-id="'+esc(teamId)+'">СБРОСИТЬ ОТМЕТКУ</button>';
 return html+'</div>';
 }
 status.innerHTML='<div class="ready">'+row(a,window.matchRoomData.match.team_a_id,window.matchRoomData.match.team_a_name)+row(b,window.matchRoomData.match.team_b_id,window.matchRoomData.match.team_b_name)+'</div>';
