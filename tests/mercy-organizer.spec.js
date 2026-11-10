@@ -67,7 +67,7 @@ test.describe('MERCY ORGANIZER private workspace', () => {
     await expect(startButton).toBeVisible();
     await startButton.click();
     await expect.poll(() => startPayload && startPayload.action).toBe('start_tournament');
-    expect(startPayload.id).toBe(75);
+    expect(startPayload.id).toBe('75');
     await expect(page.locator('#orgContent')).toContainText('Идёт');
     await expect(page.locator('[data-org-start="75"]')).toHaveCount(0);
   });
