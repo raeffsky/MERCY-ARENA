@@ -62,8 +62,8 @@ export async function onRequestPost({ request, env }) {
       if (String(reign.team_id) === challengerId) return fail("INVALID_CHALLENGER", "Действующий чемпион не может бросить вызов сам себе.",409);
       const challenger = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND status='active' AND archived_at IS NULL").bind(challengerId).first();
       if (!challenger) return fail("INVALID_CHALLENGER", "Команда-претендент должна быть активной и неархивной.",409);
-      const match = await env.DB.prepare("SELECT m.id,m.tournament_id,m.status,m.team_a_id,m.team_b_id,m.scheduled_at,t.status AS tournament_status FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=?").bind(matchId).first();
-      if (!match || !["published","active"].includes(match.tournament_status) || !["scheduled","in_progress"].includes(match.status) ||
+      const match = await env.DB.prepare("SELECT m.id,m.tournament_id,m.status,m.team_a_id,m.team_b_id,m.scheduled_at,t.status AS tournament_status,t.published_at AS tournament_published_at FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=?").bind(matchId).first();
+      if (!match || !match.tournament_published_at || !["published","active"].includes(match.tournament_status) || !["scheduled","in_progress"].includes(match.status) ||
           new Set([String(match.team_a_id),String(match.team_b_id)]).size !== 2 ||
           ![String(reign.team_id),challengerId].every(id => [String(match.team_a_id),String(match.team_b_id)].includes(id))) {
         return fail("MATCH_NOT_ELIGIBLE", "Матч должен быть запланирован между действующим чемпионом и выбранным претендентом.",409);
