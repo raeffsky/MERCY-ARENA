@@ -43,3 +43,9 @@ test('match rooms are one-to-one with matches and cascade with match deletion', 
   expect(migration).toContain('match_id TEXT PRIMARY KEY REFERENCES matches(id) ON DELETE CASCADE');
   expect(migration).toContain("CHECK (series_format IN ('BO1','BO3','BO5'))");
 });
+
+test('MERCY MATCH page hides credentials and manager controls after a match is no longer active', () => {
+  const page = source('match.html');
+  expect(page).toContain("Данные игровой комнаты скрыты, поскольку матч больше не активен.");
+  expect(page).toContain("!p.can_manage||!['scheduled','in_progress'].includes(m.status)");
+});
