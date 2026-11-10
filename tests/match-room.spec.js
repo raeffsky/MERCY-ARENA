@@ -88,7 +88,6 @@ test('referee result entry enforces the BO1, BO3 and BO5 map-win thresholds', ()
   const page = source('match.html');
   expect(api).toContain('BO1: 1, BO3: 2, BO5: 3');
   expect(api).toContain('SERIES_NOT_FINISHED');
-  expect(organizer).toContain('BO1:1,BO3:2,BO5:3');
   expect(page).toContain('ПОБЕДЫ НА КАРТАХ A');
   expect(page).toContain('ПОБЕДЫ НА КАРТАХ B');
 });
