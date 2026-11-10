@@ -1,5 +1,4 @@
 import { json, databaseUnavailable } from "./_lib/http.js";
-import { createAuditEventId } from "./_lib/audit.js";
 import { advanceWinner } from "./_lib/match-progression.js";
 import { getSessionUser, isOwnerAccount, sameOrigin } from "./_lib/session-auth.js";
 import { createAuditEventId } from "./_lib/audit.js";
