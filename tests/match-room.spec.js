@@ -145,6 +145,8 @@ test('judge results remain pending until the opposing captain confirms them', ()
   expect(api).toContain('OPPONENT_CONFIRMATION_REQUIRED');
   expect(api).toContain('OPPONENT_CAPTAIN_REQUIRED');
   expect(api).toContain('action === "resolve_result"');
+  expect(api).toContain('["pending","disputed"].includes(submission.status)');
+  expect(api).toContain('RESOLUTION_REASON_REQUIRED');
   expect(api).toContain('advanceWinner(db,id,submission.winner_team_id)');
   expect(migration).toContain("status IN ('pending','confirmed','disputed')");
   expect(migration).toContain('confirming_team_id TEXT NOT NULL');
@@ -152,6 +154,7 @@ test('judge results remain pending until the opposing captain confirms them', ()
   expect(page).toContain("action:'confirm_result'");
   expect(page).toContain("action:'dispute_result'");
   expect(page).toContain("action:'resolve_result'");
+  expect(page).toContain('id="resolveReason"');
 });
 
 test('result confirmation and match completion are committed in one conditional D1 batch', () => {
