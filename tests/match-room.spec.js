@@ -144,6 +144,8 @@ test('judge results remain pending until the opposing captain confirms them', ()
   expect(api).toContain('action === "confirm_result" || action === "dispute_result"');
   expect(api).toContain('OPPONENT_CONFIRMATION_REQUIRED');
   expect(api).toContain('OPPONENT_CAPTAIN_REQUIRED');
+  expect(api).toContain('SUBMITTER_CANNOT_CONFIRM');
+  expect(api).toContain('String(access.userId) !== String(submission.proposed_by)');
   expect(api).toContain('action === "resolve_result"');
   expect(api).toContain('["pending","disputed"].includes(submission.status)');
   expect(api).toContain('RESOLUTION_REASON_REQUIRED');
