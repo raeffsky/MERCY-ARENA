@@ -117,12 +117,12 @@ export async function onRequestPost({ request, env }) {
   if (action === "check_in") {
     if (String(registration.captain_id) !== String(session.user.id))
       return fail("CAPTAIN_REQUIRED", "Подтвердить участие может только капитан команды.", 403);
+    if (existing?.status === "checked_in")
+      return json({ data: { tournament_id: tournamentId, team_id: teamId, status: "checked_in", checked_in_at: existing.checked_in_at, already_checked_in: true } });
     if (!tournament.published_at || !["published", "active"].includes(tournament.status))
       return fail("TOURNAMENT_NOT_ACTIVE", "Check-in доступен только в опубликованном турнире.", 409);
     if (!window.configured) return fail("CHECKIN_WINDOW_UNAVAILABLE", "У турнира не задано время начала или окно check-in.", 409);
     if (!window.is_open) return fail("CHECKIN_WINDOW_CLOSED", "Сейчас check-in закрыт. Окно: "+window.open_at+" — "+window.close_at+".", 409);
-    if (existing?.status === "checked_in")
-      return json({ data: { tournament_id: tournamentId, team_id: teamId, status: "checked_in", checked_in_at: existing.checked_in_at, already_checked_in: true } });
     if (existing?.status === "no_show")
       return fail("TEAM_MARKED_NO_SHOW", "Команда уже отмечена как неявившаяся. Обратись к организатору.", 409);
   } else {
