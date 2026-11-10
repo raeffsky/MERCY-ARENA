@@ -46,7 +46,8 @@ async function accessFor(db, user, match, env) {
 }
 
 function publicRoom(match, room, access) {
-  const matchActive = !!match.tournament_published_at && ["published", "active"].includes(match.tournament_status) && ["scheduled", "in_progress"].includes(match.status);
+  const tournamentActive = !!match.tournament_published_at && ["published", "active"].includes(match.tournament_status);
+  const matchActive = tournamentActive && ["scheduled", "in_progress"].includes(match.status);
   const credentialsVisible = !!room && matchActive && (access.canManage || !!room.room_published_at);
   return {
     match: { id: match.id, tournament_id: match.tournament_id, tournament_title: match.tournament_title,
@@ -60,7 +61,7 @@ function publicRoom(match, room, access) {
       team_a_ready_at: room.team_a_ready_at, team_b_ready_at: room.team_b_ready_at } :
       { series_format: "BO1", room_id: null, room_password: null, published: false, judge_contact: null,
         instructions: null, team_a_ready: false, team_b_ready: false },
-    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && (matchActive || (match.status === "completed" && !!match.result_verified_at)), side: access.side }
+    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && (matchActive || (match.status === "completed" && !!match.result_verified_at)), side: access.side }
   };
 }
 
