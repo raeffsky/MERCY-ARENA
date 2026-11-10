@@ -74,3 +74,14 @@ test('assigned referees can verify a match result and advance the tournament bra
   expect(page).toContain('id="judgePanel"');
   expect(page).toContain("action:'verify_result'");
 });
+
+test('referee result entry enforces the BO1, BO3 and BO5 map-win thresholds', () => {
+  const api = source('functions/api/v1/match-room.js');
+  const organizer = source('functions/api/v1/organizer.js');
+  const page = source('match.html');
+  expect(api).toContain('BO1: 1, BO3: 2, BO5: 3');
+  expect(api).toContain('SERIES_NOT_FINISHED');
+  expect(organizer).toContain('BO1:1,BO3:2,BO5:3');
+  expect(page).toContain('ПОБЕДЫ НА КАРТАХ A');
+  expect(page).toContain('ПОБЕДЫ НА КАРТАХ B');
+});
