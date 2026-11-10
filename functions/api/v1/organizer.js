@@ -194,6 +194,28 @@ export async function onRequestPost({request,env}) {
       await audit(env.DB,auth.user.id,"organizer_tournament_published","tournament",id,before,after);
       return json({data:after});
     }
+    if(action==="start_tournament"){
+      const id=String(body.id||"").trim();
+      if(!id)return fail("INVALID_TOURNAMENT","Укажи ID турнира.");
+      const before=await ownedTournament(env.DB,id,auth.user,auth.owner);
+      if(!before)return fail("TOURNAMENT_NOT_FOUND","Турнир не найден или недоступен.",404);
+      if(before.status==="active")return json({data:before,already_active:true});
+      if(before.status!=="published")return fail("TOURNAMENT_STATUS_INVALID","Начать можно только опубликованный турнир.",409);
+      const approved=await env.DB.prepare(
+        "SELECT COUNT(*) AS total FROM tournament_registrations r JOIN teams tm ON tm.id=r.team_id AND tm.status='active' AND tm.archived_at IS NULL WHERE r.tournament_id=? AND r.status='approved'"
+      ).bind(id).first();
+      if(Number(approved?.total||0)<2)return fail("NOT_ENOUGH_TEAMS","Для запуска нужны минимум две одобренные активные команды.",409);
+      const matches=await env.DB.prepare("SELECT COUNT(*) AS total FROM matches WHERE tournament_id=?").bind(id).first();
+      if(Number(matches?.total||0)<1)return fail("BRACKET_REQUIRED","Сначала создай турнирную сетку.",409);
+      const timestamp=now();
+      const write=await env.DB.prepare(
+        "UPDATE tournaments SET status='active',updated_at=? WHERE id=? AND status='published' AND (?=1 OR organizer_id=? OR EXISTS (SELECT 1 FROM tournament_staff s WHERE s.tournament_id=tournaments.id AND s.user_id=? AND s.staff_role IN ('organizer','admin')))"
+      ).bind(timestamp,id,auth.owner?1:0,auth.user.id,auth.user.id).run();
+      if(!write.meta?.changes)return fail("TOURNAMENT_START_CONFLICT","Турнир уже изменился. Обнови кабинет.",409);
+      const after=await env.DB.prepare("SELECT * FROM tournaments WHERE id=?").bind(id).first();
+      await audit(env.DB,auth.user.id,"organizer_tournament_started","tournament",id,before,after);
+      return json({data:after});
+    }
     if(action==="review_application"){
       const id=String(body.id||"").trim(),status=data.status;
       if(!id||!["approved","rejected"].includes(status))return fail("INVALID_APPLICATION","Укажи заявку и решение.");
