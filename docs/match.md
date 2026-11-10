@@ -26,3 +26,9 @@ Room credentials and readiness controls are available only while the tournament 
 ## Important limitation
 
 MERCY ARENA does not create the in-game MLBB Custom Room. The organizer or referee creates it in Mobile Legends, then enters its ID and password in MERCY MATCH. The platform securely coordinates access and operations around that room.
+
+## Tournament check-in
+
+When `checkin_required` is enabled, each approved team must be checked in by its captain before confirming match readiness. The default window opens 60 minutes before `starts_at` and closes 15 minutes after it; organizers may override both timestamps. An organizer, tournament administrator or referee can mark a team as a no-show after the window closes, excuse it, or reset the attendance state. A team marked `excused` may still confirm match readiness.
+
+Check-in records are stored per tournament and team, with actor, timestamp and audit history. The match room refuses a captain's readiness confirmation until their team is checked in or excused.
