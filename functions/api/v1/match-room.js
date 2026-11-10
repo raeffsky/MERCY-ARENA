@@ -161,6 +161,9 @@ export async function onRequestPost({ request, env }) {
       if (!Number.isSafeInteger(scoreA) || !Number.isSafeInteger(scoreB) || scoreA < 0 || scoreB < 0 || scoreA === scoreB)
         return fail("INVALID_RESULT", "Укажи два разных целых счёта от нуля.");
       if (match.team_a_id == null || match.team_b_id == null) return fail("MATCH_NOT_PLAYABLE", "Матч не готов к внесению результата.", 409);
+      const roomConfig = await db.prepare("SELECT series_format FROM match_rooms WHERE match_id=?").bind(id).first();
+      const targetWins = ({ BO1: 1, BO3: 2, BO5: 3 })[roomConfig?.series_format || "BO1"] || 1;
+      if (Math.max(scoreA, scoreB) !== targetWins) return fail("SERIES_NOT_FINISHED", "Победитель серии должен набрать "+targetWins+" побед"+(targetWins===1?"у":"ы")+" на картах.", 409);
       const winner = scoreA > scoreB ? match.team_a_id : match.team_b_id;
       if (match.status === "completed" && match.result_verified_at && Number(match.score_a) === scoreA && Number(match.score_b) === scoreB && String(match.winner_team_id) === String(winner)) {
         try {
