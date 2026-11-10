@@ -53,7 +53,8 @@ test.describe('Tournament application server guardrails', () => {
     expect(code).toContain('"organizer_id"');
     expect(code).toContain("type,title,message,link,entity_type,entity_id) VALUES (?,'application_received'");
     expect(code).toContain('tournament.organizer_id');
-    expect(code).toContain('String(tournament.organizer_id) !== String(auth.user.id)');
+    expect(code).toContain('SELECT user_id FROM tournament_staff WHERE tournament_id=? AND staff_role IN (\'organizer\',\'admin\')');
+    expect(code).toContain('recipientIds.delete(String(auth.user.id))');
   });
 
   test('roster replacement, notification and audit writes are batched together', () => {
