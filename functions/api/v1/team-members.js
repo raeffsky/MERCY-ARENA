@@ -104,7 +104,7 @@ export async function onRequestPut({ request, env }) {
   // Counting players.team_id also closes the race between parallel invite acceptances,
   // before their team_roster rows are written.
   const claimed = await env.DB.prepare(
-    "UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL AND profile_status='approved' AND archived_at IS NULL AND EXISTS (SELECT 1 FROM teams WHERE id=? AND status='active' AND archived_at IS NULL) AND (SELECT COUNT(DISTINCT p.id) FROM players p WHERE p.archived_at IS NULL AND (p.team_id=? OR p.id IN (SELECT tr.player_id FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id AND roster_player.team_id=tr.team_id AND roster_player.profile_status='approved' AND roster_player.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL)))<7"
+    "UPDATE players SET team_id=?,updated_at=? WHERE id=? AND team_id IS NULL AND profile_status='approved' AND archived_at IS NULL AND EXISTS (SELECT 1 FROM teams WHERE id=? AND status='active' AND archived_at IS NULL) AND (SELECT COUNT(DISTINCT p.id) FROM players p WHERE p.profile_status='approved' AND p.archived_at IS NULL AND (p.team_id=? OR p.id IN (SELECT tr.player_id FROM team_roster tr JOIN players roster_player ON roster_player.id=tr.player_id AND roster_player.team_id=tr.team_id AND roster_player.profile_status='approved' AND roster_player.archived_at IS NULL WHERE tr.team_id=? AND tr.left_at IS NULL)))<7"
   ).bind(invite.team_id, now, player.id, invite.team_id, invite.team_id, invite.team_id).run();
   if (!claimed.meta?.changes) {
     const current = await env.DB.prepare("SELECT team_id,profile_status,archived_at FROM players WHERE id=?").bind(player.id).first();
