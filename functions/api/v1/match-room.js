@@ -165,6 +165,46 @@ export async function onRequestPost({ request, env }) {
       await audit(db, user.id, "match_readiness_reset", id, { side });
       return json({ data: publicRoom(match, room, access) }, 200, { "Cache-Control": "no-store, private" });
     }
+    if (action === "forfeit_no_show") {
+      if (!access.owner && !access.organizer && !access.judge) return fail("REFEREE_REQUIRED", "Техническое поражение может назначить только организатор или судья.", 403);
+      if (!match.checkin_required) return fail("CHECKIN_DISABLED", "В этом турнире check-in не обязателен.", 409);
+      if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_ACTIVE", "Техническое поражение доступно только в опубликованном турнире.", 409);
+      const absentTeamId = String(body.team_id || "");
+      if (![String(match.team_a_id),String(match.team_b_id)].includes(absentTeamId)) return fail("INVALID_FORFEIT_TEAM", "Команда не участвует в этом матче.");
+      const checkin = await db.prepare("SELECT status FROM tournament_checkins WHERE tournament_id=? AND team_id=?").bind(match.tournament_id,absentTeamId).first();
+      if (!checkin || checkin.status !== "no_show") return fail("NO_SHOW_NOT_CONFIRMED", "Сначала отметь команду как неявившуюся в check-in.", 409);
+      const winner = absentTeamId === String(match.team_a_id) ? match.team_b_id : match.team_a_id;
+      const roomConfig = await db.prepare("SELECT series_format FROM match_rooms WHERE match_id=?").bind(id).first();
+      const targetWins = ({ BO1: 1, BO3: 2, BO5: 3 })[roomConfig?.series_format || "BO1"] || 1;
+      const scoreA = absentTeamId === String(match.team_a_id) ? 0 : targetWins;
+      const scoreB = absentTeamId === String(match.team_b_id) ? 0 : targetWins;
+      if (match.status === "completed" && match.result_source === "no_show_forfeit" && String(match.winner_team_id) === String(winner)) {
+        try {
+          const progression = await advanceWinner(db,id,winner);
+          const updatedMatch = await loadMatch(db,id);
+          const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+          return json({ data: publicRoom(updatedMatch,room,access), progression, progression_retried:true },200,{"Cache-Control":"no-store, private"});
+        } catch (error) {
+          console.error("MERCY MATCH forfeit progression retry failed:",error);
+          return fail("RESULT_SAVED_PROGRESSION_PENDING","Техническое поражение уже сохранено. Повтори продвижение победителя позже.",503);
+        }
+      }
+      if (!["scheduled","in_progress"].includes(match.status)) return fail("MATCH_NOT_PLAYABLE","Техническое поражение можно назначить только для текущего матча.",409);
+      const write = await db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='no_show_forfeit',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress')")
+        .bind(scoreA,scoreB,winner,timestamp,timestamp,id).run();
+      if (!write.meta?.changes) return fail("RESULT_ALREADY_SAVED","Результат матча уже сохранён другим запросом.",409);
+      const after = await loadMatch(db,id);
+      await db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'judge_match_forfeit','match',?,?,?)")
+        .bind(await createAuditEventId(db),user.id,id,JSON.stringify(match),JSON.stringify(after)).run();
+      const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+      try {
+        const progression = await advanceWinner(db,id,winner);
+        return json({ data:publicRoom(after,room,access),progression },200,{"Cache-Control":"no-store, private"});
+      } catch (error) {
+        console.error("MERCY MATCH forfeit progression failed:",error);
+        return fail("RESULT_SAVED_PROGRESSION_PENDING","Техническое поражение сохранено, но продвижение победителя не завершилось. Повтори попытку позже.",503);
+      }
+    }
     if (action === "verify_result") {
       if (!access.owner && !access.organizer && !access.judge) return fail("REFEREE_REQUIRED", "Подтвердить результат может только назначенный судья или организатор.", 403);
       if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_PUBLISHED", "Результат можно подтвердить только в опубликованном турнире.", 409);
