@@ -215,7 +215,10 @@ export async function onRequestPost({ request, env }) {
     }
     if (registrationId == null) throw new Error("Registration ID was not returned");
     const writes = [];
-    if (existing) writes.push(env.DB.prepare("DELETE FROM tournament_registration_roster WHERE registration_id=?").bind(registrationId));
+    if (existing) {
+      writes.push(env.DB.prepare("DELETE FROM tournament_registration_roster WHERE registration_id=?").bind(registrationId));
+      writes.push(env.DB.prepare("DELETE FROM tournament_checkins WHERE registration_id=?").bind(registrationId));
+    }
     writes.push(...requestedIds.map((playerId) =>
       env.DB.prepare("INSERT INTO tournament_registration_roster (registration_id,player_id,roster_role,added_at) VALUES (?,?,?,?)")
         .bind(registrationId, playerId, requestedIds.indexOf(playerId) < 5 ? "starter" : "substitute", now)
