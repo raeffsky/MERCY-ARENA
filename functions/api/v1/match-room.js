@@ -295,7 +295,9 @@ export async function onRequestPost({ request, env }) {
     if (action === "resolve_result") {
       if (!access.owner && !access.organizer) return fail("ORGANIZER_REQUIRED","Результат матча может разрешить только организатор турнира.",403);
       const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
-      if (!submission || !["pending","disputed"].includes(submission.status)) return fail("RESULT_NOT_PENDING","Нет результата, ожидающего решения организатора.",409);\n      const resolutionReason = String(body.reason || "").trim().slice(0,500);\n      if (resolutionReason.length < 5) return fail("RESOLUTION_REASON_REQUIRED","Добавь комментарий к решению минимум из пяти символов.");
+      if (!submission || !["pending","disputed"].includes(submission.status)) return fail("RESULT_NOT_PENDING","Нет результата, ожидающего решения организатора.",409);
+      const resolutionReason = String(body.reason || "").trim().slice(0,500);
+      if (resolutionReason.length < 5) return fail("RESOLUTION_REASON_REQUIRED","Добавь комментарий к решению минимум из пяти символов.");
       const scoreA = Number(body.score_a), scoreB = Number(body.score_b);
       if (!Number.isSafeInteger(scoreA)||!Number.isSafeInteger(scoreB)||scoreA<0||scoreB<0||scoreA===scoreB) return fail("INVALID_RESULT","Укажи корректный итоговый счёт.");
       const roomConfig = await db.prepare("SELECT series_format FROM match_rooms WHERE match_id=?").bind(id).first();
