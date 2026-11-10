@@ -108,6 +108,22 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(scout).toContain("p0.archived_at IS NULL");
   });
 
+  test('bracket generation and MERCY CIRCUIT qualification exclude archived teams', () => {
+    const brackets = source('functions/api/v1/brackets.js');
+    const qualify = source('functions/api/v1/circuit/qualify.js');
+    const ranking = source('functions/api/v1/circuit/ranking.js');
+    expect(brackets).toContain("tm.status='active' AND tm.archived_at IS NULL");
+    expect(qualify).toContain("WHERE t.archived_at IS NULL AND (EXISTS");
+    expect(ranking).toContain("WHERE t.archived_at IS NULL AND (EXISTS");
+  });
+
+  test('team captain transfer and invite acceptance recheck active team state atomically', () => {
+    const members = source('functions/api/v1/team-members.js');
+    expect(members).toContain("WHERE id=? AND captain_id=? AND status='active' AND archived_at IS NULL");
+    expect(members).toContain("EXISTS (SELECT 1 FROM teams WHERE id=? AND status='active' AND archived_at IS NULL)");
+    expect(members).toContain("p.profile_status='approved' AND p.archived_at IS NULL");
+  });
+
   test('team roster limits do not count archived players as active members', () => {
     const members = source('functions/api/v1/team-members.js');
     expect(members).toContain("JOIN players p ON p.id=tr.player_id AND p.archived_at IS NULL");
