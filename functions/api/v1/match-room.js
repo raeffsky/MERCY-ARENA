@@ -1,9 +1,14 @@
 import { json, databaseUnavailable } from "./_lib/http.js";
 import { getSessionUser, isOwnerAccount, sameOrigin } from "./_lib/session-auth.js";
+import { createAuditEventId } from "./_lib/audit.js";
 
 const fail = (code, message, status = 400) => json({ error: { code, message } }, status);
 const now = () => new Date().toISOString();
 const FORMATS = new Set(["BO1", "BO3", "BO5"]);
+async function audit(db, actor, action, matchId, details) {
+  await db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,?,?,?,?)")
+    .bind(await createAuditEventId(db), actor, action, "match_room", String(matchId), JSON.stringify(details || {})).run();
+}
 
 async function loadMatch(db, id) {
   return db.prepare(
@@ -112,6 +117,7 @@ export async function onRequestPost({ request, env }) {
         "instructions=excluded.instructions,updated_at=excluded.updated_at"
       ).bind(id, format, roomId || null, password || null, publishedAt, judge || null, instructions || null, user.id, timestamp, timestamp).run();
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+      await audit(db, user.id, "match_room_configured", id, { series_format: format, published: !!publishedAt });
       return json({ data: publicRoom(match, room, access) }, 200, { "Cache-Control": "no-store, private" });
     }
     if (action === "ready") {
@@ -125,6 +131,7 @@ export async function onRequestPost({ request, env }) {
       await db.prepare("UPDATE match_rooms SET " + column + "=COALESCE(" + column + ",?),updated_at=? WHERE match_id=?")
         .bind(timestamp, timestamp, id).run();
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+      await audit(db, user.id, "match_team_ready", id, { side: access.side });
       return json({ data: publicRoom(match, room, access) }, 200, { "Cache-Control": "no-store, private" });
     }
     if (action === "reset_ready") {
@@ -135,6 +142,7 @@ export async function onRequestPost({ request, env }) {
       if (side === "a" || side === "both") await db.prepare("UPDATE match_rooms SET team_a_ready_at=NULL,updated_at=? WHERE match_id=?").bind(timestamp, id).run();
       if (side === "b" || side === "both") await db.prepare("UPDATE match_rooms SET team_b_ready_at=NULL,updated_at=? WHERE match_id=?").bind(timestamp, id).run();
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+      await audit(db, user.id, "match_readiness_reset", id, { side });
       return json({ data: publicRoom(match, room, access) }, 200, { "Cache-Control": "no-store, private" });
     }
     return fail("UNKNOWN_ACTION", "Неизвестное действие.");
