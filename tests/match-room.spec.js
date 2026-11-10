@@ -278,3 +278,40 @@ test('admin bracket corrections keep the current result record aligned and clear
   expect(admin).toContain('DELETE FROM match_result_submissions WHERE match_id=?');
   expect(admin).toContain("UPDATE match_result_submissions SET status='confirmed',score_a=?");
 });
+
+test('organizer can resolve an unanswered pending result with an auditable note', async ({ page }) => {
+  let resolution;
+  const pending = matchRoomPayload({
+    result_submission: {
+      status: 'pending', score_a: 2, score_b: 1, winner_team_id: 'team-a',
+      confirming_team_id: 'team-b', submitted_at: '2026-11-10T10:00:00Z'
+    },
+    permissions: {
+      can_manage: true, can_ready: false, can_verify_result: false,
+      can_confirm_result: false, can_dispute_result: false, can_resolve_result: true, side: null
+    }
+  });
+  await page.route('**/api/v1/match-room*', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ json: { data: pending } });
+      return;
+    }
+    resolution = route.request().postDataJSON();
+    await route.fulfill({ json: { data: matchRoomPayload({
+      match: { ...pending.match, status: 'completed' },
+      result_submission: { ...pending.result_submission, status: 'confirmed', decided_at: '2026-11-10T10:05:00Z' },
+      permissions: {
+        can_manage: false, can_ready: false, can_verify_result: false,
+        can_confirm_result: false, can_dispute_result: false, can_resolve_result: false, side: null
+      }
+    }) } });
+  });
+  await page.goto('/match.html?id=42');
+  await expect(page.locator('#organizerResolve')).toBeVisible();
+  await page.locator('#resolveReason').fill('Проверено по записи матча');
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('#resolveResultButton').click();
+  await expect(page.locator('#resultReviewText')).toContainText('РЕЗУЛЬТАТ ПОДТВЕРЖДЁН');
+  expect(resolution.action).toBe('resolve_result');
+  expect(resolution.reason).toBe('Проверено по записи матча');
+});
