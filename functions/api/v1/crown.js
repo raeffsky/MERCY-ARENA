@@ -61,6 +61,8 @@ export async function onRequestPost({ request, env }) {
       if (!reign) return fail("CROWN_UNCLAIMED", "Сначала назначь первого чемпиона.",409);
       const champion = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND status='active' AND archived_at IS NULL").bind(reign.team_id).first();
       if (!champion) return fail("CROWN_CHAMPION_INACTIVE", "Действующий чемпион неактивен или архивирован. Сначала восстанови команду.",409);
+      const pendingChallenge = await env.DB.prepare("SELECT id FROM mercy_crown_challenges WHERE reign_id=? AND status='scheduled' LIMIT 1").bind(reign.id).first();
+      if (pendingChallenge) return fail("CROWN_CHALLENGE_PENDING", "У действующего чемпиона уже назначена защита. Сначала заверши или отмени её.",409);
       if (String(reign.team_id) === challengerId) return fail("INVALID_CHALLENGER", "Действующий чемпион не может бросить вызов сам себе.",409);
       const challenger = await env.DB.prepare("SELECT id FROM teams WHERE id=? AND status='active' AND archived_at IS NULL").bind(challengerId).first();
       if (!challenger) return fail("INVALID_CHALLENGER", "Команда-претендент должна быть активной и неархивной.",409);
