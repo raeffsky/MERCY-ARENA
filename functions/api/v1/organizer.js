@@ -258,6 +258,9 @@ export async function onRequestPost({request,env}) {
           return json({error:{code:"RESULT_SAVED_PROGRESSION_PENDING",message:"Результат уже сохранён. Продвижение победителя пока не удалось завершить, повтори попытку позже."},data:match,result_saved:true},503);
         }
       }
+      const roomConfig=await env.DB.prepare("SELECT series_format FROM match_rooms WHERE match_id=?").bind(id).first();
+      const targetWins=({BO1:1,BO3:2,BO5:3})[roomConfig?.series_format||"BO1"]||1;
+      if(Math.max(scoreA,scoreB)!==targetWins)return fail("SERIES_NOT_FINISHED","Победитель серии должен набрать "+targetWins+" побед"+(targetWins===1?"у":"ы")+" на картах.",409);
       if(!["scheduled","in_progress"].includes(match.status))return fail("MATCH_NOT_PLAYABLE","Матч уже завершён или не готов к внесению результата.",409);
       const verifiedAt=now();
       const write=await env.DB.prepare(
