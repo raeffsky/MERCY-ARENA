@@ -115,3 +115,15 @@ test('captains cannot confirm match readiness before completing mandatory tourna
   expect(api).toContain('TEAM_NOT_CHECKED_IN');
   expect(api).toContain("[\"checked_in\",\"excused\"].includes(checkin.status)");
 });
+
+test('referees can award a forfeit only after an approved team is confirmed as a no-show', () => {
+  const api = source('functions/api/v1/match-room.js');
+  const page = source('match.html');
+  expect(api).toContain('action === "forfeit_no_show"');
+  expect(api).toContain('NO_SHOW_NOT_CONFIRMED');
+  expect(api).toContain("r.status='approved'");
+  expect(api).toContain("result_source='no_show_forfeit'");
+  expect(api).toContain('judge_match_forfeit');
+  expect(page).toContain('data-checkin-forfeit');
+  expect(page).toContain('ПРИСУДИТЬ ТЕХНИЧЕСКОЕ ПОРАЖЕНИЕ');
+});
