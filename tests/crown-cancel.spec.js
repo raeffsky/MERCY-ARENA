@@ -9,6 +9,8 @@ function source(file) {
 test('only the platform owner can cancel an unresolved scheduled MERCY CROWN defense', () => {
   const api = source('functions/api/v1/crown.js');
   expect(api).toContain('action === "cancel_challenge"');
+  const cancelBlock = api.slice(api.indexOf('action === "cancel_challenge"'), api.indexOf('action === "resolve_challenge"'));
+  expect(cancelBlock).toContain('/^\\d+$/');
   expect(api).toContain("status='cancelled',decided_at=? WHERE id=? AND status='scheduled'");
   expect(api).toContain("'mercy_crown_challenge_cancelled'");
   expect(api).toContain('CHALLENGE_NOT_OPEN');
