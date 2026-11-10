@@ -268,3 +268,10 @@ test('staff can retry bracket progression without resubmitting or changing a ver
   expect(page).toContain("action:'retry_progression'");
   expect(page).toContain('id="retryProgressionButton"');
 });
+
+test('admin bracket corrections keep the current result record aligned and clear superseded descendant submissions', () => {
+  const admin = source('functions/api/v1/admin.js');
+  expect(admin).toContain('match_result_submission_superseded');
+  expect(admin).toContain('DELETE FROM match_result_submissions WHERE match_id=?');
+  expect(admin).toContain("UPDATE match_result_submissions SET status='confirmed',score_a=?");
+});
