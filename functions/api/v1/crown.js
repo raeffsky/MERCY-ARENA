@@ -78,6 +78,18 @@ export async function onRequestPost({ request, env }) {
       return json({ data: { id, status: "scheduled", match_id: matchId } },201);
     }
 
+    if (action === "cancel_challenge") {
+      const challengeId = String(body.challenge_id || "").trim();
+      if (!/^\\d+$/.test(challengeId)) return fail("INVALID_CHALLENGE", "Укажи ID защиты.");
+      const result = await env.DB.batch([
+        env.DB.prepare("UPDATE mercy_crown_challenges SET status='cancelled',decided_at=? WHERE id=? AND status='scheduled'").bind(now,challengeId),
+        env.DB.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) SELECT ?,?,'mercy_crown_challenge_cancelled','mercy_crown_challenge',?,? WHERE EXISTS (SELECT 1 FROM mercy_crown_challenges WHERE id=? AND status='cancelled' AND decided_at=?)")
+          .bind(await createAuditEventId(env.DB),auth.user.id,challengeId,JSON.stringify({status:"cancelled",reason:"owner_cancelled"}),challengeId,now)
+      ]);
+      if (!result[0]?.meta?.changes) return fail("CHALLENGE_NOT_OPEN", "Защита уже завершена или отменена.",409);
+      return json({ data: { challenge_id: challengeId, status: "cancelled", cancelled_at: now } });
+    }
+
     if (action === "resolve_challenge") {
       const challengeId = String(body.challenge_id || "").trim();
       if (!/^\d+$/.test(challengeId)) return fail("INVALID_CHALLENGE", "Укажи ID защиты.");
