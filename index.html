@@ -1776,7 +1776,7 @@ var sides=[String(m.team_a_id),String(m.team_b_id)];
 return ['scheduled','in_progress'].includes(m.status)&&sides.includes(String(current.team_id))&&sides.includes(challengerId)&&String(current.team_id)!==challengerId;
 }):[];
 crownMatchSelect.innerHTML='<option value="">'+(challengerId?(eligibleMatches.length?'Выбери матч':'Нет подходящих матчей'):'Сначала выбери претендента')+'</option>'+eligibleMatches.map(function(m){return '<option value="'+esc(m.id)+'">#'+esc(m.id)+' · '+esc(m.team_a_name||'Команда A')+' vs '+esc(m.team_b_name||'Команда B')+'</option>'}).join('');
-crownMatchSelect.disabled=!eligibleMatches.length;
+crownMatchSelect.disabled=!eligibleMatches.length||pending.length>0;
 }
 crownChallengerSelect.addEventListener('change',refreshCrownMatchChoices);refreshCrownMatchChoices();
 }
