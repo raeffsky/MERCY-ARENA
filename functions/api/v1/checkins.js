@@ -60,9 +60,11 @@ export async function onRequestGet({ request, env }) {
   if (!tournament) return fail("TOURNAMENT_NOT_FOUND", "Турнир не найден.", 404);
   const access = await loadAccess(env.DB, tournament, session.user, env);
   const ownRegistration = await env.DB.prepare(
-    "SELECT r.id,r.team_id FROM tournament_registrations r JOIN teams tm ON tm.id=r.team_id " +
-    "WHERE r.tournament_id=? AND r.status='approved' AND tm.captain_id=? AND tm.status='active' AND tm.archived_at IS NULL LIMIT 1"
-  ).bind(tournamentId, session.user.id).first();
+    "SELECT r.id,r.team_id,tm.captain_id FROM tournament_registrations r JOIN teams tm ON tm.id=r.team_id " +
+    "WHERE r.tournament_id=? AND r.status='approved' AND tm.status='active' AND tm.archived_at IS NULL " +
+    "AND (tm.captain_id=? OR EXISTS (SELECT 1 FROM players p JOIN team_roster tr ON tr.player_id=p.id AND tr.team_id=tm.id AND tr.left_at IS NULL " +
+    "WHERE p.user_id=? AND p.team_id=tm.id AND p.profile_status='approved' AND p.archived_at IS NULL)) LIMIT 1"
+  ).bind(tournamentId, session.user.id, session.user.id).first();
   if (!access.canManage && !access.observer && !ownRegistration)
     return fail("CHECKIN_ACCESS_DENIED", "Check-in доступен капитану зарегистрированной команды и персоналу турнира.", 403);
   const window = checkinWindow(tournament);
@@ -76,7 +78,7 @@ export async function onRequestGet({ request, env }) {
     checkins: rows,
     permissions: {
       can_manage: access.canManage,
-      can_check_in: !!ownRegistration && !!tournament.checkin_required && tournamentLive && window.is_open && own?.status === "pending",
+      can_check_in: !!ownRegistration && String(ownRegistration.captain_id) === String(session.user.id) && !!tournament.checkin_required && tournamentLive && window.is_open && own?.status === "pending",
       own_team_id: ownRegistration?.team_id || null
     }
   } }, 200, { "Cache-Control": "no-store, private" });
