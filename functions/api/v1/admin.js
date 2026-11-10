@@ -503,6 +503,17 @@ export async function onRequestPost({ request, env }) {
     const season = await env.DB.prepare("SELECT id FROM seasons WHERE id=?").bind(payload.season_id).first();
     if (!season) return bad("Сезон с ID " + payload.season_id + " не найден. Сначала создайте сезон во вкладке «Сезоны» и укажите его реальный ID.");
   }
+  if (resource === "tournaments") {
+    const current = action === "update" ? await env.DB.prepare("SELECT checkin_required,starts_at,checkin_open_at,checkin_close_at FROM tournaments WHERE id=?").bind(id).first() : null;
+    const required = payload.checkin_required ?? current?.checkin_required ?? 0;
+    const startsAt = payload.starts_at ?? current?.starts_at ?? null;
+    const opensAt = payload.checkin_open_at ?? current?.checkin_open_at ?? null;
+    const closesAt = payload.checkin_close_at ?? current?.checkin_close_at ?? null;
+    if (required && !startsAt && !(opensAt && closesAt)) return bad("Для обязательного check-in укажи время начала турнира или оба времени check-in.");
+    if (opensAt && !Number.isFinite(Date.parse(opensAt))) return bad("Некорректное время открытия check-in.");
+    if (closesAt && !Number.isFinite(Date.parse(closesAt))) return bad("Некорректное время закрытия check-in.");
+    if (opensAt && closesAt && Date.parse(opensAt) > Date.parse(closesAt)) return bad("Check-in не может закрываться раньше открытия.");
+  }
   // Validate every admin-supplied foreign key before writing. D1 may report
   // trigger-backed FK failures without identifying which submitted ID is invalid.
   async function requireRelated(table, value, label) {
