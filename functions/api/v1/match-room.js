@@ -62,7 +62,7 @@ function publicRoom(match, room, access, submission = null) {
       { series_format: "BO1", room_id: null, room_password: null, published: false, judge_contact: null,
         instructions: null, team_a_ready: false, team_b_ready: false },
     result_submission: submission ? { status: submission.status, score_a: submission.score_a, score_b: submission.score_b, winner_team_id: submission.winner_team_id, confirming_team_id: submission.confirming_team_id, submitted_at: submission.submitted_at, dispute_reason: submission.dispute_reason, decided_at: submission.decided_at } : null,
-    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && matchActive, can_confirm_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_dispute_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_resolve_result: (access.owner || access.organizer) && !!submission && submission.status === "disputed", side: access.side }
+    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && tournamentActive && matchActive, can_confirm_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_dispute_result: !!submission && submission.status === "pending" && access.canReady && String(access.side === "a" ? match.team_a_id : match.team_b_id) === String(submission.confirming_team_id), can_resolve_result: (access.owner || access.organizer) && !!submission && submission.status === "disputed", can_retry_progression: (access.owner || access.organizer || access.judge) && match.status === "completed" && !!match.result_verified_at && match.winner_team_id != null, side: access.side }
   };
 }
 
@@ -308,6 +308,20 @@ export async function onRequestPost({ request, env }) {
       catch (error) { console.error("MERCY MATCH organizer resolution progression failed:",error); return fail("RESULT_SAVED_PROGRESSION_PENDING","Решение сохранено. Продвижение по сетке нужно повторить.",503); }
       const updatedMatch=await loadMatch(db,id),room=await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first(),updatedSubmission=await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
       return json({data:publicRoom(updatedMatch,room,access,updatedSubmission),decision:"confirmed",resolved_by_organizer:true},200,{"Cache-Control":"no-store, private"});
+    }
+    if (action === "retry_progression") {
+      if (!access.owner && !access.organizer && !access.judge) return fail("REFEREE_REQUIRED","Повторить продвижение может только судья или организатор.",403);
+      if (match.status !== "completed" || !match.result_verified_at || match.winner_team_id == null) return fail("RESULT_NOT_FINALIZED","Нет подтверждённого результата для повторного продвижения.",409);
+      try {
+        const progression = await advanceWinner(db,id,match.winner_team_id);
+        const updatedMatch = await loadMatch(db,id);
+        const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
+        const submission = await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
+        return json({data:publicRoom(updatedMatch,room,access,submission),progression,progression_retried:true},200,{"Cache-Control":"no-store, private"});
+      } catch (error) {
+        console.error("MERCY MATCH progression retry failed:",error);
+        return fail("RESULT_SAVED_PROGRESSION_PENDING","Результат сохранён, но продвижение пока не завершилось. Проверь связанные матчи и повтори попытку.",503);
+      }
     }
     return fail("UNKNOWN_ACTION", "Неизвестное действие.");
   } catch (error) {
