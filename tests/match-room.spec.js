@@ -100,3 +100,10 @@ test('resetting both teams readiness uses one atomic D1 batch', () => {
   expect(api).toContain('const resetWrites = []');
   expect(api).toContain('if (resetWrites.length) await db.batch(resetWrites)');
 });
+
+test('MERCY MATCH page offers sign-in when a visitor opens a private room', () => {
+  const page = source('match.html');
+  expect(page).toContain('id="loginLink"');
+  expect(page).toContain('error.status=r.status');
+  expect(page).toContain("$('loginLink').hidden=e.status!==401");
+});
