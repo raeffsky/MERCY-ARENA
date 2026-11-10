@@ -30,7 +30,7 @@ test('organizers and referees can mark no-shows, excuse teams and reset attendan
   expect(api).toContain('STAFF_REQUIRED');
   expect(api).toContain('action === "mark_no_show"');
   expect(api).toContain('action === "excuse"');
-  expect(api).toContain('action === "reset"');
+  expect(api).toContain('["check_in", "mark_no_show", "excuse", "reset"].includes(action)');
   expect(api).toContain('tournament_checkin_');
   expect(api).toContain('await env.DB.batch');
 });
