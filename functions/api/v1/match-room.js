@@ -248,10 +248,19 @@ export async function onRequestPost({ request, env }) {
       const disputeReason = String(body.reason || "").trim().slice(0,500);
       if (action === "dispute_result" && disputeReason.length < 5) return fail("DISPUTE_REASON_REQUIRED","Опиши причину спора минимум пятью символами.");
       const nextStatus = action === "confirm_result" ? "confirmed" : "disputed";
-      const decision = await db.prepare("UPDATE match_result_submissions SET status=?,decided_by=?,decided_at=?,dispute_reason=? WHERE match_id=? AND status='pending'")
-        .bind(nextStatus,user.id,timestamp,action === "dispute_result" ? disputeReason : null,id).run();
-      if (!decision.meta?.changes) return fail("RESULT_DECISION_CONFLICT","Результат уже обработан другим запросом.",409);
-      await audit(db,user.id,action === "confirm_result" ? "match_result_confirmed_by_opponent" : "match_result_disputed",id,{score_a:submission.score_a,score_b:submission.score_b,reason:disputeReason||null});
+      const decisionWrites = [
+        db.prepare("UPDATE match_result_submissions SET status=?,decided_by=?,decided_at=?,dispute_reason=? WHERE match_id=? AND status='pending'")
+          .bind(nextStatus,user.id,timestamp,action === "dispute_result" ? disputeReason : null,id),
+        db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,after_json) VALUES (?,?,?,?,?,?)")
+          .bind(await createAuditEventId(db),user.id,action === "confirm_result" ? "match_result_confirmed_by_opponent" : "match_result_disputed","match",id,JSON.stringify({score_a:submission.score_a,score_b:submission.score_b,reason:disputeReason||null,status:nextStatus}))
+      ];
+      if (action === "confirm_result") decisionWrites.push(
+        db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='judge_verified',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress') AND team_a_id IS NOT NULL AND team_b_id IS NOT NULL")
+          .bind(submission.score_a,submission.score_b,submission.winner_team_id,timestamp,timestamp,id)
+      );
+      const decisionResults = await db.batch(decisionWrites);
+      if (!decisionResults[0]?.meta?.changes || (action === "confirm_result" && !decisionResults[2]?.meta?.changes))
+        return fail("RESULT_DECISION_CONFLICT","Матч или результат уже изменился другим запросом. Организатору нужно проверить состояние.",409);
       if (action === "dispute_result") {
         const organizers = await db.prepare("SELECT user_id FROM tournament_staff WHERE tournament_id=? AND staff_role IN ('organizer','admin')").bind(match.tournament_id).all();
         const recipients = new Set((organizers.results||[]).map(row=>String(row.user_id)));
@@ -260,12 +269,7 @@ export async function onRequestPost({ request, env }) {
           .bind(userId,"match_result_disputed","Спор по результату матча","Команда оспорила результат матча #"+id+". Требуется решение организатора.","/match.html?id="+encodeURIComponent(id),String(id)));
         if(statements.length) await db.batch(statements);
       } else {
-        const write = await db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='judge_verified',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress') AND team_a_id IS NOT NULL AND team_b_id IS NOT NULL")
-          .bind(submission.score_a,submission.score_b,submission.winner_team_id,timestamp,timestamp,id).run();
-        if (!write.meta?.changes) return fail("RESULT_FINALIZE_CONFLICT","Матч изменился до фиксации результата. Организатору нужно проверить его вручную.",409);
         const after = await loadMatch(db,id);
-        await db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'judge_match_result_finalized','match',?,?,?)")
-          .bind(await createAuditEventId(db),user.id,id,JSON.stringify(match),JSON.stringify(after)).run();
         try { await advanceWinner(db,id,submission.winner_team_id); }
         catch (error) {
           console.error("MERCY MATCH result progression failed:",error);
@@ -296,6 +300,7 @@ export async function onRequestPost({ request, env }) {
         db.prepare("INSERT INTO audit_events (id,actor_id,action,entity_type,entity_id,before_json,after_json) VALUES (?,?,'organizer_resolved_match_result','match',?,?,?)")
           .bind(await createAuditEventId(db),user.id,id,JSON.stringify({status:"disputed",score_a:submission.score_a,score_b:submission.score_b,reason:submission.dispute_reason}),JSON.stringify({status:"confirmed",score_a:scoreA,score_b:scoreB,winner_team_id:winner}))
       ]);
+      if (!writes[0]?.meta?.changes || !writes[1]?.meta?.changes) return fail("RESULT_RESOLUTION_CONFLICT","Матч или спор уже изменился. Обнови данные и проверь результат.",409);
       try { await advanceWinner(db,id,winner); }
       catch (error) { console.error("MERCY MATCH organizer resolution progression failed:",error); return fail("RESULT_SAVED_PROGRESSION_PENDING","Решение сохранено. Продвижение по сетке нужно повторить.",503); }
       const updatedMatch=await loadMatch(db,id),room=await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first(),updatedSubmission=await db.prepare("SELECT * FROM match_result_submissions WHERE match_id=?").bind(id).first();
