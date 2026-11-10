@@ -60,7 +60,7 @@ function publicRoom(match, room, access) {
       team_a_ready_at: room.team_a_ready_at, team_b_ready_at: room.team_b_ready_at } :
       { series_format: "BO1", room_id: null, room_password: null, published: false, judge_contact: null,
         instructions: null, team_a_ready: false, team_b_ready: false },
-    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && matchActive, side: access.side }
+    permissions: { can_manage: access.canManage && matchActive, can_ready: access.canReady && matchActive, can_verify_result: (access.owner || access.organizer || access.judge) && (matchActive || (match.status === "completed" && !!match.result_verified_at)), side: access.side }
   };
 }
 
