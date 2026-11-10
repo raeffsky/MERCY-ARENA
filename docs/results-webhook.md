@@ -22,7 +22,7 @@ Create a Pages secret named `MATCH_RESULTS_WEBHOOK_SECRET` with at least 32 rand
 }
 ```
 
-The match must already exist in MERCY ARENA and its team IDs must match the event. Ties, unknown matches, mismatched teams and replayed events are rejected. A valid signed event is stored in `result_events`, marks the match completed, sets its winner and verification timestamp, and writes an audit event. Repeated delivery of the same provider event is idempotent.
+The match must already exist in a published or active MERCY ARENA tournament, be scheduled or in progress, and its team IDs must match the event. Cancelled, postponed, draft and already completed matches cannot accept a new result. Scores represent maps won: BO1 requires a 1-map win, BO3 requires 2, and BO5 requires 3. The series format is read from the match room configuration (BO1 by default). Ties, incomplete series, unknown matches, mismatched teams and conflicting event replays are rejected. A valid signed event is stored in `result_events`, marks the match completed, sets its winner and verification timestamp, and writes an audit event. Repeated delivery of the same provider event is idempotent and can safely retry bracket progression if the first attempt did not finish.
 
 ## Signature
 
