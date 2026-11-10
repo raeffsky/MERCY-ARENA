@@ -21,8 +21,10 @@ async function loadMatch(db, id) {
 
 async function accessFor(db, user, match, env) {
   const owner = user.roles.includes("administrator") && isOwnerAccount(user, env);
-  const organizer = owner || String(match.organizer_id) === String(user.id);
-  const judge = user.roles.includes("judge");
+  const staff = await db.prepare("SELECT staff_role FROM tournament_staff WHERE tournament_id=? AND user_id=? LIMIT 1")
+    .bind(match.tournament_id, user.id).first().catch(() => null);
+  const organizer = owner || String(match.organizer_id) === String(user.id) || ["organizer", "admin"].includes(staff?.staff_role);
+  const judge = staff?.staff_role === "referee";
   const player = await db.prepare(
     "SELECT p.id,p.team_id,t.captain_id FROM players p " +
     "LEFT JOIN teams t ON t.id=p.team_id AND t.status='active' AND t.archived_at IS NULL " +
