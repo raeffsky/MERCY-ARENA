@@ -112,7 +112,8 @@ export async function onRequestPost({ request, env }) {
   try { body = await request.json(); } catch { return bad("Некорректный JSON."); }
   const { resource, action = "create", id, data = {} } = body || {};
     if (resource === "users" && action === "set_organizer") {
-      const userId = String(id ?? "").trim(), enabled = data.enabled === true;
+      const userId = String(id ?? "").trim(), enabled = data.enabled;
+      if (typeof enabled !== "boolean") return bad("Укажи, нужно ли выдать или отозвать роль организатора.");
       if (!userId) return bad("Укажи аккаунт пользователя.");
       const target = await env.DB.prepare("SELECT id,email,display_name FROM users WHERE id=? LIMIT 1").bind(userId).first();
       if (!target) return bad("Аккаунт не найден.",404);
