@@ -9,6 +9,7 @@ mkdir -p "$OUTPUT_DIR"
 
 cp "$ROOT_DIR/index.html" "$OUTPUT_DIR/index.html"
 cp "$ROOT_DIR/match.html" "$OUTPUT_DIR/match.html"
+cp "$ROOT_DIR/referee.html" "$OUTPUT_DIR/referee.html"
 cp -R "$ROOT_DIR/public" "$OUTPUT_DIR/public"
 
 python3 "$ROOT_DIR/scripts/configure-posthog.py" "$OUTPUT_DIR/index.html"
