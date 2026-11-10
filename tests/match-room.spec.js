@@ -208,7 +208,7 @@ test('referee submits a result for opponent confirmation without completing the 
         can_manage: true, can_ready: false, can_verify_result: true,
         can_confirm_result: false, can_dispute_result: false, can_resolve_result: false, side: null
       }
-    }) } } });
+    }) } });
   });
   await page.goto('/match.html?id=42');
   await expect(page.locator('#judgePanel')).toBeVisible();
