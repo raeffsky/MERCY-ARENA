@@ -79,6 +79,7 @@ judgeButton.textContent='ОТПРАВИТЬ НА ПОДТВЕРЖДЕНИЕ';
 var targetWins=({BO1:1,BO3:2,BO5:3})[r.series_format]||1;
 $('judgeHint').textContent='Для '+r.series_format+' победитель должен набрать '+targetWins+' побед'+(targetWins===1?'у':'ы')+' на картах. После отправки капитан команды-соперника подтвердит счёт или откроет спор.';
 var submission=d.result_submission;
+$('judgePanel').hidden=!p.can_verify_result||!!submission;
 $('resultReviewPanel').hidden=!submission;
 if(submission){
  var reviewStatus={pending:'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ СОПЕРНИКА',confirmed:'РЕЗУЛЬТАТ ПОДТВЕРЖДЁН',disputed:'ОТКРЫТ СПОР · НУЖНО РЕШЕНИЕ ОРГАНИЗАТОРА'};
