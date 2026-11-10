@@ -117,14 +117,18 @@ export async function onRequestPost({ request, env }) {
         return fail("FIELD_TOO_LONG", "Проверь длину полей комнаты.");
       if (!!roomId !== !!password) return fail("ROOM_CREDENTIALS_REQUIRED", "Укажи одновременно ID и пароль комнаты либо очисти оба поля.");
       const publishedAt = data.publish && roomId && password ? timestamp : null;
+      const previousRoom = await db.prepare("SELECT series_format,room_id,room_password FROM match_rooms WHERE match_id=?").bind(id).first();
+      const readinessReset = !!previousRoom && (format !== previousRoom.series_format || roomId !== String(previousRoom.room_id || "") || password !== String(previousRoom.room_password || ""));
       await db.prepare(
         "INSERT INTO match_rooms (match_id,series_format,room_id,room_password,room_published_at,judge_contact,instructions,created_by,created_at,updated_at) " +
-        "VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(match_id) DO UPDATE SET series_format=excluded.series_format,room_id=excluded.room_id," +
-        "room_password=excluded.room_password,room_published_at=excluded.room_published_at,judge_contact=excluded.judge_contact," +
-        "instructions=excluded.instructions,updated_at=excluded.updated_at"
+        "VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(match_id) DO UPDATE SET " +
+        "team_a_ready_at=CASE WHEN match_rooms.series_format<>excluded.series_format OR COALESCE(match_rooms.room_id,'')<>COALESCE(excluded.room_id,'') OR COALESCE(match_rooms.room_password,'')<>COALESCE(excluded.room_password,'') THEN NULL ELSE match_rooms.team_a_ready_at END," +
+        "team_b_ready_at=CASE WHEN match_rooms.series_format<>excluded.series_format OR COALESCE(match_rooms.room_id,'')<>COALESCE(excluded.room_id,'') OR COALESCE(match_rooms.room_password,'')<>COALESCE(excluded.room_password,'') THEN NULL ELSE match_rooms.team_b_ready_at END," +
+        "series_format=excluded.series_format,room_id=excluded.room_id,room_password=excluded.room_password," +
+        "room_published_at=excluded.room_published_at,judge_contact=excluded.judge_contact,instructions=excluded.instructions,updated_at=excluded.updated_at"
       ).bind(id, format, roomId || null, password || null, publishedAt, judge || null, instructions || null, user.id, timestamp, timestamp).run();
       const room = await db.prepare("SELECT * FROM match_rooms WHERE match_id=?").bind(id).first();
-      await audit(db, user.id, "match_room_configured", id, { series_format: format, published: !!publishedAt });
+      await audit(db, user.id, "match_room_configured", id, { series_format: format, published: !!publishedAt, readiness_reset: readinessReset });
       return json({ data: publicRoom(match, room, access) }, 200, { "Cache-Control": "no-store, private" });
     }
     if (action === "ready") {
