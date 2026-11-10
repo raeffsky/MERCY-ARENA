@@ -13,6 +13,8 @@ test('owner can grant and revoke tournament-specific staff roles with an audit r
   expect(admin).toContain('ON CONFLICT(tournament_id,user_id) DO UPDATE SET staff_role=excluded.staff_role');
   expect(admin).toContain('tournament_staff_granted');
   expect(admin).toContain('tournament_staff_revoked');
+  expect(admin).toContain('referee_assignment');
+  expect(admin).toContain('/referee.html');
 });
 
 test('assigned organizers receive access only to tournaments assigned to them', () => {
