@@ -94,3 +94,9 @@ test('changing room ID, password or BO format clears stale team readiness', () =
   expect(api).toContain('team_b_ready_at=CASE WHEN match_rooms.series_format<>excluded.series_format');
   expect(api).toContain('readiness_reset: readinessReset');
 });
+
+test('resetting both teams readiness uses one atomic D1 batch', () => {
+  const api = source('functions/api/v1/match-room.js');
+  expect(api).toContain('const resetWrites = []');
+  expect(api).toContain('if (resetWrites.length) await db.batch(resetWrites)');
+});
