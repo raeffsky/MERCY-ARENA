@@ -6,6 +6,8 @@ test('result webhooks only finalize matches in published active tournaments', ()
   const api = fs.readFileSync(path.join(process.cwd(), 'functions/api/v1/webhooks/results.js'), 'utf8');
   expect(api).toContain('t.status AS tournament_status,t.published_at AS tournament_published_at');
   expect(api).toContain('!match.tournament_published_at');
+  expect(api).toContain('MATCH_RESULTS_WEBHOOK_AUTO_CONFIRM');
+  expect(api).toContain('WEBHOOK_AUTO_CONFIRM_DISABLED');
   expect(api).toContain('["published","active"].includes(match.tournament_status)');
   expect(api).toContain('["scheduled","in_progress"].includes(match.status)');
   expect(api).toContain("status IN ('scheduled','in_progress')");
