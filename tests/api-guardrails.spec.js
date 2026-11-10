@@ -187,6 +187,14 @@ test.describe('MERCY ARENA API guardrails', () => {
     expect(page).toContain("users=(tab==='players'||tab==='teams'||tab==='tournaments')?await request('users'):");
   });
 
+  test('organizer can retry bracket progression after an identical manual result was saved', () => {
+    const organizer = source('functions/api/v1/organizer.js');
+    expect(organizer).toContain('match.status==="completed"&&match.result_verified_at&&match.result_source==="organizer_manual"');
+    expect(organizer).toContain('Number(match.score_a)===scoreA&&Number(match.score_b)===scoreB');
+    expect(organizer).toContain('progression_retried:true');
+    expect(organizer).toContain('RESULT_SAVED_PROGRESSION_PENDING');
+  });
+
   test('only the platform owner can grant or revoke organizer access', () => {
     const admin = source('functions/api/v1/admin.js');
     const page = source('index.html');
