@@ -125,12 +125,11 @@ export async function onRequestPost({ request, env }) {
       return fail("TEAM_MARKED_NO_SHOW", "Команда уже отмечена как неявившаяся. Обратись к организатору.", 409);
   } else {
     if (!access.canManage) return fail("STAFF_REQUIRED", "Изменять отметки check-in может только организатор, судья или администратор турнира.", 403);
+    if (!tournament.published_at || !["published","active"].includes(tournament.status)) return fail("TOURNAMENT_NOT_ACTIVE", "Изменять check-in можно только в опубликованном или активном турнире.", 409);
     if (action === "mark_no_show" && (!window.configured || !window.is_closed))
       return fail("CHECKIN_WINDOW_STILL_OPEN", "Неявку можно отметить только после закрытия окна check-in.", 409);
-    if (action === "mark_no_show" && ["checked_in", "excused"].includes(existing?.status))
+    if (["mark_no_show","excuse"].includes(action) && ["checked_in", "excused"].includes(existing?.status))
       return fail("CHECKIN_ALREADY_ACCEPTED", "Команда уже отметилась или получила освобождение от check-in.", 409);
-    if (["excuse", "reset"].includes(action) && ["completed", "cancelled"].includes(tournament.status))
-      return fail("TOURNAMENT_LOCKED", "В завершённом или отменённом турнире нельзя менять check-in.", 409);
   }
   const nextStatus = action === "check_in" ? "checked_in" : action === "mark_no_show" ? "no_show" : action === "excuse" ? "excused" : "pending";
   const note = String(body.note || "").trim().slice(0, 500) || null;
