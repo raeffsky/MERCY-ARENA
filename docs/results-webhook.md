@@ -61,3 +61,8 @@ Set secrets with `npx wrangler secret put SOURCE_WEBHOOK_TOKEN` and `npx wrangle
 The upstream provider posts the normalized JSON body from this document to `POST /provider/results` and authenticates with `Authorization: Bearer <SOURCE_WEBHOOK_TOKEN>`. The relay validates the payload, signs the exact raw body using the shared MERCY secret, and forwards it to `/api/v1/webhooks/results`. It rejects unknown paths, non-POST requests, oversized bodies, invalid scores, duplicate team IDs, and unauthenticated senders.
 
 **Launch status:** the relay adapter is implemented, but it is not connected to a real MLBB data provider. Live automatic results remain disabled until a provider is selected, credentials/webhook delivery are configured, and a real match event is observed end-to-end. The relay alone is not a source of match data.
+
+
+## Manual confirmation remains the default
+
+Automatic finalization is disabled unless the Cloudflare Worker environment explicitly sets `MATCH_RESULTS_WEBHOOK_AUTO_CONFIRM=true`. Until a trusted MLBB data provider is configured and that flag is deliberately enabled, match results must go through the referee submission and opposing-captain confirmation flow in MERCY ARENA.
