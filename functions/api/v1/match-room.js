@@ -171,11 +171,7 @@ export async function onRequestPost({ request, env }) {
       if (!match.tournament_published_at || !["published", "active"].includes(match.tournament_status)) return fail("TOURNAMENT_NOT_ACTIVE", "Техническое поражение доступно только в опубликованном турнире.", 409);
       const absentTeamId = String(body.team_id || "");
       if (![String(match.team_a_id),String(match.team_b_id)].includes(absentTeamId)) return fail("INVALID_FORFEIT_TEAM", "Команда не участвует в этом матче.");
-      const checkin = await db.prepare("SELECT c.status FROM tournament_checkins c JOIN tournament_registrations r ON r.id=c.registration_id AND r.status='approved' WHERE c.tournament_id=? AND c.team_id=?").bind(match.tournament_id,absentTeamId).first();
-      if (!checkin || checkin.status !== "no_show") return fail("NO_SHOW_NOT_CONFIRMED", "Сначала отметь команду как неявившуюся в check-in.", 409);
       const opponentTeamId = absentTeamId === String(match.team_a_id) ? match.team_b_id : match.team_a_id;
-      const opponentCheckin = await db.prepare("SELECT c.status FROM tournament_checkins c JOIN tournament_registrations r ON r.id=c.registration_id AND r.status='approved' WHERE c.tournament_id=? AND c.team_id=?").bind(match.tournament_id,opponentTeamId).first();
-      if (!opponentCheckin || !["checked_in","excused"].includes(opponentCheckin.status)) return fail("OPPONENT_NOT_CHECKED_IN", "Нельзя присудить техническую победу, пока соперник не подтвердил участие или не получил освобождение от check-in.", 409);
       const winner = opponentTeamId;
       const roomConfig = await db.prepare("SELECT series_format FROM match_rooms WHERE match_id=?").bind(id).first();
       const targetWins = ({ BO1: 1, BO3: 2, BO5: 3 })[roomConfig?.series_format || "BO1"] || 1;
@@ -193,6 +189,10 @@ export async function onRequestPost({ request, env }) {
         }
       }
       if (!["scheduled","in_progress"].includes(match.status)) return fail("MATCH_NOT_PLAYABLE","Техническое поражение можно назначить только для текущего матча.",409);
+      const checkin = await db.prepare("SELECT c.status FROM tournament_checkins c JOIN tournament_registrations r ON r.id=c.registration_id AND r.status='approved' WHERE c.tournament_id=? AND c.team_id=?").bind(match.tournament_id,absentTeamId).first();
+      if (!checkin || checkin.status !== "no_show") return fail("NO_SHOW_NOT_CONFIRMED", "Сначала отметь команду как неявившуюся в check-in.", 409);
+      const opponentCheckin = await db.prepare("SELECT c.status FROM tournament_checkins c JOIN tournament_registrations r ON r.id=c.registration_id AND r.status='approved' WHERE c.tournament_id=? AND c.team_id=?").bind(match.tournament_id,opponentTeamId).first();
+      if (!opponentCheckin || !["checked_in","excused"].includes(opponentCheckin.status)) return fail("OPPONENT_NOT_CHECKED_IN", "Нельзя присудить техническую победу, пока соперник не подтвердил участие или не получил освобождение от check-in.", 409);
       const write = await db.prepare("UPDATE matches SET status='completed',score_a=?,score_b=?,winner_team_id=?,result_source='no_show_forfeit',result_verified_at=?,updated_at=? WHERE id=? AND status IN ('scheduled','in_progress')")
         .bind(scoreA,scoreB,winner,timestamp,timestamp,id).run();
       if (!write.meta?.changes) return fail("RESULT_ALREADY_SAVED","Результат матча уже сохранён другим запросом.",409);
