@@ -23,6 +23,7 @@ export async function onRequestPost({ request, env }) {
   if (!env.DB) return databaseUnavailable();
   const secret = String(env.MATCH_RESULTS_WEBHOOK_SECRET || "");
   if (secret.length < 32) return json({ error: { code: "WEBHOOK_NOT_CONFIGURED", message: "Webhook результатов ещё не настроен." } }, 503);
+  if (env.MATCH_RESULTS_WEBHOOK_AUTO_CONFIRM !== "true") return json({ error: { code: "WEBHOOK_AUTO_CONFIRM_DISABLED", message: "Автоматическое подтверждение результатов отключено. До подключения проверенного источника результаты подтверждает судья, затем капитан соперника." } }, 503);
   const declaredLength = Number(request.headers.get("content-length") || 0);
   if (declaredLength > 32768) return json({ error: { code: "WEBHOOK_TOO_LARGE", message: "Размер события не должен превышать 32 КБ." } }, 413);
   const timestamp = String(request.headers.get("x-mercy-timestamp") || "");
