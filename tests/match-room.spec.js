@@ -107,3 +107,11 @@ test('MERCY MATCH page offers sign-in when a visitor opens a private room', () =
   expect(page).toContain('error.status=r.status');
   expect(page).toContain("$('loginLink').hidden=e.status!==401");
 });
+
+test('captains cannot confirm match readiness before completing mandatory tournament check-in', () => {
+  const api = source('functions/api/v1/match-room.js');
+  expect(api).toContain('t.checkin_required');
+  expect(api).toContain('if (match.checkin_required)');
+  expect(api).toContain('TEAM_NOT_CHECKED_IN');
+  expect(api).toContain("[\"checked_in\",\"excused\"].includes(checkin.status)");
+});
