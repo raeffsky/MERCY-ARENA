@@ -15,6 +15,26 @@ test.describe('MERCY ARENA public shell', () => {
 
 
 
+
+  test('primary navigation is compact and exposes secondary sections on demand', async ({ page, isMobile }) => {
+    await page.goto('/#/home');
+    const primary = page.locator('.links > a');
+    await expect(primary).toHaveCount(5);
+    await expect(page.locator('.nav-more')).toBeVisible();
+    await expect(page.locator('.nav-more-links')).toBeHidden();
+    await page.locator('#navMore summary').click();
+    await expect(page.locator('.nav-more-links a[data-route="crown"]')).toContainText('Защита чемпионского титула');
+    await page.locator('.nav-more-links a[data-route="crown"]').click();
+    await expect(page).toHaveURL(/#\/crown$/);
+    await expect(page.locator('.links a[data-route="crown"]')).toHaveClass(/active/);
+    if (isMobile) {
+      await expect(page.locator('.mobile-primary-nav')).toBeVisible();
+      await expect(page.locator('.mobile-primary-nav a[data-route="tournaments"]')).toBeVisible();
+    } else {
+      await expect(page.locator('.mobile-primary-nav')).toBeHidden();
+    }
+  });
+
   test('player registration accepts numeric MLBB and server IDs before lookup', async ({ page }) => {
     await page.route('**/api/v1/me', route => route.fulfill({ json: {
       authenticated: false, account: null, roles: [], access: 'guest'
