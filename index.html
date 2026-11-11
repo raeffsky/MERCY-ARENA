@@ -627,7 +627,7 @@ th{background:var(--panel)!important}
 .match-side{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #252a33;font-size:11px}
 .match-side.winner{color:var(--lime);font-weight:900}
 .match-score{font:800 17px 'Barlow Condensed';min-width:20px;text-align:right}
-.match-verify{font-size:8px;color:#9aa58b;margin-top:9px}
+.match-verify{font-size:8px;color:#9aa58b;margin-top:9px}.match-card-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:11px;padding-top:10px;border-top:1px solid #252a33;color:#9299a5;font-size:8px}.match-card-footer .btn{padding:7px 9px;font-size:8px;white-space:nowrap}.match-card-meta{min-width:0;display:grid;gap:3px}.match-card-meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .match-list{display:grid;gap:10px}
 .match-list-card{display:grid;grid-template-columns:115px 1fr auto;gap:14px;align-items:center;padding:15px;background:#11151c;border:1px solid #292f39}
 .match-list-date{font-size:9px;color:#a2a9b5;line-height:1.7}
@@ -1692,8 +1692,8 @@ var stateLabels={scheduled:'ЗАПЛАНИРОВАН',in_progress:'ИДЁТ',com
 function matchTeam(id){if(id==null||id==='')return 'Ожидает команду';return teamMap[String(id)]||('Команда #'+id)}
 function matchCard(m){
 var a=matchTeam(m.team_a_id),b=matchTeam(m.team_b_id),winner=String(m.winner_team_id||'');
-var state=stateLabels[m.status]||m.status||'СТАТУС НЕ УКАЗАН';
-return '<article class="match-card"><div class="match-card-top"><span>МАТЧ #'+esc(m.match_number||m.id)+'</span><span class="match-state '+(m.status==='in_progress'?'live':m.status==='completed'?'done':'')+'">'+esc(state)+'</span></div><div class="match-side '+(winner&&winner===String(m.team_a_id)?'winner':'')+'"><span>'+esc(a)+'</span><b class="match-score">'+(m.score_a==null?'—':esc(m.score_a))+'</b></div><div class="match-side '+(winner&&winner===String(m.team_b_id)?'winner':'')+'"><span>'+esc(b)+'</span><b class="match-score">'+(m.score_b==null?'—':esc(m.score_b))+'</b></div>'+(m.result_verified_at?'<div class="match-verify">✓ РЕЗУЛЬТАТ ПОДТВЕРЖДЁН</div>':'')+'</article>'
+var state=stateLabels[m.status]||m.status||'СТАТУС НЕ УКАЗАН',when=m.scheduled_at?dateLabel(m.scheduled_at):'Время не назначено',tournament=tournamentMap[String(m.tournament_id)]||('Турнир #'+m.tournament_id),bracketNames={main:'Основная сетка',upper:'Верхняя сетка',lower:'Нижняя сетка',group:'Группы',final:'Финал'};
+return '<article class="match-card"><div class="match-card-top"><span>МАТЧ #'+esc(m.match_number||m.id)+'</span><span class="match-state '+(m.status==='in_progress'?'live':m.status==='completed'?'done':'')+'">'+esc(state)+'</span></div><div class="match-side '+(winner&&winner===String(m.team_a_id)?'winner':'')+'"><span>'+esc(a)+'</span><b class="match-score">'+(m.score_a==null?'—':esc(m.score_a))+'</b></div><div class="match-side '+(winner&&winner===String(m.team_b_id)?'winner':'')+'"><span>'+esc(b)+'</span><b class="match-score">'+(m.score_b==null?'—':esc(m.score_b))+'</b></div>'+(m.result_verified_at?'<div class="match-verify">✓ РЕЗУЛЬТАТ ПОДТВЕРЖДЁН</div>':'')+'<div class="match-card-footer"><div class="match-card-meta"><span>'+esc(tournament)+'</span><span>'+esc(when)+' · '+esc(bracketNames[m.bracket]||m.bracket||'Основная сетка')+' · Раунд '+esc(m.round_number||'—')+'</span></div><a class="btn secondary" href="/match.html?id='+encodeURIComponent(m.id)+'">ОТКРЫТЬ МАТЧ ↗</a></div></article>'
 }
 function matchListCard(m){
 var when=m.scheduled_at?dateLabel(m.scheduled_at):'Время не назначено',tournament=tournamentMap[String(m.tournament_id)]||('Турнир #'+m.tournament_id),bracketNames={main:'Основная сетка',upper:'Верхняя сетка',lower:'Нижняя сетка',group:'Группы',final:'Финал'};
