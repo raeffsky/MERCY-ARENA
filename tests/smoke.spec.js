@@ -124,11 +124,14 @@ test.describe('MERCY ARENA public shell', () => {
     await page.route('**/api/v1/me', route => route.fulfill({ json: {
       authenticated: true,
       account: { id: 'user-4', email: 'ready@example.com', name: 'Ready' },
-      profile: { id: 41, nickname: 'ReadyPlayer', profile_status: 'approved' },
+      profile: { id: 41, nickname: 'ReadyPlayer', team_id: 17, profile_status: 'approved' },
       roles: ['player'], access: 'user'
     } }));
     await page.goto('/');
     await expect(page.locator('#homeJoin')).toHaveCount(0);
+    await expect(page.locator('#homePersonalCenter')).toBeVisible();
+    await expect(page.locator('#homePersonalCenter')).toContainText('ReadyPlayer');
+    await expect(page.locator('#homePersonalCenter a[href="#/teams"]')).toContainText('Моя команда');
   });
 
   test('player account exposes logout and clears the session', async ({ page }) => {
