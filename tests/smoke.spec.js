@@ -18,6 +18,7 @@ test.describe('MERCY ARENA public shell', () => {
 
   test('primary navigation is compact and exposes secondary sections on demand', async ({ page, isMobile }) => {
     await page.goto('/#/home');
+    await page.getByRole('button', { name: 'Открыть меню' }).click();
     const primary = page.locator('.links > a');
     await expect(primary).toHaveCount(5);
     await expect(page.locator('.nav-more')).toBeVisible();
@@ -27,6 +28,7 @@ test.describe('MERCY ARENA public shell', () => {
     await page.locator('.nav-more-links a[data-route="crown"]').click();
     await expect(page).toHaveURL(/#\/crown$/);
     await expect(page.locator('.links a[data-route="crown"]')).toHaveClass(/active/);
+    await page.getByRole('button', { name: 'Закрыть' }).click();
     if (isMobile) {
       await expect(page.locator('.mobile-primary-nav')).toBeVisible();
       await expect(page.locator('.mobile-primary-nav a[data-route="tournaments"]')).toBeVisible();
@@ -183,7 +185,7 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#homePersonalCenter')).toBeVisible();
     await expect(page.locator('#homePersonalCenter')).toContainText('PendingPlayer');
     await expect(page.locator('#homePersonalCenter')).toContainText('отправлен на проверку');
-    await expect(page.locator('#homePersonalCenter a[href="#/my-profile"]')).toBeVisible();
+    await expect(page.locator('#homePersonalCenter a[href="#/my-profile"]').first()).toBeVisible();
   });
 
   test('player account exposes logout and clears the session', async ({ page }) => {
@@ -367,6 +369,7 @@ test.describe('MERCY ARENA public shell', () => {
 
     const drawer = page.locator('#drawer');
     await expect(drawer).toHaveClass(/open/);
+    await drawer.locator('#navMore summary').click();
     await drawer.getByRole('link', { name: /Игроки/ }).click();
     await expect(page).toHaveURL(/#\/players$/);
     await expect(drawer).not.toHaveClass(/open/);
