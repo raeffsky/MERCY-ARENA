@@ -1131,6 +1131,22 @@ about:function(){return `
 `}
 };
 function initRulesPage(){var cards=Array.from(document.querySelectorAll('.rules-card')),buttons=Array.from(document.querySelectorAll('[data-rule-jump]')),search=document.getElementById('rulesSearch'),count=document.getElementById('rulesCount');buttons.forEach(function(button){button.addEventListener('click',function(){var card=document.getElementById(button.dataset.ruleJump);if(!card)return;card.open=true;card.scrollIntoView({behavior:'smooth',block:'start'});buttons.forEach(function(item){item.classList.toggle('active',item===button)})})});if(search)search.addEventListener('input',function(){var query=search.value.trim().toLocaleLowerCase('ru'),visible=0;cards.forEach(function(card){var match=!query||card.textContent.toLocaleLowerCase('ru').includes(query);card.hidden=!match;if(match){visible++;if(query)card.open=true}});buttons.forEach(function(button){var card=document.getElementById(button.dataset.ruleJump);button.hidden=!!card.hidden});count.textContent=visible+' / '+cards.length+' РАЗДЕЛОВ'})}
+async function loadNotificationsPage(){
+var root=document.getElementById('notificationsRoot');if(!root)return;
+root.innerHTML='<div class="admin-empty">Загружаем уведомления…</div>';
+try{
+var response=await fetch('/api/v1/notifications?limit=100',{credentials:'same-origin',cache:'no-store'}),payload=await response.json();
+if(!response.ok){if(response.status===401){root.innerHTML='<div class="empty"><b>Войди в аккаунт</b><p>Уведомления доступны после авторизации.</p><a class="btn primary" href="#/home">На главную</a></div>';return}throw new Error(payload.error?.message||'Не удалось загрузить уведомления')}
+var items=payload.data||[],unread=Number(payload.meta?.unread)||0;
+function render(){
+root.innerHTML='<div class="notification-inbox-head"><div><span class="kicker">MERCY ARENA / INBOX</span><p class="muted">'+unread+' непрочитанных</p></div>'+(unread?'<button class="btn secondary" type="button" id="notificationsReadAll">Прочитать все</button>':'')+'</div>'+
+(items.length?'<div class="notification-panel-list">'+items.map(function(item){var href=String(item.link||'');var safeHref=/^(#\/[a-z0-9_/-]+|\/match\.html\?id=[a-zA-Z0-9_-]+)$/i.test(href)?href:'';return '<article class="notification-item '+(item.read_at?'read':'')+'"><time>'+esc(notificationDate(item.created_at))+'</time><h3>'+esc(item.title||'Уведомление')+'</h3><p>'+esc(item.message||'')+'</p><div class="notification-panel-actions">'+(safeHref?'<a class="btn secondary" href="'+esc(safeHref)+'">Открыть</a>':'')+(!item.read_at?'<button class="btn quiet" type="button" data-inbox-read="'+esc(item.id)+'">Прочитано</button>':'<span class="muted">Прочитано</span>')+'</div></article>'}).join('')+'</div>':'<div class="empty"><b>Пока тихо</b><p>Новые события турниров и команд появятся здесь.</p></div>');
+root.querySelectorAll('[data-inbox-read]').forEach(function(button){button.addEventListener('click',async function(){button.disabled=true;try{var r=await fetch('/api/v1/notifications',{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json',accept:'application/json'},body:JSON.stringify({id:button.dataset.inboxRead})}),data=await r.json();if(!r.ok)throw new Error(data.error?.message||'Не удалось обновить уведомление');var item=items.find(function(row){return String(row.id)===String(button.dataset.inboxRead)});if(item&&!item.read_at){item.read_at=data.data?.read_at||new Date().toISOString();unread=Math.max(0,unread-1)}render();updateBellCount(unread)}catch(error){button.disabled=false;button.title=error.message}})});
+var all=document.getElementById('notificationsReadAll');if(all)all.addEventListener('click',async function(){all.disabled=true;try{var r=await fetch('/api/v1/notifications',{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json',accept:'application/json'},body:JSON.stringify({action:'read_all'})}),data=await r.json();if(!r.ok)throw new Error(data.error?.message||'Не удалось обновить уведомления');var now=new Date().toISOString();items.forEach(function(item){if(!item.read_at)item.read_at=now});unread=0;render();updateBellCount(0)}catch(error){all.disabled=false;all.title=error.message}});
+}
+render();updateBellCount(unread);
+}catch(error){root.innerHTML='<div class="empty"><b>Не удалось загрузить уведомления</b><p>'+esc(error.message||'Попробуй обновить страницу.')+'</p><button class="btn secondary" type="button" id="notificationsRetry">Повторить</button></div>';var retry=document.getElementById('notificationsRetry');if(retry)retry.addEventListener('click',loadNotificationsPage)}
+}
 async function loadScoutPage(){
 var root=document.getElementById('scoutResults');if(!root)return;
 var search=document.getElementById('scoutSearch'),role=document.getElementById('scoutRole'),region=document.getElementById('scoutRegion'),sort=document.getElementById('scoutSort'),timer=null,requestNumber=0,regionsLoaded=false;
@@ -1162,6 +1178,7 @@ menu(false);window.scrollTo(0,0);document.title=(key==='home'?'MERCY ARENA':key.
 wireFilters(key);
 wireAuth(key);
 if(key==='scout')loadScoutPage();
+if(key==='notifications')loadNotificationsPage();
 refreshOrganizerNav();
 }
 function refreshOrganizerNav(){
