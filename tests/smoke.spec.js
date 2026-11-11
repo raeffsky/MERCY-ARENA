@@ -35,6 +35,27 @@ test.describe('MERCY ARENA public shell', () => {
     }
   });
 
+  test('match bracket cards show context and open the dedicated match room', async ({ page }) => {
+    await page.route('**/api/v1/tournaments**', route => route.fulfill({ json: { data: [
+      { id: 71, title: 'MERCY SEASON CUP', status: 'published' }
+    ] } }));
+    await page.route('**/api/v1/matches**', route => route.fulfill({ json: { data: [
+      { id: 901, tournament_id: 71, round_number: 2, bracket: 'upper', match_number: 3,
+        scheduled_at: '2026-11-20T18:30:00Z', status: 'in_progress', team_a_id: 11, team_b_id: 12,
+        score_a: 1, score_b: 0, winner_team_id: null, result_verified_at: null }
+    ] } }));
+    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [
+      { id: 11, name: 'MERCY PRIME' }, { id: 12, name: 'NOVA TEAM' }
+    ] } }));
+    await page.goto('/#/brackets');
+    const card = page.locator('#matchBracket .match-card');
+    await expect(card).toContainText('MERCY PRIME');
+    await expect(card).toContainText('NOVA TEAM');
+    await expect(card).toContainText('MERCY SEASON CUP');
+    await expect(card).toContainText('Верхняя сетка');
+    await expect(card.locator('a[href="/match.html?id=901"]')).toContainText('ОТКРЫТЬ МАТЧ');
+  });
+
   test('player registration accepts numeric MLBB and server IDs before lookup', async ({ page }) => {
     await page.route('**/api/v1/me', route => route.fulfill({ json: {
       authenticated: false, account: null, roles: [], access: 'guest'
