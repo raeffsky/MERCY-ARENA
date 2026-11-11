@@ -134,6 +134,20 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#homePersonalCenter a[href="#/teams"]')).toContainText('Моя команда');
   });
 
+  test('home personal hub guides a pending player to profile review status', async ({ page }) => {
+    await page.route('**/api/v1/me', route => route.fulfill({ json: {
+      authenticated: true,
+      account: { id: 'user-pending', email: 'pending@example.com', name: 'Pending' },
+      profile: { id: 42, nickname: 'PendingPlayer', profile_status: 'pending', team_id: null },
+      roles: ['player'], access: 'user'
+    } }));
+    await page.goto('/#/home');
+    await expect(page.locator('#homePersonalCenter')).toBeVisible();
+    await expect(page.locator('#homePersonalCenter')).toContainText('PendingPlayer');
+    await expect(page.locator('#homePersonalCenter')).toContainText('отправлен на проверку');
+    await expect(page.locator('#homePersonalCenter a[href="#/my-profile"]')).toBeVisible();
+  });
+
   test('player account exposes logout and clears the session', async ({ page }) => {
     let meCalls = 0;
     let logoutCalls = 0;
