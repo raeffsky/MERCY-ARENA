@@ -15,12 +15,12 @@ test('notification mutation can only update the current account notifications', 
   expect(api).toContain('UPDATE notifications SET read_at=? WHERE id=? AND user_id=?');
 });
 
-test('full notification inbox route loads the session feed and supports read actions', () => {
+test('full notification inbox keeps existing loader, syncs badge and validates notification destinations', () => {
   const page = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
-  expect(page).toContain("if(key==='notifications')loadNotificationsPage()");
-  expect(page).toContain("async function loadNotificationsPage()");
-  expect(page).toContain("fetch('/api/v1/notifications?limit=100'");
-  expect(page).toContain("data-inbox-read");
+  expect(page).toContain("if(key==='notifications'){");
+  expect(page).toContain("updateBellCount(payload.meta?.unread||0)");
+  expect(page).toContain("data-read-notification");
   expect(page).toContain("action:'read_all'");
-  expect(page).toContain("Войди в аккаунт");
+  expect(page).toContain("var safe=/^(#\\/[a-z0-9_/-]+|\\/match\\.html\\?id=[a-zA-Z0-9_-]+)$/i.test(target)?target:''");
+  expect(page).not.toContain("async function loadNotificationsPage()");
 });
