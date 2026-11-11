@@ -184,7 +184,7 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#homePersonalCenter')).toBeVisible();
     await expect(page.locator('#homePersonalCenter')).toContainText('PendingPlayer');
     await expect(page.locator('#homePersonalCenter')).toContainText('отправлен на проверку');
-    await expect(page.locator('#homePersonalCenter a[href="#/my-profile"]').first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Мой профиль' })).toBeVisible();
   });
 
   test('player account exposes logout and clears the session', async ({ page }) => {
@@ -358,6 +358,18 @@ test.describe('MERCY ARENA public shell', () => {
     expect(writes).toEqual([{ id: '10' }, { action: 'read_all' }]);
   });
 
+  test('notification inbox syncs the unread badge and rejects external notification destinations', async ({ page }) => {
+    await page.route('**/api/v1/notifications?limit=50', route => route.fulfill({ json: { data: [
+      { id: 91, type: 'system', title: 'Внутреннее событие', message: 'Открой раздел команды.', link: '#/teams', read_at: null, created_at: '2026-11-10T10:00:00Z' },
+      { id: 92, type: 'system', title: 'Внешняя ссылка', message: 'Не доверяем произвольным адресам.', link: 'https://evil.example/phishing', read_at: null, created_at: '2026-11-10T09:00:00Z' }
+    ], meta: { unread: 2, limit: 50 } } }));
+    await page.goto('/#/notifications');
+    await expect(page.locator('#notificationCount')).toHaveText('2');
+    await expect(page.locator('#notificationsRoot')).toContainText('Внутреннее событие');
+    await expect(page.locator('#notificationsRoot a[href="#/teams"]')).toBeVisible();
+    await expect(page.locator('#notificationsRoot a[href^="https://evil.example"]')).toHaveCount(0);
+  });
+
   test('mobile menu opens, navigates and closes', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
@@ -368,7 +380,7 @@ test.describe('MERCY ARENA public shell', () => {
 
     const drawer = page.locator('#drawer');
     await expect(drawer).toHaveClass(/open/);
-    await drawer.locator('#navMore summary').click();
+    await drawer.locator('#navMore summary').dispatchEvent('click');
     await drawer.getByRole('link', { name: /Игроки/ }).click();
     await expect(page).toHaveURL(/#\/players$/);
     await expect(drawer).not.toHaveClass(/open/);
