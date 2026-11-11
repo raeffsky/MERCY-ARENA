@@ -35,6 +35,23 @@ test.describe('MERCY ARENA public shell', () => {
     }
   });
 
+  test('homepage upcoming matches open their match room in one tap', async ({ page }) => {
+    await page.route('**/api/v1/seasons**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/tournaments**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/matches**', route => route.fulfill({ json: { data: [
+      { id: 902, tournament_id: 72, status: 'scheduled', scheduled_at: '2026-11-21T18:00:00Z',
+        team_a_id: 21, team_b_id: 22, team_a_name: 'RAEFFSKY CORE', team_b_name: 'NOVA FIVE' }
+    ] } }));
+    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/circuit/ranking**', route => route.fulfill({ json: { data: [] } }));
+    await page.goto('/#/home');
+    const row = page.locator('#homeMatches a.home-match-row');
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText('RAEFFSKY CORE');
+    await expect(row).toContainText('NOVA FIVE');
+    await expect(row).toHaveAttribute('href', '/match.html?id=902');
+  });
+
   test('match bracket cards show context and open the dedicated match room', async ({ page }) => {
     await page.route('**/api/v1/tournaments**', route => route.fulfill({ json: { data: [
       { id: 71, title: 'MERCY SEASON CUP', status: 'published' }
