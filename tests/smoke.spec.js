@@ -15,6 +15,65 @@ test.describe('MERCY ARENA public shell', () => {
 
 
 
+
+  test('primary navigation is compact and exposes secondary sections on demand', async ({ page, isMobile }) => {
+    await page.goto('/#/home');
+    await page.getByRole('button', { name: 'Открыть меню' }).click();
+    const primary = page.locator('.links > a');
+    await expect(primary).toHaveCount(5);
+    await expect(page.locator('.nav-more')).toBeVisible();
+    await expect(page.locator('.nav-more-links')).toBeHidden();
+    await page.locator('#navMore summary').click();
+    await expect(page.locator('.nav-more-links a[data-route="crown"]')).toContainText('Защита чемпионского титула');
+    await page.locator('.nav-more-links a[data-route="crown"]').click();
+    await expect(page).toHaveURL(/#\/crown$/);
+    await expect(page.locator('.links a[data-route="crown"]')).toHaveClass(/active/);
+    if (isMobile) {
+      await expect(page.locator('.mobile-primary-nav')).toBeVisible();
+      await expect(page.locator('.mobile-primary-nav a[data-route="tournaments"]')).toBeVisible();
+    } else {
+      await expect(page.locator('.mobile-primary-nav')).toBeHidden();
+    }
+  });
+
+  test('homepage upcoming matches open their match room in one tap', async ({ page }) => {
+    await page.route('**/api/v1/seasons**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/tournaments**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/matches**', route => route.fulfill({ json: { data: [
+      { id: 902, tournament_id: 72, status: 'scheduled', scheduled_at: '2026-11-21T18:00:00Z',
+        team_a_id: 21, team_b_id: 22, team_a_name: 'RAEFFSKY CORE', team_b_name: 'NOVA FIVE' }
+    ] } }));
+    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [] } }));
+    await page.route('**/api/v1/circuit/ranking**', route => route.fulfill({ json: { data: [] } }));
+    await page.goto('/#/home');
+    const row = page.locator('#homeMatches a.home-match-row');
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText('RAEFFSKY CORE');
+    await expect(row).toContainText('NOVA FIVE');
+    await expect(row).toHaveAttribute('href', '/match.html?id=902');
+  });
+
+  test('match bracket cards show context and open the dedicated match room', async ({ page }) => {
+    await page.route('**/api/v1/tournaments**', route => route.fulfill({ json: { data: [
+      { id: 71, title: 'MERCY SEASON CUP', status: 'published' }
+    ] } }));
+    await page.route('**/api/v1/matches**', route => route.fulfill({ json: { data: [
+      { id: 901, tournament_id: 71, round_number: 2, bracket: 'upper', match_number: 3,
+        scheduled_at: '2026-11-20T18:30:00Z', status: 'in_progress', team_a_id: 11, team_b_id: 12,
+        score_a: 1, score_b: 0, winner_team_id: null, result_verified_at: null }
+    ] } }));
+    await page.route('**/api/v1/teams**', route => route.fulfill({ json: { data: [
+      { id: 11, name: 'MERCY PRIME' }, { id: 12, name: 'NOVA TEAM' }
+    ] } }));
+    await page.goto('/#/brackets');
+    const card = page.locator('#matchBracket .match-card');
+    await expect(card).toContainText('MERCY PRIME');
+    await expect(card).toContainText('NOVA TEAM');
+    await expect(card).toContainText('MERCY SEASON CUP');
+    await expect(card).toContainText('Верхняя сетка');
+    await expect(card.locator('a[href="/match.html?id=901"]')).toContainText('ОТКРЫТЬ МАТЧ');
+  });
+
   test('player registration accepts numeric MLBB and server IDs before lookup', async ({ page }) => {
     await page.route('**/api/v1/me', route => route.fulfill({ json: {
       authenticated: false, account: null, roles: [], access: 'guest'
@@ -104,11 +163,28 @@ test.describe('MERCY ARENA public shell', () => {
     await page.route('**/api/v1/me', route => route.fulfill({ json: {
       authenticated: true,
       account: { id: 'user-4', email: 'ready@example.com', name: 'Ready' },
-      profile: { id: 41, nickname: 'ReadyPlayer', profile_status: 'approved' },
+      profile: { id: 41, nickname: 'ReadyPlayer', team_id: 17, profile_status: 'approved' },
       roles: ['player'], access: 'user'
     } }));
     await page.goto('/');
     await expect(page.locator('#homeJoin')).toHaveCount(0);
+    await expect(page.locator('#homePersonalCenter')).toBeVisible();
+    await expect(page.locator('#homePersonalCenter')).toContainText('ReadyPlayer');
+    await expect(page.locator('#homePersonalCenter a[href="#/teams"]')).toContainText('Моя команда');
+  });
+
+  test('home personal hub guides a pending player to profile review status', async ({ page }) => {
+    await page.route('**/api/v1/me', route => route.fulfill({ json: {
+      authenticated: true,
+      account: { id: 'user-pending', email: 'pending@example.com', name: 'Pending' },
+      profile: { id: 42, nickname: 'PendingPlayer', profile_status: 'pending', team_id: null },
+      roles: ['player'], access: 'user'
+    } }));
+    await page.goto('/#/home');
+    await expect(page.locator('#homePersonalCenter')).toBeVisible();
+    await expect(page.locator('#homePersonalCenter')).toContainText('PendingPlayer');
+    await expect(page.locator('#homePersonalCenter')).toContainText('отправлен на проверку');
+    await expect(page.locator('#homePersonalCenter a[href="#/my-profile"]').first()).toBeVisible();
   });
 
   test('player account exposes logout and clears the session', async ({ page }) => {
@@ -292,6 +368,7 @@ test.describe('MERCY ARENA public shell', () => {
 
     const drawer = page.locator('#drawer');
     await expect(drawer).toHaveClass(/open/);
+    await drawer.locator('#navMore summary').click();
     await drawer.getByRole('link', { name: /Игроки/ }).click();
     await expect(page).toHaveURL(/#\/players$/);
     await expect(drawer).not.toHaveClass(/open/);
