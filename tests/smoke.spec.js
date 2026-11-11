@@ -28,7 +28,6 @@ test.describe('MERCY ARENA public shell', () => {
     await page.locator('.nav-more-links a[data-route="crown"]').click();
     await expect(page).toHaveURL(/#\/crown$/);
     await expect(page.locator('.links a[data-route="crown"]')).toHaveClass(/active/);
-    await page.getByRole('button', { name: 'Закрыть' }).click();
     if (isMobile) {
       await expect(page.locator('.mobile-primary-nav')).toBeVisible();
       await expect(page.locator('.mobile-primary-nav a[data-route="tournaments"]')).toBeVisible();
