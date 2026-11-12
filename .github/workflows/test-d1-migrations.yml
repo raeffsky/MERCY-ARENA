@@ -1,0 +1,67 @@
+name: MERCY ARENA test D1 migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_database:
+        description: "Type mercy-arena-test to confirm the isolated test database"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mercy-arena-test-d1-migrations
+  cancel-in-progress: false
+
+jobs:
+  apply-test-migrations:
+    name: Apply migrations to isolated test D1
+    if: ${{ github.ref == 'refs/heads/ops/test-d1-migrations-only' && inputs.target_database == 'mercy-arena-test' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_TEST_D1_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: "2658b3ace0d16c25beea175f42e07613"
+      D1_DATABASE_NAME: "mercy-arena-test"
+      D1_DATABASE_ID: "f0eeccb5-41fc-4908-a072-403c3ea0190b"
+    steps:
+      - name: Checkout selected test branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate test-only target and credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test "$D1_DATABASE_NAME" = "mercy-arena-test"
+          test "$D1_DATABASE_ID" = "f0eeccb5-41fc-4908-a072-403c3ea0190b"
+          test "$CLOUDFLARE_ACCOUNT_ID" = "2658b3ace0d16c25beea175f42e07613"
+
+      - name: Create isolated Wrangler config
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          fs.writeFileSync('wrangler.test-d1.json', JSON.stringify({
+            name: 'mercy-arena-test-migrations',
+            compatibility_date: '2026-11-10',
+            d1_databases: [{
+              binding: 'DB',
+              database_name: process.env.D1_DATABASE_NAME,
+              database_id: process.env.D1_DATABASE_ID,
+              migrations_dir: 'migrations'
+            }]
+          }, null, 2));
+          NODE
+
+      - name: Apply repository migrations to test D1 only
+        run: npx --yes wrangler@4 d1 migrations apply DB --remote --config wrangler.test-d1.json
+
+      - name: Verify applied migration ledger
+        run: npx --yes wrangler@4 d1 migrations list DB --remote --config wrangler.test-d1.json
