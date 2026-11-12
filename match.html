@@ -17,6 +17,12 @@
 <section class="panel" id="checkinPanel" hidden><div class="kicker">TOURNAMENT CHECK-IN</div><h2>ПОДТВЕРЖДЕНИЕ УЧАСТИЯ</h2><p class="muted" id="checkinWindow"></p><div id="checkinStatus"></div></section>
 <section class="panel" id="readyPanel" hidden><div class="kicker">TEAM CHECK-IN</div><h2>ГОТОВНОСТЬ КОМАНД</h2><div class="ready"><div class="ready-card" id="readyA"><b id="readyTeamA">Команда A</b><em id="readyStateA">Ожидает подтверждения</em></div><div class="ready-card" id="readyB"><b id="readyTeamB">Команда B</b><em id="readyStateB">Ожидает подтверждения</em></div></div><div class="actions"><button class="btn primary" id="readyButton" hidden>ПОДТВЕРДИТЬ ГОТОВНОСТЬ</button><button class="btn" id="refreshButton">ОБНОВИТЬ ДАННЫЕ</button></div></section>
 
+<section class="panel" id="matchChatPanel" hidden>
+<div class="kicker">MATCH COMMS / LIVE CHAT</div><h2>ЧАТ МАТЧА</h2>
+<p class="muted" id="matchChatHint">Общение капитанов, судьи и персонала турнира в одном месте.</p>
+<div id="matchChatMessages" aria-live="polite" style="display:flex;flex-direction:column;gap:9px;max-height:360px;overflow:auto;padding:4px 0 14px"></div>
+<form id="matchChatForm"><label class="field">СООБЩЕНИЕ<textarea name="message" maxlength="1000" rows="2" required placeholder="Напиши капитанам или судье…"></textarea></label><div class="actions"><button class="btn primary" id="matchChatSend" type="submit">ОТПРАВИТЬ</button><span class="muted" style="font-size:10px;align-self:center">До 1000 символов</span></div></form>
+</section>
 <section class="panel" id="judgePanel" hidden><div class="kicker">RESULT VERIFICATION / REFEREE</div><h2>ПОДТВЕРЖДЕНИЕ РЕЗУЛЬТАТА</h2><p class="muted" id="judgeHint">Судья отправляет итоговый счёт. Капитан команды-соперника должен подтвердить результат; при несогласии он открывает спор.</p><form id="judgeForm"><div class="room-grid"><label class="field">ПОБЕДЫ НА КАРТАХ A<input name="score_a" type="number" min="0" step="1" required></label><label class="field">ПОБЕДЫ НА КАРТАХ B<input name="score_b" type="number" min="0" step="1" required></label></div><div class="actions"><button class="btn primary" type="submit">ОТПРАВИТЬ НА ПОДТВЕРЖДЕНИЕ</button></div></form></section>
 <section class="panel" id="resultReviewPanel" hidden><div class="kicker">RESULT REVIEW / TEAM CONFIRMATION</div><h2>ПРОВЕРКА РЕЗУЛЬТАТА</h2><p class="muted" id="resultReviewText"></p><div id="resultDisputeReason" class="notice" hidden></div><div class="actions" id="resultReviewActions" hidden><button class="btn primary" id="confirmResultButton" type="button">ПОДТВЕРДИТЬ СЧЁТ</button><button class="btn" id="disputeResultButton" type="button">ОСПОРИТЬ РЕЗУЛЬТАТ</button></div><button class="btn" id="retryProgressionButton" type="button" hidden>ПОВТОРИТЬ ПРОДВИЖЕНИЕ ПО СЕТКЕ</button><div id="organizerResolve" hidden><h3>РЕШЕНИЕ ОРГАНИЗАТОРА</h3><div class="room-grid"><label class="field">ПОБЕДЫ A<input id="resolveScoreA" type="number" min="0" step="1"></label><label class="field">ПОБЕДЫ B<input id="resolveScoreB" type="number" min="0" step="1"></label></div><label class="field">КОММЕНТАРИЙ К РЕШЕНИЮ<textarea id="resolveReason" maxlength="500" required placeholder="Кратко укажи, на основании чего принят результат"></textarea></label><button class="btn primary" id="resolveResultButton" type="button">ЗАФИКСИРОВАТЬ РЕШЕНИЕ</button></div></section>
 <section class="panel" id="managePanel" hidden><div class="kicker">ORGANIZER / JUDGE CONTROL</div><h2>НАСТРОЙКА ИГРОВОЙ КОМНАТЫ</h2><form id="manageForm"><label class="field">ФОРМАТ СЕРИИ<select name="series_format"><option>BO1</option><option>BO3</option><option>BO5</option></select></label><label class="field">ROOM ID<input name="room_id" maxlength="80" autocomplete="off"></label><label class="field">ROOM PASSWORD<input name="room_password" type="password" maxlength="80" autocomplete="new-password"></label><label class="field">КОНТАКТ СУДЬИ / TELEGRAM<input name="judge_contact" maxlength="160" placeholder="@username или ссылка"></label><label class="field">ИНСТРУКЦИИ<textarea name="instructions" maxlength="1200" placeholder="Например: капитаны проверяют состав, судья запускает драфт после готовности обеих команд."></textarea></label><label class="field"><span><input type="checkbox" name="publish" style="width:auto"> Опубликовать ID и пароль участникам матча</span></label><div class="actions"><button class="btn primary" type="submit">СОХРАНИТЬ КОМНАТУ</button><button class="btn" type="button" id="resetReady">СБРОСИТЬ ГОТОВНОСТЬ</button></div></form></section>
@@ -94,7 +100,44 @@ if(submission){
 if(p.can_manage){var f=$('manageForm');f.elements.series_format.value=r.series_format;f.elements.room_id.value=r.room_id||'';f.elements.room_password.value=r.room_password||'';f.elements.judge_contact.value=r.judge_contact||'';f.elements.instructions.value=r.instructions||'';f.elements.publish.checked=r.published}
 message('Доступ подтверждён. Комната матча готова к координации.');
 loadCheckins(m.tournament_id);
+loadChat();
 }
+async function loadChat(){
+ if(!id)return;
+ try{
+  var result=await request('/api/v1/match-chat?id='+encodeURIComponent(id));
+  var box=$('matchChatMessages'),wasNearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<60;
+  var fragment=document.createDocumentFragment();
+  (result.messages||[]).forEach(function(item){
+   var row=document.createElement('div');row.style.cssText='padding:10px 12px;background:#090d10;border:1px solid var(--line);border-radius:4px';
+   var meta=document.createElement('div');meta.style.cssText='display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:10px;margin-bottom:4px';
+   var author=document.createElement('strong');author.style.color='var(--lime)';author.textContent=item.author||'Участник';
+   var time=document.createElement('time');time.textContent=new Date(item.created_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+   var body=document.createElement('div');body.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere';body.textContent=item.message;
+   meta.append(author,time);row.append(meta,body);fragment.append(row);
+  });
+  box.replaceChildren(fragment);
+  if(!result.messages||!result.messages.length){var empty=document.createElement('p');empty.className='muted';empty.textContent='Пока тихо. Начните общение перед матчем.';box.append(empty)}
+  if(wasNearBottom||!box.dataset.loaded)box.scrollTop=box.scrollHeight;
+  box.dataset.loaded='1';
+  $('matchChatPanel').hidden=false;
+  $('matchChatForm').hidden=!result.can_write;
+  $('matchChatHint').textContent=result.can_write?'Сообщения видны участникам матча и персоналу турнира.':'Чат доступен только для чтения: матч завершён.';
+ }catch(error){
+  if(error.status===401||error.status===403){$('matchChatPanel').hidden=true;return}
+  $('matchChatPanel').hidden=false;$('matchChatHint').textContent=error.message;
+ }
+}
+$('matchChatForm').addEventListener('submit',async function(event){
+ event.preventDefault();var form=event.currentTarget,field=form.elements.message,button=$('matchChatSend'),message=field.value.trim();
+ if(!message)return;button.disabled=true;
+ try{
+  await request('/api/v1/match-chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({match_id:id,message:message})});
+  field.value='';await loadChat();
+ }catch(error){$('matchChatHint').textContent=error.message}
+ finally{button.disabled=false}
+});
+setInterval(loadChat,5000);
 async function load(){if(!id){message('В ссылке отсутствует ID матча.',true);return}try{paint(await request('/api/v1/match-room?id='+encodeURIComponent(id)));$('loginLink').hidden=true}catch(e){message(e.message,true);$('loginLink').hidden=e.status!==401}}
 $('readyButton').addEventListener('click',async function(){this.disabled=true;try{paint(await request('/api/v1/match-room',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'ready',match_id:id})}))}catch(e){message(e.message,true)}finally{this.disabled=false}});
 $('refreshButton').addEventListener('click',load);
