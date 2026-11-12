@@ -951,7 +951,30 @@ th{background:var(--panel)!important}
 .nav-more{border-top:1px solid #ffffff18;margin-top:8px;padding-top:8px}.nav-more summary{list-style:none;cursor:pointer;padding:14px;color:#d7d9e0;font-size:12px;font-weight:800;letter-spacing:.5px}.nav-more summary::-webkit-details-marker{display:none}.nav-more summary iconify-icon{font-size:19px;margin-right:12px;vertical-align:middle}.nav-more[open] summary{color:var(--lime)}.nav-more-links{display:grid;gap:5px;padding-left:10px}.nav-more-links a{padding:11px 14px;font-size:11px}.nav-more-links small{display:block;color:#8d94a3;font-size:9px;font-weight:500;letter-spacing:0;margin:4px 0 0 31px}.mobile-primary-nav{display:none}
 @media(max-width:700px){.mobile-primary-nav{position:fixed;z-index:18;inset:auto 0 0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 5px calc(8px + env(safe-area-inset-bottom));background:#0d1017f5;border-top:1px solid #d7ff5e30;backdrop-filter:blur(14px)}.mobile-primary-nav a{display:flex;min-width:0;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:5px 2px;color:#9da4b2;text-decoration:none;font-size:9px;font-weight:800}.mobile-primary-nav a iconify-icon{font-size:20px}.mobile-primary-nav a.active{color:var(--lime)}body{padding-bottom:calc(66px + env(safe-area-inset-bottom))}.footer{margin-bottom:calc(66px + env(safe-area-inset-bottom))}.drawer{padding:18px 20px}.drawerhead{padding-bottom:16px}.links{grid-template-columns:1fr;gap:3px;margin-top:16px}.links>a{display:flex;align-items:center;min-height:44px;padding:10px 12px;font-size:12px}.links>a iconify-icon{flex:0 0 22px;margin-right:12px;font-size:20px}.nav-more{grid-column:1/-1;margin-top:8px}.nav-more-links{grid-template-columns:1fr}.nav-more-links a{font-size:11px}}
 @media(min-width:701px){.nav-more-links a{display:block}}
-\n.home-personal-center{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:22px 24px;margin:0 auto 24px;border:1px solid rgba(215,255,94,.28);background:linear-gradient(110deg,rgba(215,255,94,.075),rgba(18,21,17,.92) 55%);border-radius:16px}.home-personal-copy h2{margin:5px 0 6px;font-size:clamp(20px,3vw,28px)}.home-personal-copy p{margin:0;color:var(--muted,#a4a99b);max-width:620px}.home-personal-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}@media(max-width:700px){.home-personal-center{align-items:stretch;flex-direction:column;padding:18px}.home-personal-actions{justify-content:flex-start}.home-personal-actions .btn{flex:1;justify-content:center}}\n</style>
+\n.home-personal-center{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:22px 24px;margin:0 auto 24px;border:1px solid rgba(215,255,94,.28);background:linear-gradient(110deg,rgba(215,255,94,.075),rgba(18,21,17,.92) 55%);border-radius:16px}.home-personal-copy h2{margin:5px 0 6px;font-size:clamp(20px,3vw,28px)}.home-personal-copy p{margin:0;color:var(--muted,#a4a99b);max-width:620px}.home-personal-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}@media(max-width:700px){.home-personal-center{align-items:stretch;flex-direction:column;padding:18px}.home-personal-actions{justify-content:flex-start}.home-personal-actions .btn{flex:1;justify-content:center}}\n
+/* MERCY motion layer: visual-only enhancement, existing layout and colors stay intact. */
+@keyframes mercyHeroIn{from{opacity:0;transform:translateY(22px);filter:blur(8px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes mercyPosterIn{from{opacity:0;transform:translateY(18px) scale(.975)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes mercyGlowDrift{0%,100%{opacity:.12;transform:translate3d(-2%,0,0)}50%{opacity:.22;transform:translate3d(2%,-3%,0)}}
+@keyframes mercySweep{0%{transform:translateX(-150%) skewX(-18deg)}55%,100%{transform:translateX(240%) skewX(-18deg)}}
+@keyframes mercyLivePulse{0%,100%{opacity:1;box-shadow:0 0 0 0 #d7ff5e66}50%{opacity:.72;box-shadow:0 0 0 6px #d7ff5e00}}
+.about-hero-inner,.season-feature-copy{animation:mercyHeroIn .8s cubic-bezier(.2,.75,.25,1) both}
+.season-feature-art{animation:mercyPosterIn .9s cubic-bezier(.2,.75,.25,1) .12s both}
+.season-feature,.about-hero{position:relative;isolation:isolate}
+.season-feature:after,.about-hero:after{content:"";position:absolute;z-index:-1;inset:8% 4%;pointer-events:none;background:radial-gradient(ellipse at 70% 45%,#d7ff5e18,transparent 58%);filter:blur(28px);animation:mercyGlowDrift 9s ease-in-out infinite}
+[data-mercy-reveal]{opacity:0;transform:translateY(18px);filter:blur(5px);transition:opacity .65s ease,transform .65s cubic-bezier(.2,.75,.25,1),filter .65s ease;transition-delay:var(--mercy-delay,0ms)}
+[data-mercy-reveal].mercy-visible{opacity:1;transform:translateY(0);filter:blur(0)}
+.tournament-list-card,.match-card,.rules-card,.scout-card{transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
+.tournament-list-card:hover,.match-card:hover,.rules-card:hover,.scout-card:hover{transform:translateY(-4px);border-color:#d7ff5e66;box-shadow:0 12px 34px #0005,0 0 24px #d7ff5e0c}
+.btn.primary,.btn.lime{position:relative;overflow:hidden}
+.btn.primary:after,.btn.lime:after{content:"";position:absolute;top:-40%;bottom:-40%;left:0;width:34%;background:linear-gradient(90deg,transparent,#ffffff35,transparent);transform:translateX(-150%) skewX(-18deg);pointer-events:none}
+.btn.primary:hover:after,.btn.lime:hover:after{animation:mercySweep .8s ease}
+.live-dot,.match-live-dot,.live-indicator{animation:mercyLivePulse 1.8s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+ [data-mercy-reveal]{opacity:1;transform:none;filter:none}
+}
+</style>
 </head>
 <body>
 <div class="topline"></div>
@@ -1841,6 +1864,35 @@ await loadCrown();
 if(key==='seasons'){var seasons=await apiList('seasons');var target=document.getElementById('seasonResults');if(target)target.innerHTML=seasons.length?seasons.map(function(item){return '<a class="season-list-card" href="#/season/'+encodeURIComponent(item.id)+'"><div><div class="kicker">MERCY ARENA / СЕЗОН '+esc(item.season_number||'—')+'</div><h3>'+esc(item.title)+'</h3><p>'+esc(dateLabel(item.starts_at))+' · Открыть турниры сезона</p></div><iconify-icon icon="mdi:arrow-right" style="font-size:22px;color:var(--lime)"></iconify-icon></a>'}).join(''):'<div class="empty"><b>Сезоны ещё не запущены</b><p>После объявления первого сезона здесь появится его календарь и каталог турниров.</p></div>'}
 }catch(error){console.warn('MERCY ARENA API unavailable:',error.message)}
 }
+
+/* Reveal content as it enters the viewport, including SPA route updates. */
+(function(){
+  if(window.__mercyMotionInstalled)return;
+  window.__mercyMotionInstalled=true;
+  var selector='.home-section-top,.season-feature,.home-match-list,.home-quick-links,.tournament-list-card,.match-card,.about-hero-inner,.rules-card,.scout-card';
+  var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduced)return;
+  var observer='IntersectionObserver' in window?new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){if(entry.isIntersecting){entry.target.classList.add('mercy-visible');observer.unobserve(entry.target)}});
+  },{threshold:.12,rootMargin:'0px 0px -36px 0px'}):null;
+  function scan(root){
+    if(!root||!root.querySelectorAll)return;
+    var nodes=[];
+    if(root.matches&&root.matches(selector))nodes.push(root);
+    nodes=nodes.concat(Array.prototype.slice.call(root.querySelectorAll(selector)));
+    nodes.forEach(function(node,index){
+      if(node.hasAttribute('data-mercy-reveal'))return;
+      node.setAttribute('data-mercy-reveal','');
+      node.style.setProperty('--mercy-delay',Math.min(index%6,5)*65+'ms');
+      if(observer)observer.observe(node);else node.classList.add('mercy-visible');
+    });
+  }
+  scan(document);
+  if('MutationObserver' in window){
+    new MutationObserver(function(records){records.forEach(function(record){record.addedNodes.forEach(function(node){if(node.nodeType===1)scan(node)})})}).observe(document.body,{childList:true,subtree:true});
+  }
+})();
+
 window.addEventListener('hashchange',route);route();refreshNotificationBadge();window.addEventListener('focus',refreshNotificationBadge);document.addEventListener('visibilitychange',function(){if(!document.hidden)refreshNotificationBadge()});window.setInterval(refreshNotificationBadge,60000);
 })();
 </script>
