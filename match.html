@@ -100,6 +100,7 @@ if(submission){
 if(p.can_manage){var f=$('manageForm');f.elements.series_format.value=r.series_format;f.elements.room_id.value=r.room_id||'';f.elements.room_password.value=r.room_password||'';f.elements.judge_contact.value=r.judge_contact||'';f.elements.instructions.value=r.instructions||'';f.elements.publish.checked=r.published}
 message('Доступ подтверждён. Комната матча готова к координации.');
 loadCheckins(m.tournament_id);
+loadChat();
 }
 async function loadChat(){
  if(!id)return;
