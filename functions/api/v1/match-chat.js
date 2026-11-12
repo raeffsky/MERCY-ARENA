@@ -50,7 +50,7 @@ export async function onRequestGet({ request, env }) {
   if (auth.response) return auth.response;
   try {
     const rows = await auth.db.prepare(
-      "SELECT c.id,c.user_id,c.message,c.created_at,COALESCE(p.nickname,u.username,'Участник') AS author " +
+      "SELECT c.id,c.user_id,c.message,c.created_at,COALESCE(p.nickname,u.display_name,'Участник') AS author " +
       "FROM match_chat_messages c JOIN users u ON u.id=c.user_id " +
       "LEFT JOIN players p ON p.user_id=u.id AND p.profile_status='approved' AND p.archived_at IS NULL " +
       "WHERE c.match_id=? ORDER BY c.created_at DESC,c.id DESC LIMIT ?"
@@ -92,7 +92,7 @@ export async function onRequestPost({ request, env }) {
       "INSERT INTO match_chat_messages (id,match_id,user_id,message,created_at) VALUES (?,?,?,?,?)"
     ).bind(id, matchId, auth.user.id, message, createdAt).run();
     const row = await auth.db.prepare(
-      "SELECT c.id,c.user_id,c.message,c.created_at,COALESCE(p.nickname,u.username,'Участник') AS author " +
+      "SELECT c.id,c.user_id,c.message,c.created_at,COALESCE(p.nickname,u.display_name,'Участник') AS author " +
       "FROM match_chat_messages c JOIN users u ON u.id=c.user_id " +
       "LEFT JOIN players p ON p.user_id=u.id AND p.profile_status='approved' AND p.archived_at IS NULL " +
       "WHERE c.id=? LIMIT 1"
