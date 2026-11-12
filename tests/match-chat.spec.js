@@ -40,6 +40,6 @@ test('MERCY MATCH room renders a live chat and safely inserts message text', () 
   const page = source('match.html');
   expect(page).toContain('id="matchChatPanel"');
   expect(page).toContain('/api/v1/match-chat');
-  expect(page).toContain('textContent = message.message');
+  expect(page).toContain('textContent=item.message');
   expect(page).toContain('setInterval(loadChat, 5000)');
 });
