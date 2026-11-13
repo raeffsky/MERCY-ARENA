@@ -350,12 +350,63 @@ test.describe('MERCY ARENA public shell', () => {
     await expect(page.locator('#notificationsRoot')).toContainText('2 НЕПРОЧИТАННЫХ');
     await page.locator('[data-read-notification="10"]').click();
     await expect(page.locator('#notificationsRoot')).toContainText('1 НЕПРОЧИТАННЫХ');
+    await expect(page.locator('#notificationCount')).toHaveText('1');
     await expect(page.locator('#notificationsRoot')).toContainText('Новое приглашение');
     await expect(page.locator('#notificationsRoot article').first()).toContainText('Прочитано');
     await page.getByRole('button', { name: 'Прочитать все' }).click();
     await expect(page.locator('#notificationsRoot')).toContainText('0 НЕПРОЧИТАННЫХ');
+    await expect(page.locator('#notificationCount')).toBeHidden();
     await expect(page.locator('[data-read-notification]')).toHaveCount(0);
     expect(writes).toEqual([{ id: '10' }, { action: 'read_all' }]);
+  });
+
+  test('notification unread total stays accurate when more than 50 items are unread', async ({ page }) => {
+    await page.route('**/api/v1/notifications**', async route => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({ json: {
+          data: Array.from({ length: 50 }, (_, index) => ({
+            id: 200 + index, type: 'system', title: 'Уведомление ' + index,
+            message: 'Тестовое уведомление', link: '#/teams', read_at: null,
+            created_at: '2026-11-10T10:00:00Z'
+          })),
+          meta: { unread: 60, limit: 50 }
+        } });
+      }
+      await route.fulfill({ json: { data: { id: '200', read_at: '2026-11-10T11:00:00Z' } } });
+    });
+
+    await page.goto('/#/notifications');
+    await expect(page.locator('#notificationsRoot')).toContainText('60 НЕПРОЧИТАННЫХ');
+    await page.locator('[data-read-notification="200"]').click();
+    await expect(page.locator('#notificationsRoot')).toContainText('59 НЕПРОЧИТАННЫХ');
+    await expect(page.locator('#notificationCount')).toHaveText('59');
+  });
+
+  test('read-all remains available when unread notifications are outside the latest 50', async ({ page }) => {
+    let readAllCalls = 0;
+    await page.route('**/api/v1/notifications**', async route => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({ json: {
+          data: Array.from({ length: 50 }, (_, index) => ({
+            id: 300 + index, type: 'system', title: 'Прочитанное ' + index,
+            message: 'Старое уведомление', link: null,
+            read_at: '2026-11-10T11:00:00Z',
+            created_at: '2026-11-10T10:00:00Z'
+          })),
+          meta: { unread: 3, limit: 50 }
+        } });
+      }
+      const body = route.request().postDataJSON();
+      if (body.action === 'read_all') readAllCalls += 1;
+      await route.fulfill({ json: { data: { status: 'read_all' } } });
+    });
+
+    await page.goto('/#/notifications');
+    await expect(page.locator('#notificationsRoot')).toContainText('3 НЕПРОЧИТАННЫХ');
+    await page.getByRole('button', { name: 'Прочитать все' }).click();
+    await expect(page.locator('#notificationsRoot')).toContainText('0 НЕПРОЧИТАННЫХ');
+    await expect(page.locator('#notificationCount')).toBeHidden();
+    expect(readAllCalls).toBe(1);
   });
 
   test('notification inbox syncs the unread badge and rejects external notification destinations', async ({ page }) => {
