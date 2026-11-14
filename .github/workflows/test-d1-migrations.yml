@@ -28,10 +28,10 @@ jobs:
       D1_DATABASE_ID: "f0eeccb5-41fc-4908-a072-403c3ea0190b"
     steps:
       - name: Checkout selected test branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
