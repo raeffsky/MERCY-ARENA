@@ -974,6 +974,88 @@ th{background:var(--panel)!important}
  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
  [data-mercy-reveal]{opacity:1;transform:none;filter:none}
 }
+
+/* MERCY ARENA / kinetic polish pass */
+@keyframes mercySectionRise{from{opacity:0;transform:translate3d(0,18px,0);filter:blur(4px)}to{opacity:1;transform:translate3d(0,0,0);filter:blur(0)}}
+@keyframes mercyAmbientOrbit{0%,100%{transform:translate3d(0,0,0) scale(1);opacity:.42}50%{transform:translate3d(2.5vw,-2vh,0) scale(1.08);opacity:.72}}
+@keyframes mercyEdgeRun{0%{background-position:0 0,100% 100%,0 0}100%{background-position:180% 0,-80% 100%,0 0}}
+@keyframes mercyLogoBreath{0%,100%{filter:drop-shadow(0 0 0 #d7ff5e00)}50%{filter:drop-shadow(0 0 12px #d7ff5e55)}}
+@keyframes mercyCardIn{from{opacity:0;transform:translateY(13px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes mercyArenaScan{0%{transform:translateY(-110%);opacity:0}15%{opacity:.28}85%{opacity:.12}100%{transform:translateY(110%);opacity:0}}
+body{isolation:isolate}
+body:before{content:"";position:fixed;z-index:-1;inset:-12%;pointer-events:none;background:radial-gradient(ellipse at 12% 18%,#d7ff5e0b,transparent 28%),radial-gradient(ellipse at 88% 62%,#a4ff4b0a,transparent 30%),linear-gradient(90deg,transparent 49.9%,#ffffff04 50%,transparent 50.1%);animation:mercyAmbientOrbit 18s ease-in-out infinite}
+.topline{background:linear-gradient(90deg,#9dcf3e 0%,#eaff8a 34%,#d7ff5e 60%,#8fbf37 100%);background-size:220% 100%;animation:mercyEdgeRun 8s linear infinite}
+.header{box-shadow:0 10px 34px #0003;border-bottom-color:#d7ff5e20}
+.brandmark{animation:mercyLogoBreath 5s ease-in-out infinite}
+.hero{background-image:linear-gradient(rgba(215,255,94,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(215,255,94,.025) 1px,transparent 1px),radial-gradient(ellipse at 78% 42%,#d7ff5e18 0,transparent 37%),linear-gradient(105deg,#07090b 0%,#090c0d 54%,#10170b 100%);background-size:44px 44px,44px 44px,auto,auto}
+.hero h1 span{text-shadow:0 0 28px #d7ff5e25}
+.arena-visual{box-shadow:0 24px 70px #000a,0 0 0 1px #d7ff5e1c,inset 0 0 65px #d7ff5e16;transition:transform .6s cubic-bezier(.2,.75,.25,1),box-shadow .6s ease}
+.arena-visual:after{content:"";position:absolute;z-index:2;left:0;right:0;top:0;height:22%;pointer-events:none;background:linear-gradient(180deg,transparent,#d7ff5e20,transparent);animation:mercyArenaScan 7s ease-in-out infinite}
+.hero-layout:hover .arena-visual{transform:translateY(-4px);box-shadow:0 30px 85px #000b,0 0 36px #d7ff5e18,inset 0 0 65px #d7ff5e20}
+.tile,.panel,.step,.statline,.home-join,.season-feature,.tournament-list-card,.match-card,.team-workspace-card,.team-create-card,.team-profile-hero,.team-stat-card,.rules-card,.scout-card,.season-list-card,.championship-slot,.tournament-match,.team-member-card,.home-personal-center{transition:transform .28s cubic-bezier(.2,.75,.25,1),border-color .28s ease,box-shadow .28s ease,background-color .28s ease}
+.tile:hover,.panel:hover,.step:hover,.team-stat-card:hover,.championship-slot:hover,.tournament-match:hover,.team-member-card:hover{transform:translateY(-3px);border-color:#d7ff5e68;box-shadow:0 16px 38px #0005,0 0 24px #d7ff5e0b}
+.tile{position:relative;overflow:hidden}
+.tile:after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;background:linear-gradient(125deg,transparent 25%,#d7ff5e0c 48%,transparent 70%);transform:translateX(-35%);transition:opacity .25s,transform .55s ease}
+.tile:hover:after{opacity:1;transform:translateX(25%)}
+.btn{position:relative;overflow:hidden;transition:transform .2s cubic-bezier(.2,.75,.25,1),filter .2s ease,box-shadow .2s ease}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.1)}
+.btn:active{transform:translateY(0) scale(.975)}
+.btn.primary,.btn.lime{box-shadow:0 7px 24px #d7ff5e1c}
+.btn.primary:hover,.btn.lime:hover{box-shadow:0 10px 32px #d7ff5e35}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+.menu,.notification-trigger,.close{transition:color .2s ease,border-color .2s ease,background .2s ease,transform .2s ease}
+.menu:hover,.notification-trigger:hover,.close:hover{transform:translateY(-2px);background:#d7ff5e0c}
+.pagehead,.home-section-top,.section-head,.home-personal-center,.tournament-detail,.team-profile-page{animation:mercySectionRise .58s cubic-bezier(.2,.75,.25,1) both}
+.tournament-list-card,.match-card,.tile,.step,.team-member-card{animation:mercyCardIn .5s cubic-bezier(.2,.75,.25,1) both}
+.tournament-list-card:nth-child(2),.match-card:nth-child(2),.tile:nth-child(2),.step:nth-child(2),.team-member-card:nth-child(2){animation-delay:65ms}
+.tournament-list-card:nth-child(3),.match-card:nth-child(3),.tile:nth-child(3),.step:nth-child(3),.team-member-card:nth-child(3){animation-delay:110ms}
+.tournament-list-card:nth-child(4),.match-card:nth-child(4),.tile:nth-child(4),.team-member-card:nth-child(4){animation-delay:155ms}
+.tournament-list-card:nth-child(5),.match-card:nth-child(5),.tile:nth-child(5),.team-member-card:nth-child(5){animation-delay:200ms}
+.stat strong,.admin-stat b,.team-stat-card>b{font-variant-numeric:tabular-nums}
+.statline{overflow:hidden}
+.stat{transition:background .25s ease}
+.stat:hover{background:#d7ff5e08}
+.journey-icon{transition:transform .25s ease,background .25s ease,box-shadow .25s ease}
+.journey-step:hover .journey-icon{transform:translateY(-3px) rotate(-4deg);background:#d7ff5e18;box-shadow:0 0 22px #d7ff5e20}
+.links a,.nav-more-links a{transition:transform .2s ease,color .2s ease,border-color .2s ease,background .2s ease}
+.links a:hover,.nav-more-links a:hover{transform:translateX(4px)}
+.field,.application-dialog select{transition:border-color .2s ease,box-shadow .2s ease}
+.field:focus,.application-dialog select:focus{border-color:var(--lime);box-shadow:0 0 0 3px #d7ff5e13}
+@media(hover:none){.tile:hover,.panel:hover,.step:hover,.team-stat-card:hover,.championship-slot:hover,.tournament-match:hover,.team-member-card:hover,.btn:hover{transform:none}}
+@media(prefers-reduced-motion:reduce){body:before,.topline,.brandmark,.arena-visual:after{animation:none!important}.pagehead,.home-section-top,.section-head,.home-personal-center,.tournament-detail,.team-profile-page,.tournament-list-card,.match-card,.tile,.step,.team-member-card{animation:none!important}}
+
+
+/* MERCY ARENA ambient atmosphere: visible drifting particles + aurora */
+body{position:relative;isolation:isolate;background:#07090b}
+body:before,body:after{content:"";position:fixed;inset:-12%;pointer-events:none}
+body:before{
+ z-index:90;opacity:.78;mix-blend-mode:screen;
+ background-image:
+ radial-gradient(2px 2px at 8% 18%,#efffc8 98%,transparent),
+ radial-gradient(2px 2px at 22% 72%,#d7ff5e 98%,transparent),
+ radial-gradient(3px 3px at 38% 34%,#f4ffd8 98%,transparent),
+ radial-gradient(2px 2px at 57% 82%,#d7ff5e 98%,transparent),
+ radial-gradient(2px 2px at 74% 23%,#f4ffd8 98%,transparent),
+ radial-gradient(3px 3px at 91% 61%,#d7ff5e 98%,transparent),
+ radial-gradient(1.5px 1.5px at 15% 48%,#efffc8 98%,transparent),
+ radial-gradient(2px 2px at 66% 54%,#efffc8 98%,transparent);
+ background-size:260px 240px,310px 290px,370px 330px,280px 310px,330px 270px,390px 350px,220px 260px,350px 300px;
+ animation:mercy-particles-drift 18s linear infinite,mercy-particles-twinkle 3.2s ease-in-out infinite alternate;
+}
+body:after{
+ z-index:89;opacity:.66;filter:blur(38px);mix-blend-mode:screen;
+ background:
+ radial-gradient(ellipse 36% 25% at 12% 28%,#b8e84a2b,transparent 75%),
+ radial-gradient(ellipse 30% 38% at 83% 17%,#d7ff5e26,transparent 72%),
+ radial-gradient(ellipse 40% 29% at 58% 78%,#8eae3830,transparent 75%),
+ radial-gradient(ellipse 24% 32% at 95% 72%,#d7ff5e20,transparent 75%);
+ animation:mercy-aurora 13s ease-in-out infinite alternate;
+}
+@keyframes mercy-particles-drift{0%{transform:translate3d(0,0,0)}50%{transform:translate3d(-5%,3%,0)}100%{transform:translate3d(-10%,0,0)}}
+@keyframes mercy-particles-twinkle{0%{opacity:.32}45%{opacity:.9}100%{opacity:.55}}
+@keyframes mercy-aurora{0%{transform:translate3d(-4%,2%,0) scale(.92) rotate(-3deg);opacity:.3}50%{transform:translate3d(3%,-3%,0) scale(1.08) rotate(3deg);opacity:.78}100%{transform:translate3d(-2%,3%,0) scale(1.02) rotate(-1deg);opacity:.48}}
+@media(prefers-reduced-motion:reduce){body:before,body:after{animation:none}}
+
 </style>
 </head>
 <body>
