@@ -1024,6 +1024,42 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 @media(hover:none){.tile:hover,.panel:hover,.step:hover,.team-stat-card:hover,.championship-slot:hover,.tournament-match:hover,.team-member-card:hover,.btn:hover{transform:none}}
 @media(prefers-reduced-motion:reduce){body:before,.topline,.brandmark,.arena-visual:after{animation:none!important}.pagehead,.home-section-top,.section-head,.home-personal-center,.tournament-detail,.team-profile-page,.tournament-list-card,.match-card,.tile,.step,.team-member-card{animation:none!important}}
 
+
+/* MERCY ARENA ambient atmosphere: animated starfield + slow aurora */
+body{position:relative;isolation:isolate;background:#07090b}
+body:before,body:after{content:"";position:fixed;inset:-18%;pointer-events:none;z-index:0}
+body:before{
+  opacity:.42;
+  background-image:
+    radial-gradient(1px 1px at 8% 18%,#eaffb8 99%,transparent),
+    radial-gradient(1px 1px at 22% 72%,#d7ff5e 99%,transparent),
+    radial-gradient(2px 2px at 38% 34%,#f4ffd8 99%,transparent),
+    radial-gradient(1px 1px at 57% 82%,#d7ff5e 99%,transparent),
+    radial-gradient(1px 1px at 74% 23%,#f4ffd8 99%,transparent),
+    radial-gradient(2px 2px at 91% 61%,#d7ff5e 99%,transparent),
+    radial-gradient(ellipse at 50% 50%,transparent 35%,#07090b 85%);
+  background-size:310px 280px,370px 330px,430px 390px,290px 350px,390px 310px,470px 420px,100% 100%;
+  animation:mercy-star-drift 90s linear infinite;
+}
+body:after{
+  opacity:.5;filter:blur(52px);
+  background:
+    radial-gradient(ellipse 34% 24% at 12% 28%,#b8e84a20,transparent 75%),
+    radial-gradient(ellipse 28% 36% at 83% 17%,#d7ff5e18,transparent 72%),
+    radial-gradient(ellipse 38% 27% at 58% 78%,#8eae3820,transparent 75%),
+    radial-gradient(ellipse 22% 30% at 95% 72%,#d7ff5e12,transparent 75%);
+  transform:translate3d(0,0,0);
+  animation:mercy-aurora 24s ease-in-out infinite alternate;
+}
+body>*{position:relative;z-index:1}
+@keyframes mercy-star-drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(-3%,2%,0)}}
+@keyframes mercy-aurora{
+  0%{transform:translate3d(-2%,1%,0) scale(.96) rotate(-2deg);opacity:.32}
+  50%{transform:translate3d(2%,-2%,0) scale(1.05) rotate(2deg);opacity:.62}
+  100%{transform:translate3d(-1%,2%,0) scale(1.02) rotate(-1deg);opacity:.42}
+}
+@media(prefers-reduced-motion:reduce){body:before,body:after{animation:none}}
+
 </style>
 </head>
 <body>
