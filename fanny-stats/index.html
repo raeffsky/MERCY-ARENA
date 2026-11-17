@@ -104,6 +104,8 @@ h1{font-size:clamp(35px,6vw,62px);line-height:1.02;letter-spacing:-2.8px;margin:
 @media(max-width:520px){.achievement-grid{grid-template-columns:repeat(3,1fr)}.chart-controls button{padding:7px 6px;font-size:8px}.rank-name{font-size:20px}}
 @media(prefers-reduced-motion:reduce){.particle{display:none}.rank-card{animation:none}}
 
+
+.reaction-panel{margin-top:16px}.reaction-intro{font-size:11px;line-height:1.7;color:var(--muted);max-width:650px}.reaction-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:17px 0}.reaction-stats>div{padding:13px;border:1px solid var(--line);border-radius:13px;background:#0b1425;text-align:center}.reaction-stats b{display:block;font:700 21px Orbitron,sans-serif;color:#dff6ff}.reaction-stats span{display:block;margin-top:6px;font-size:9px;color:var(--muted)}.reaction-zone{width:100%;min-height:220px;border:1px solid #42648c;border-radius:18px;background:radial-gradient(circle at 50% 35%,#24456b,#101d34 68%);color:#eaf7ff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}.reaction-zone:active{transform:scale(.995)}.reaction-zone strong{font:800 clamp(17px,3vw,25px) Orbitron,sans-serif;letter-spacing:1.2px}.reaction-zone small{font-size:10px;color:#a7bbd7}.reaction-symbol{font-size:34px}.reaction-zone.waiting{background:radial-gradient(circle at 50% 35%,#533d24,#201a20 72%);border-color:#e6a34f}.reaction-zone.go{background:radial-gradient(circle at 50% 35%,#087b65,#07372f 72%);border-color:#55f2c0;box-shadow:0 0 40px #28d9a522}.reaction-zone.done{background:radial-gradient(circle at 50% 35%,#293c70,#111b36 72%);border-color:#8c75ff}.reaction-bottom{display:flex;justify-content:space-between;gap:12px;margin-top:12px;font-size:9px;letter-spacing:1px;color:#91a5c4}.reaction-history{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.reaction-history span{padding:7px 10px;border-radius:8px;background:#15243b;color:#c9def7;font:600 10px Orbitron,sans-serif}@media(max-width:520px){.reaction-stats{gap:6px}.reaction-stats>div{padding:11px 5px}.reaction-stats b{font-size:16px}.reaction-zone{min-height:190px}.reaction-bottom{font-size:8px}}
 </style>
 </head>
 <body>
@@ -202,6 +204,15 @@ h1{font-size:clamp(35px,6vw,62px);line-height:1.02;letter-spacing:-2.8px;margin:
  </div>
 
 </div>
+
+ <section class="glass reaction-panel reveal" id="reactionTest">
+  <div class="panel-title"><div><span class="section-kicker">REFLEX LAB · FANNY TRAINING</span><h3 style="margin:6px 0 0">Тест реакции</h3></div><span class="tiny-label">5 РАУНДОВ</span></div>
+  <p class="reaction-intro">Жди сигнала и нажми как можно быстрее. Раннее нажатие считается фальстартом. В конце покажем среднюю реакцию и личный рекорд.</p>
+  <div class="reaction-stats"><div><b id="reactionLast">—</b><span>Последний результат</span></div><div><b id="reactionBest">—</b><span>Личный рекорд</span></div><div><b id="reactionAverage">—</b><span>Средняя реакция</span></div></div>
+  <button class="reaction-zone idle" id="reactionZone" type="button"><span class="reaction-symbol" id="reactionSymbol">⚡</span><strong id="reactionTitle">ГОТОВ К ПРОВЕРКЕ?</strong><small id="reactionHint">Нажми, чтобы начать 5 раундов</small></button>
+  <div class="reaction-bottom"><span id="reactionRound">РАУНД 0 / 5</span><span id="reactionGrade">Результаты сохраняются на этом устройстве</span></div>
+  <div class="reaction-history" id="reactionHistory"></div>
+ </section>
 <div class="toast" id="toast">Сохранено</div>
 
 <script>
@@ -259,6 +270,10 @@ $('form').addEventListener('submit',()=>{setTimeout(()=>{try{const d=JSON.parse(
 window.addEventListener('resize',()=>{clearTimeout(window.__fannyChartResize);window.__fannyChartResize=setTimeout(drawChart,120)});
 (function particles(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;for(let i=0;i<18;i++){const p=document.createElement('i');p.className='particle';p.style.left=(Math.random()*100)+'%';p.style.bottom=(-Math.random()*100)+'px';p.style.animationDuration=(13+Math.random()*18)+'s';p.style.animationDelay=(-Math.random()*25)+'s';document.body.appendChild(p)}})();
 refreshUpgrade();drawChart();
+
+
+/* Reaction test: five randomized signal rounds */
+(()=>{const zone=$('reactionZone');if(!zone)return;const KEY='fanny-reaction-best-v1';let phase='idle',round=0,timer=null,started=0,results=[],best=Number(localStorage.getItem(KEY)||0);const $v=id=>$(id);const fmt=n=>n+' мс';function stats(last='—',avg='—'){ $v('reactionLast').textContent=last;$v('reactionBest').textContent=best?fmt(best):'—';$v('reactionAverage').textContent=avg}function show(title,hint,symbol,cls){zone.className='reaction-zone '+cls;$v('reactionTitle').textContent=title;$v('reactionHint').textContent=hint;$v('reactionSymbol').textContent=symbol}function begin(){round=0;results=[];$v('reactionHistory').innerHTML='';$v('reactionRound').textContent='РАУНД 0 / 5';$v('reactionGrade').textContent='Не торопись. Ложный старт сбрасывает раунд.';next()}function next(){round++;phase='waiting';$v('reactionRound').textContent='РАУНД '+round+' / 5';show('ЖДИ ЗЕЛЁНЫЙ СИГНАЛ','Не нажимай раньше времени…','⌛','waiting');timer=setTimeout(()=>{phase='go';started=performance.now();show('ЖМИ!','Коснись экрана прямо сейчас','⚡','go')},1100+Math.random()*2900)}function finishRound(ms){results.push(Math.round(ms));const avg=Math.round(results.reduce((a,b)=>a+b,0)/results.length);$v('reactionLast').textContent=fmt(Math.round(ms));$v('reactionAverage').textContent=fmt(avg);$v('reactionHistory').innerHTML=results.map((v,i)=>'<span>'+ (i+1)+': '+v+' мс</span>').join('');if(round>=5){phase='done';if(!best||avg<best){best=avg;localStorage.setItem(KEY,String(best))}stats(fmt(Math.round(ms)),fmt(avg));const grade=avg<180?'МОЛНИЕНОСНО ⚡':avg<230?'ОТЛИЧНАЯ РЕАКЦИЯ':avg<280?'ХОРОШИЙ РЕЗУЛЬТАТ':avg<350?'ЕСТЬ ЗАПАС ДЛЯ РОСТА':'ТРЕНИРУЙ РЕФЛЕКСЫ';$v('reactionGrade').textContent=grade;show('ТЕСТ ЗАВЕРШЁН',grade+' · среднее '+avg+' мс','🏆','done');$v('reactionHint').textContent='Нажми, чтобы пройти ещё раз';}else{phase='result';show(fmt(Math.round(ms)),'Раунд завершён. Нажми для следующего.','✓','done')}}zone.addEventListener('click',()=>{if(phase==='idle'||phase==='done'){begin();return}if(phase==='waiting'){clearTimeout(timer);phase='false';$v('reactionGrade').textContent='Фальстарт! Дождись сигнала.';show('СЛИШКОМ РАНО','Нажми, чтобы повторить этот раунд','✕','waiting');return}if(phase==='false'){next();return}if(phase==='result'){next();return}if(phase==='go'){const ms=performance.now()-started;phase='result';finishRound(ms)}});stats();})();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
