@@ -353,7 +353,39 @@ window.addEventListener('appinstalled', () => { installButton.style.display = 'n
  guides.innerHTML=`
  <div class="fs-guide-hero"><div class="section-kicker">FANNY TRAINING / KNOWLEDGE BASE</div><h2>Освой тросы. Контролируй полёт.</h2><p>Пошаговые уроки с визуальными схемами: точка прицеливания, направление каждого троса и порядок действий. Сначала отрабатывай точность, затем скорость. Схемы ниже показывают принцип направления, а не пиксельные координаты конкретной стены на карте.</p></div>
  <div class="fs-guide-filter" role="group" aria-label="Фильтр гайдов"><button class="active" data-filter="all">ВСЕ УРОКИ</button><button data-filter="basic">БАЗА</button><button data-filter="combo">КОМБИНАЦИИ</button><button data-filter="control">КОНТРОЛЬ</button><button data-filter="settings">НАСТРОЙКИ</button></div>
- <div class="fs-guide-grid">
+ 
+ <section class="fs-guide-card" data-kind="basic" style="grid-column:1/-1">
+  <span class="fs-tag">РАЗБОР ОТ XEN0N · 2025</span><h3>Посмотри механику в реальном матче</h3>
+  <p>Вместо выдуманных координат здесь привязка к конкретным фрагментам подробного видео: один трос, дабл, положение Фанни после связки, несколько тросов и разворот.</p>
+  <div class="fs-settings-list">
+   <div class="fs-setting"><div><b>Одиночный трос и скорость</b><span>Как точка крепления и длина троса задают начальное движение</span></div><em><a href="https://www.youtube.com/watch?v=gwu2sBjPiH8&t=11s" target="_blank" rel="noopener" style="color:inherit">00:11–01:08 ↗</a></em></div>
+   <div class="fs-setting"><div><b>Double Cable и точка выхода</b><span>Смотри именно на положение Фанни после подключения второго троса</span></div><em><a href="https://www.youtube.com/watch?v=gwu2sBjPiH8&t=69s" target="_blank" rel="noopener" style="color:inherit">01:09–03:19 ↗</a></em></div>
+   <div class="fs-setting"><div><b>Несколько тросов и разворот</b><span>Как менять активную пару тросов, не теряя направление маршрута</span></div><em><a href="https://www.youtube.com/watch?v=gwu2sBjPiH8&t=200s" target="_blank" rel="noopener" style="color:inherit">03:20–06:34 ↗</a></em></div>
+   <div class="fs-setting"><div><b>Wall Spam и Cable Swing</b><span>Отдельные техники для узких коридоров и боёв у стен</span></div><em><a href="https://www.youtube.com/watch?v=gwu2sBjPiH8&t=433s" target="_blank" rel="noopener" style="color:inherit">07:13–08:20 ↗</a></em></div>
+  </div>
+  <div class="fs-note">Видео: XEN0N, Ultimate Fanny Guide, опубликовано 28 декабря 2025 года. Таймкоды ведут прямо к нужной технике.</div>
+ </section>
+ <section class="fs-guide-card" data-kind="combo">
+  <span class="fs-tag">РАЗМЕТКА СТЕН · ВИЗУАЛЬНЫЙ ПРИМЕР</span><h3>Как читать точки на карте</h3>
+  <img src="https://i.ytimg.com/vi/XVVcshDby1E/hq720.jpg" alt="Размеченные стены и последовательность точек для straight cable Fanny" class="fs-diagram" loading="lazy" style="object-fit:contain">
+  <p>На примере отмечены конкретные стены и порядок точек для straight cable. Смотри не на цифру саму по себе, а на то, как следующая точка продолжает направление полёта.</p>
+  <div class="fs-note">Это иллюстрация из отдельного видеогайда, а не гарантированная актуальная схема карты после последних обновлений. Точные маршруты для текущей карты будем подписывать по свежим игровым кадрам.</div>
+  <a href="https://www.youtube.com/watch?v=XVVcshDby1E" target="_blank" rel="noopener" style="color:#8feaff;font-size:10px;font-weight:800">Открыть видео с разметкой ↗</a>
+ </section>
+ <section class="fs-guide-card" data-kind="settings" style="grid-column:1/-1">
+  <span class="fs-tag">НАСТРОЙКИ · СТАРТОВЫЙ ПРЕСЕТ</span><h3>Практичная отправная точка для HUD</h3>
+  <p>Это не «секретные настройки всех про-игроков», а стартовый вариант, который нужно проверить на своём экране и хвате.</p>
+  <div class="fs-settings-list">
+   <div class="fs-setting"><div><b>Кнопка навыка 2</b><span>Вынеси в удобную зону большого пальца. Начни с размера 110–120%, затем проверь, не цепляешь ли соседние кнопки.</span></div><em>110–120%</em></div>
+   <div class="fs-setting"><div><b>Чувствительность камеры</b><span>Для первого теста попробуй около 60%. Если перелетаешь нужную стену при свайпе камеры, снижай по 5%; если не доворачиваешь, повышай по 5%.</span></div><em>СТАРТ 60%</em></div>
+   <div class="fs-setting"><div><b>Высота камеры</b><span>Проверь высокую высоту камеры: так проще заранее видеть следующую стену и точку выхода.</span></div><em>HIGH</em></div>
+   <div class="fs-setting"><div><b>Джойстик</b><span>Попробуй фиксированный джойстик, чтобы одинаковые движения пальца давали предсказуемое направление.</span></div><em>FIXED</em></div>
+   <div class="fs-setting"><div><b>Своя раскладка</b><span>Сохрани отдельный HUD для Фанни. Не меняй одновременно размер кнопки, камеру и расположение навыков.</span></div><em>ОТДЕЛЬНЫЙ HUD</em></div>
+  </div>
+  <ol class="fs-steps"><li>Сделай 10 одинаковых разворотов в тренировке.</li><li>Если камера перелетает цель, уменьши чувствительность на 5 пунктов.</li><li>Если палец не успевает довести прицел, проверь размер и положение кнопки навыка 2.</li><li>Отыграй 2–3 матча без изменений и только потом оцени результат.</li></ol>
+  <div class="fs-note">Источники для стартовых значений: <a href="https://bittopup.ru/article/Mobile-Legends-Controls-Guide-2025-Pro-Settings-Setup" target="_blank" rel="noopener" style="color:#8feaff">гайд по управлению MLBB</a> и <a href="https://www.youtube.com/watch?v=zcWlGDA4ugI" target="_blank" rel="noopener" style="color:#8feaff">Fanny Bootcamp: Settings & UI</a>. Размеры и чувствительность индивидуальны, не копируй их вслепую.</div>
+ </section>
+<div class="fs-guide-grid">
   <article class="fs-guide-card" data-kind="basic"><span class="fs-tag">УРОВЕНЬ 01 · БАЗА</span><h3>Один трос: точка и направление</h3><p>Задача не в том, чтобы нажать навык куда-нибудь в сторону стены. Выбирай конкретную точку на поверхности и заранее понимай, куда Фанни должна выйти после контакта.</p>
   <svg class="fs-diagram" viewBox="0 0 520 245" role="img" aria-label="Схема одного троса: направление от Фанни к отмеченной точке на стене"><defs><marker id="fsArrowA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#70ddff" stroke-width="1.3"/></marker></defs><path d="M375 30V215" stroke="#6885aa" stroke-width="18" stroke-linecap="round" opacity=".35"/><path d="M375 30V215" stroke="#9bb7dc" stroke-width="2" stroke-dasharray="5 7" opacity=".65"/><circle cx="112" cy="154" r="17" fill="#7f85ff" opacity=".2"/><circle cx="112" cy="154" r="7" fill="#d7f5ff"/><text x="82" y="188" fill="#d7e8ff" font-size="12">ФАННИ</text><path d="M128 148Q230 85 366 102" stroke="#72e2ff" stroke-width="3" fill="none" marker-end="url(#fsArrowA)"/><circle cx="375" cy="102" r="9" fill="#0c1729" stroke="#72e2ff" stroke-width="3"/><circle cx="375" cy="102" r="3" fill="#fff"/><text x="394" y="99" fill="#8feaff" font-size="12">ЦЕЛЬ 1</text><text x="394" y="115" fill="#829ab9" font-size="10">точка на стене</text><text x="28" y="30" fill="#7894b9" font-size="10">НАПРАВЛЕНИЕ ПОЛЁТА →</text></svg>
   <ol class="fs-steps"><li>Останови хаотичное движение и выбери стену, к которой хочешь подключиться.</li><li>Наведи область прицеливания на выбранную точку поверхности, а не просто на край экрана.</li><li>Нажми навык и проследи за выходом Фанни. Следующий трос планируй уже из новой позиции.</li></ol><div class="fs-note">Критерий качества: повторяй один и тот же угол 10 раз. Если траектория каждый раз разная, снизь скорость и исправь направление.</div></article>
