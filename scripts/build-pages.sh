@@ -14,6 +14,12 @@ cp -R "$ROOT_DIR/public" "$OUTPUT_DIR/public"
 
 python3 "$ROOT_DIR/scripts/configure-posthog.py" "$OUTPUT_DIR/index.html"
 
+# The FANNY STATS Vercel project shares this repository with the main MERCY ARENA site.
+# Publish its standalone app at the project root without changing the main site output.
+if [[ "${VERCEL_PROJECT_NAME:-}" == "fanny-stats" ]]; then
+  cp -R "$ROOT_DIR/fanny-stats/." "$OUTPUT_DIR/"
+fi
+
 if [[ -f "$ROOT_DIR/_headers" ]]; then
   cp "$ROOT_DIR/_headers" "$OUTPUT_DIR/_headers"
 fi
