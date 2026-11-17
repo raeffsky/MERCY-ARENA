@@ -1,5 +1,5 @@
-const CACHE = 'fanny-journal-v8';
-const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
+const CACHE = 'fanny-journal-v9';
+const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
