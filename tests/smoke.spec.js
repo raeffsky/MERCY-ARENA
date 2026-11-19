@@ -444,7 +444,6 @@ test.describe('MERCY ARENA public shell', () => {
 
   test('drawer can be dismissed with its close control and backdrop', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Открыть меню' }).click();
     const open = page.getByRole('button', { name: 'Открыть меню' });
     await open.click();
     await page.getByRole('button', { name: 'Закрыть' }).click();
