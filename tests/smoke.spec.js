@@ -427,7 +427,10 @@ test.describe('MERCY ARENA public shell', () => {
 
     const open = page.getByRole('button', { name: 'Открыть меню' });
     await expect(open).toBeVisible();
+    await expect(open).toHaveAttribute('aria-controls', 'drawer');
+    await expect(open).toHaveAttribute('aria-expanded', 'false');
     await open.click();
+    await expect(open).toHaveAttribute('aria-expanded', 'true');
 
     const drawer = page.locator('#drawer');
     await expect(drawer).toHaveClass(/open/);
@@ -435,18 +438,22 @@ test.describe('MERCY ARENA public shell', () => {
     await drawer.getByRole('link', { name: /Игроки/ }).click();
     await expect(page).toHaveURL(/#\/players$/);
     await expect(drawer).not.toHaveClass(/open/);
+    await expect(open).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('#app')).toContainText('ИГРОКИ');
   });
 
   test('drawer can be dismissed with its close control and backdrop', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Открыть меню' }).click();
+    const open = page.getByRole('button', { name: 'Открыть меню' });
+    await open.click();
     await page.getByRole('button', { name: 'Закрыть' }).click();
     await expect(page.locator('#drawer')).not.toHaveClass(/open/);
+    await expect(open).toHaveAttribute('aria-expanded', 'false');
 
-    await page.getByRole('button', { name: 'Открыть меню' }).click();
+    await open.click();
     await page.locator('#shade').click({ position: { x: 8, y: 400 } });
     await expect(page.locator('#drawer')).not.toHaveClass(/open/);
+    await expect(open).toHaveAttribute('aria-expanded', 'false');
   });
   test('MERCY CHAMPIONSHIP shows all eight qualification slots', async ({ page }) => {
     await page.route('**/api/v1/seasons?limit=50', route => route.fulfill({json:{data:[
