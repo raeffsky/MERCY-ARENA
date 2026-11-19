@@ -1062,7 +1062,7 @@ body:after{
 <div class="topline"></div>
 <header class="header">
 <a class="brand" href="#/home"><img class="brandmark" src="public/assets/brand/mercy-mark.png" alt="MERCY ARENA"><span class="brandname">MERCY ARENA</span></a>
-<div class="header-actions"><button class="notification-trigger" id="notificationOpen" aria-label="Открыть уведомления" aria-expanded="false"><iconify-icon icon="mdi:bell-outline"></iconify-icon><span class="notification-count" id="notificationCount" hidden>0</span></button><button class="menu" id="open" aria-label="Открыть меню"><iconify-icon icon="mdi:menu"></iconify-icon></button></div>
+<div class="header-actions"><button class="notification-trigger" id="notificationOpen" aria-label="Открыть уведомления" aria-expanded="false"><iconify-icon icon="mdi:bell-outline"></iconify-icon><span class="notification-count" id="notificationCount" hidden>0</span></button><button class="menu" id="open" aria-label="Открыть меню" aria-controls="drawer" aria-expanded="false"><iconify-icon icon="mdi:menu"></iconify-icon></button></div>
 </header>
 <div class="shade" id="shade"></div>
 <aside class="drawer" id="drawer">
@@ -1103,7 +1103,7 @@ body:after{
 (function(){
 'use strict';
 var app=document.getElementById('app'),drawer=document.getElementById('drawer'),shade=document.getElementById('shade');
-function menu(open){drawer.classList.toggle('open',open);shade.classList.toggle('open',open);document.body.style.overflow=open?'hidden':'';if(open)closeNotifications()}
+function menu(open){drawer.classList.toggle('open',open);shade.classList.toggle('open',open);document.getElementById('open').setAttribute('aria-expanded',String(open));document.body.style.overflow=open?'hidden':'';if(open)closeNotifications()}
 document.getElementById('open').addEventListener('click',function(){menu(true)});
 document.getElementById('close').addEventListener('click',function(){menu(false)});
 shade.addEventListener('click',function(){menu(false);closeNotifications()});
