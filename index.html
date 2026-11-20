@@ -1056,6 +1056,19 @@ body:after{
 @keyframes mercy-aurora{0%{transform:translate3d(-4%,2%,0) scale(.92) rotate(-3deg);opacity:.3}50%{transform:translate3d(3%,-3%,0) scale(1.08) rotate(3deg);opacity:.78}100%{transform:translate3d(-2%,3%,0) scale(1.02) rotate(-1deg);opacity:.48}}
 @media(prefers-reduced-motion:reduce){body:before,body:after{animation:none}}
 
+
+/* Keep closed off-canvas panels out of keyboard navigation. */
+.drawer,
+.notification-panel {
+  visibility: hidden;
+  transition: transform .25s, visibility 0s linear .25s;
+}
+.drawer.open,
+.notification-panel.open {
+  visibility: visible;
+  transition: transform .25s, visibility 0s;
+}
+
 </style>
 </head>
 <body>
