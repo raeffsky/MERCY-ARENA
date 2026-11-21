@@ -138,6 +138,31 @@ h1{font-size:clamp(35px,6vw,62px);line-height:1.02;letter-spacing:-2.8px;margin:
 .fs-guide-card[hidden]{display:none}
 .fs-admin-hint{font-size:9px;color:#758eaf;margin-top:12px;line-height:1.6}
 @media(max-width:650px){.fs-nav{margin-left:-2px;margin-right:-2px;gap:4px;padding:6px}.fs-tab{padding:10px 11px;font-size:9px}.fs-guide-grid{grid-template-columns:1fr}.fs-guide-hero{padding:19px}.fs-setting{flex-direction:column;gap:5px}.fs-setting em{text-align:left;white-space:normal}}
+
+/* FANNY CABLE TRAINING PROGRAM */
+.fs-program{margin-top:16px;border:1px solid #35577c;border-radius:20px;padding:18px;background:linear-gradient(145deg,#122640,#10192f)}
+.fs-program-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.fs-program-head h3{font-size:16px;margin:5px 0}.fs-program-head p{font-size:10px;color:#91a7c7;line-height:1.65;max-width:620px;margin:0}
+.fs-program-meta{display:flex;gap:7px;flex-wrap:wrap}.fs-program-meta span{font-size:9px;color:#b8dcff;border:1px solid #41648b;background:#10213a;padding:7px 9px;border-radius:99px}
+.fs-program-progress{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin:14px 0 16px}
+.fs-program-track{height:8px;background:#263a56;border-radius:99px;overflow:hidden}.fs-program-track i{display:block;height:100%;width:0;background:linear-gradient(90deg,#68dfff,#8d86ff);transition:width .25s}
+.fs-program-count{font:700 10px Orbitron,sans-serif;color:#c6e9ff;white-space:nowrap}
+.fs-drills{display:grid;gap:9px}
+.fs-drill{border:1px solid #2a4363;border-radius:14px;background:#0c192c;overflow:hidden}
+.fs-drill-top{display:flex;align-items:center;gap:11px;padding:12px;cursor:pointer;list-style:none}
+.fs-drill-top::-webkit-details-marker{display:none}
+.fs-drill-num{width:32px;height:32px;display:grid;place-items:center;flex:none;border-radius:10px;background:#1a3553;color:#8feaff;font:700 12px Orbitron,sans-serif}
+.fs-drill-title{min-width:0;flex:1}.fs-drill-title b{display:block;font-size:11px}.fs-drill-title small{display:block;color:#8098b9;font-size:9px;margin-top:4px}
+.fs-drill-time{font:700 9px Orbitron,sans-serif;color:#a9c8ec;white-space:nowrap}
+.fs-drill-check{width:19px;height:19px;accent-color:#69d9ff;flex:none}
+.fs-drill-body{padding:0 13px 14px 55px;color:#b9cce5;font-size:10px;line-height:1.65}
+.fs-drill-body p{margin:0 0 9px}.fs-drill-body b{color:#e6f4ff}.fs-drill-body ul{margin:5px 0 10px;padding-left:17px}.fs-drill-body li{margin:4px 0}
+.fs-drill-cue{border-left:2px solid #68dfff;padding:7px 10px;background:#12263d;border-radius:0 8px 8px 0;color:#b9eaff;margin-top:8px}
+.fs-program-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:13px}
+.fs-program-foot small{font-size:9px;color:#7f96b7;line-height:1.5}
+.fs-program-reset{border:1px solid #3c587b;background:#152943;color:#c7e1ff;border-radius:9px;padding:9px 11px;font-size:9px;font-weight:800;cursor:pointer}
+@media(max-width:520px){.fs-program{padding:13px}.fs-drill-body{padding-left:13px}.fs-drill-top{gap:8px}.fs-drill-time{font-size:8px}}
+
 </style>
 </head>
 <body>
@@ -348,7 +373,47 @@ window.addEventListener('appinstalled', () => { installButton.style.display = 'n
   if(trainingPanel)pages.training.appendChild(trainingPanel);
   grids[1].remove();
  }
+
  const reaction=document.querySelector('#reactionTest');if(reaction)pages.training.appendChild(reaction);
+ /* Structured cable practice: explanations, repeat targets and saved daily progress */
+ const program=document.createElement('section');program.className='fs-program';program.innerHTML=`
+  <div class="fs-program-head">
+   <div><div class="section-kicker">FANNY CENTER · MECHANICS LAB</div><h3>Программа точности и мышечной памяти</h3><p>Проходи упражнения по порядку в режиме тренировки. Сначала добивайся одинакового результата, затем ускоряйся. Здесь нет задачи нажимать как можно быстрее любой ценой: чистые подключения важнее хаотичной скорости.</p></div>
+   <div class="fs-program-meta"><span>30 МИНУТ</span><span>5 УПРАЖНЕНИЙ</span><span>ЕЖЕДНЕВНО</span></div>
+  </div>
+  <div class="fs-program-progress"><div class="fs-program-track"><i id="fsProgramBar"></i></div><div class="fs-program-count" id="fsProgramCount">0 / 5</div></div>
+  <div class="fs-drills">
+   <details class="fs-drill" open>
+    <summary class="fs-drill-top"><span class="fs-drill-num">01</span><span class="fs-drill-title"><b>Одиночный трос: точка попадания</b><small>5 минут · 10–15 чистых повторений на одну стену</small></span><span class="fs-drill-time">5 MIN</span><input class="fs-drill-check" type="checkbox" aria-label="Отметить одиночный трос выполненным"></summary>
+    <div class="fs-drill-body"><p><b>Как выполнять:</b> зайди в тренировочный режим и выбери одну хорошо видимую стену. Встань в одной стартовой точке. Перед каждым применением второго навыка выбери конкретную область стены и направь прицел туда. После подключения вернись в исходное положение и повтори.</p><ul><li>Сделай 5 повторений медленно, наблюдая за направлением полёта.</li><li>Сделай ещё 5–10 повторений с тем же стартом и той же целью.</li><li>Считай чистым только попадание в выбранную область без случайного перелёта или промаха.</li></ul><p><b>Частая ошибка:</b> менять цель и старт после каждого промаха. Тогда сравнивать движения невозможно.</p><div class="fs-drill-cue"><b>Критерий:</b> минимум 8 успешных попаданий из 10. Если точность ниже, замедлись и повтори блок.</div></div>
+   </details>
+   <details class="fs-drill">
+    <summary class="fs-drill-top"><span class="fs-drill-num">02</span><span class="fs-drill-title"><b>Double Cable: два разных угла</b><small>7 минут · 10 связок, сначала с паузой</small></span><span class="fs-drill-time">7 MIN</span><input class="fs-drill-check" type="checkbox" aria-label="Отметить двойной трос выполненным"></summary>
+    <div class="fs-drill-body"><p><b>Как выполнять:</b> выбери две доступные стены, которые дают разные направления движения. Из одной стартовой точки прицелься первым тросом в первую стену. Пока Фанни движется, перенеси прицел на вторую стену и выпусти второй трос.</p><ul><li>Первые 3 связки делай с комфортной паузой, чтобы понять последовательность.</li><li>Следующие 4 выполняй плавно, сокращая паузу, но не жертвуя попаданием.</li><li>Последние 3 повтори в игровом темпе.</li></ul><p><b>Частая ошибка:</b> второй трос направлен почти туда же, куда первый, или прицел переносится слишком поздно.</p><div class="fs-drill-cue"><b>Критерий:</b> 7 чистых двойных связок из 10. Если второй трос срывается, отдельно повтори переход от первого направления ко второму.</div></div>
+   </details>
+   <details class="fs-drill">
+    <summary class="fs-drill-top"><span class="fs-drill-num">03</span><span class="fs-drill-title"><b>Triple Cable: три подключения подряд</b><small>7 минут · разбивка на пары и полная связка</small></span><span class="fs-drill-time">7 MIN</span><input class="fs-drill-check" type="checkbox" aria-label="Отметить тройной трос выполненным"></summary>
+    <div class="fs-drill-body"><p><b>Как выполнять:</b> заранее выбери три стены или три точки подключения, которые доступны из планируемой траектории. Отрабатывай один и тот же маршрут, пока порядок действий не станет предсказуемым.</p><ul><li>2 минуты: связка «первый + второй».</li><li>2 минуты: связка «второй + третий».</li><li>3 минуты: все три подключения подряд, сначала спокойно, затем быстрее.</li></ul><p><b>Частая ошибка:</b> пытаться ускорить всю комбинацию, когда третье направление ещё не получается стабильно.</p><div class="fs-drill-cue"><b>Критерий:</b> 5 полных чистых троек подряд без потери контроля. Если не получается, вернись к проблемной паре.</div></div>
+   </details>
+   <details class="fs-drill">
+    <summary class="fs-drill-top"><span class="fs-drill-num">04</span><span class="fs-drill-title"><b>Смена направления и контроль камеры</b><small>6 минут · 10 разворотов в разные стороны</small></span><span class="fs-drill-time">6 MIN</span><input class="fs-drill-check" type="checkbox" aria-label="Отметить смену направления выполненной"></summary>
+    <div class="fs-drill-body"><p><b>Как выполнять:</b> начни с короткого перемещения на одной стене. Затем выбери другую стену сбоку или позади текущего направления, заранее переведи обзор и выполни подключение. Чередуй левый и правый разворот.</p><ul><li>Сделай 5 разворотов в одну сторону и 5 в другую.</li><li>Перед нажатием навыка сначала найди цель взглядом, затем направь прицел.</li><li>После каждого подключения оцени, где оказалась Фанни и видна ли следующая стена.</li></ul><p><b>Частая ошибка:</b> резко крутить камеру и одновременно пытаться угадать направление троса.</p><div class="fs-drill-cue"><b>Критерий:</b> 8 удачных смен направления из 10 с сохранением контроля над следующей целью.</div></div>
+   </details>
+   <details class="fs-drill">
+    <summary class="fs-drill-top"><span class="fs-drill-num">05</span><span class="fs-drill-title"><b>Свободный маршрут: перенос навыка в игру</b><small>5 минут · 3 маршрута без остановки</small></span><span class="fs-drill-time">5 MIN</span><input class="fs-drill-check" type="checkbox" aria-label="Отметить свободную практику выполненной"></summary>
+    <div class="fs-drill-body"><p><b>Как выполнять:</b> соедини знакомые одиночные, двойные и тройные тросы в короткий маршрут по тренировочной карте. Каждый раз меняй стартовую позицию, но не усложняй маршрут случайными движениями.</p><ul><li>Первый проход: медленно, с акцентом на чистые подключения.</li><li>Второй проход: в обычном игровом темпе.</li><li>Третий проход: добавь смену направления и заранее ищи следующую стену.</li></ul><p><b>Частая ошибка:</b> гнаться за длиной маршрута и продолжать после потери контроля.</p><div class="fs-drill-cue"><b>Критерий:</b> три контролируемых прохода. Если маршрут развалился, остановись и найди первое ошибочное подключение.</div></div>
+   </details>
+  </div>
+  <div class="fs-program-foot"><small>Прогресс сохраняется на этом устройстве. Повторяй программу регулярно, но делай короткий перерыв, если кисть или палец устали.</small><button class="fs-program-reset" type="button" id="fsProgramReset">СБРОСИТЬ ОТМЕТКИ</button></div>
+ `;
+ pages.training.appendChild(program);
+ const checks=[...program.querySelectorAll('.fs-drill-check')],bar=program.querySelector('#fsProgramBar'),count=program.querySelector('#fsProgramCount');
+ let programState={};const programKey='fanny-cable-program-v1-'+new Date().toLocaleDateString('sv-SE');
+ try{programState=JSON.parse(localStorage.getItem(programKey)||'{}')||{}}catch{programState={}}
+ function paintProgram(){let done=0;checks.forEach((c,i)=>{c.checked=!!programState[i];if(c.checked)done++});bar.style.width=(done/checks.length*100)+'%';count.textContent=done+' / '+checks.length}
+ checks.forEach((c,i)=>c.addEventListener('change',()=>{programState[i]=c.checked;try{localStorage.setItem(programKey,JSON.stringify(programState))}catch{}paintProgram()}));
+ program.querySelector('#fsProgramReset').addEventListener('click',()=>{programState={};try{localStorage.removeItem(programKey)}catch{}paintProgram()});paintProgram();
+
  const guides=document.createElement('section');guides.className='fs-guides';
  guides.innerHTML=`
  <div class="fs-guide-hero"><div class="section-kicker">FANNY TRAINING / KNOWLEDGE BASE</div><h2>Освой тросы. Контролируй полёт.</h2><p>Пошаговые уроки с визуальными схемами: точка прицеливания, направление каждого троса и порядок действий. Сначала отрабатывай точность, затем скорость. Схемы ниже показывают принцип направления, а не пиксельные координаты конкретной стены на карте.</p></div>
