@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080b16">
+<meta name="description" content="FANNY Training Journal — личная статистика и тренировки Фанни в Mobile Legends.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-512.png" type="image/png">
+<link rel="apple-touch-icon" href="./icon-512.png">
+<title>FANNY TRAINING</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap');
+:root{
+ --bg:#080b16;--bg2:#0d1424;--card:rgba(17,27,47,.78);--card2:#101b30;--line:rgba(151,190,255,.13);
+ --text:#f3f7ff;--muted:#8798b8;--blue:#69b9ff;--cyan:#65e4f0;--violet:#8c75ff;--green:#6de4ad;--red:#ff718e;--gold:#ffd47a;
+ --shadow:0 22px 70px rgba(0,0,0,.34)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:Manrope,system-ui,sans-serif;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;z-index:-3;background:radial-gradient(ellipse at 72% 0%,rgba(67,119,255,.19),transparent 34%),radial-gradient(ellipse at 8% 35%,rgba(57,213,238,.09),transparent 32%),linear-gradient(180deg,#080b16,#0a1020 55%,#080b16)}
+body:after{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;opacity:.22;background-image:linear-gradient(rgba(132,170,230,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(132,170,230,.045) 1px,transparent 1px);background-size:54px 54px;mask-image:linear-gradient(to bottom,black,transparent 75%)}
+a{color:inherit;text-decoration:none}button,input{font:inherit}
+.shell{max-width:1120px;margin:auto;padding:22px 24px 70px}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:8px 0 25px;gap:16px}
+.brand{display:flex;align-items:center;gap:12px}.brandmark{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(145deg,#69dfff,#6567ff 75%);box-shadow:0 0 30px #5c9fff55;color:#06101f;font-size:21px;font-weight:900;transform:rotate(-5deg)}
+.brandname{font:700 14px Orbitron,sans-serif;letter-spacing:1.8px}.brandtag{font-size:9px;letter-spacing:2.5px;color:#7f9abb;margin-top:3px}
+.navright{display:flex;align-items:center;gap:10px}.season-chip{font-size:10px;letter-spacing:1.5px;color:#a9c9f4;border:1px solid #41618a66;background:#13213a99;padding:9px 13px;border-radius:30px}
+.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;display:inline-block;margin-right:7px;box-shadow:0 0 12px var(--green)}
+.hero{position:relative;overflow:hidden;border:1px solid rgba(133,174,255,.2);border-radius:28px;min-height:295px;padding:39px 42px;background:linear-gradient(112deg,rgba(17,36,65,.97),rgba(15,25,48,.82) 54%,rgba(36,34,82,.7));box-shadow:var(--shadow);isolation:isolate}
+.hero:before{content:"";position:absolute;width:420px;height:420px;right:3%;top:-180px;border-radius:50%;border:1px solid rgba(115,194,255,.14);box-shadow:0 0 0 32px rgba(115,194,255,.025),0 0 0 72px rgba(115,194,255,.02),inset 0 0 80px rgba(94,161,255,.08);z-index:-1;animation:orbit 24s linear infinite}
+.hero:after{content:"";position:absolute;width:260px;height:260px;right:14%;top:16px;background:radial-gradient(circle,#59bfff2b,transparent 68%);filter:blur(8px);z-index:-1;animation:pulse 5s ease-in-out infinite}
+.hero-copy{max-width:610px;position:relative;z-index:2}.eyebrow{font:600 10px Orbitron,sans-serif;letter-spacing:3px;color:var(--cyan);display:flex;align-items:center;gap:10px}.eyebrow:before{content:"";width:25px;height:1px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+h1{font-size:clamp(35px,6vw,62px);line-height:1.02;letter-spacing:-2.8px;margin:17px 0 13px;font-weight:800}.gradient-text{background:linear-gradient(100deg,#fff 5%,#8bdfff 48%,#a69aff 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{max-width:470px;color:#a8b9d3;font-size:13px;line-height:1.8;margin:0}
+.hero-bottom{display:flex;align-items:center;gap:22px;margin-top:25px;flex-wrap:wrap}.hero-link{font-size:11px;font-weight:800;letter-spacing:.7px;color:#07111e;background:linear-gradient(100deg,#70dfff,#8b8aff);padding:12px 17px;border-radius:11px;box-shadow:0 8px 25px #5b9dff35;transition:.25s}.hero-link:hover{transform:translateY(-3px);box-shadow:0 12px 30px #5b9dff66}.hero-note{font-size:10px;color:#8198b9}
+.cable-art{position:absolute;right:4%;top:0;width:38%;height:100%;z-index:0;opacity:.82;pointer-events:none}.hero-photo,.hero-video{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;z-index:1;pointer-events:none}.hero.has-photo .hero-photo,.hero.has-video .hero-video{display:block}.hero.has-video .cable-art,.hero.has-photo .cable-art{display:none}.hero.has-photo .cable-art{display:none}.photo-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.hero-photo-controls{position:absolute;left:18px;bottom:18px;z-index:3;max-width:calc(100% - 36px);background:#081323cc;padding:9px;border-radius:12px;backdrop-filter:blur(8px)}.hero-photo-controls .photo-upload{font-size:9px;padding:10px 11px;white-space:nowrap}.hero-photo-controls .photo-remove{font-size:9px;padding:9px 10px;white-space:nowrap}.photo-tools-toggle{display:none;position:absolute;left:18px;bottom:18px;z-index:4;border:1px solid #77caff66;border-radius:10px;background:#081323cc;color:#c9eaff;padding:10px 12px;font-size:9px;font-weight:800;letter-spacing:.5px;backdrop-filter:blur(8px);cursor:pointer}.hero.has-photo .photo-tools-toggle,.hero.has-video .photo-tools-toggle{display:block}.hero.has-photo .hero-photo-controls,.hero.has-video .hero-photo-controls{display:none}.hero.has-photo .hero-photo-controls.open,.hero.has-video .hero-photo-controls.open{display:flex}.hero-photo-controls.open + .photo-tools-toggle{display:none}.photo-upload{display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border-radius:10px;border:1px solid #77caff66;background:#10223a;color:#c9eaff;font-size:10px;font-weight:800;letter-spacing:.5px;cursor:pointer}.photo-upload:hover{background:#183454}.photo-remove{display:none;padding:10px 12px;border-radius:10px;border:1px solid #75445b;background:#291b2b;color:#ffb7c8;font-size:10px;font-weight:700;cursor:pointer}.hero.has-photo .photo-remove{display:inline-flex}.photo-help{font-size:9px;color:#8299b8}
+.cable-art svg{width:100%;height:100%;overflow:visible}.cable-path{fill:none;stroke:url(#cable);stroke-width:2.2;stroke-linecap:round;stroke-dasharray:7 9;filter:drop-shadow(0 0 8px #64cfff);animation:dash 18s linear infinite}
+.orb{fill:#b4f5ff;filter:drop-shadow(0 0 12px #6de4ff)}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:35px 2px 15px}.section-kicker{font:600 9px Orbitron,sans-serif;letter-spacing:2.5px;color:#6faedb}.section-head h2{font-size:20px;letter-spacing:-.6px;margin:5px 0 0}.section-desc{font-size:11px;color:var(--muted);text-align:right}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat-card{position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(21,34,57,.92),rgba(13,21,37,.9));border:1px solid var(--line);border-radius:18px;padding:18px 18px 16px;box-shadow:0 12px 32px #0002;transition:transform .25s,border-color .25s}
+.stat-card:hover{transform:translateY(-4px);border-color:#70baff55}.stat-card:after{content:"";position:absolute;width:95px;height:95px;right:-40px;top:-45px;border-radius:50%;background:var(--glow,rgba(83,172,255,.16));filter:blur(4px)}
+.stat-label{font-size:10px;color:#91a5c4;letter-spacing:.5px}.stat-value{font:700 30px Orbitron,sans-serif;letter-spacing:-1px;margin:12px 0 6px}.stat-foot{font-size:9px;color:#6f83a4}.stat-icon{position:absolute;right:15px;bottom:15px;color:#7ebaff66;font-size:17px}
+.content-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:15px}.glass{background:linear-gradient(145deg,rgba(18,29,50,.9),rgba(12,20,36,.91));border:1px solid var(--line);border-radius:21px;padding:22px;box-shadow:0 14px 45px #0002;backdrop-filter:blur(16px)}
+.panel-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:17px}.panel-title h3{font-size:14px;margin:0}.tiny-label{font:600 9px Orbitron,sans-serif;letter-spacing:1.4px;color:#7898c0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.field{display:flex;flex-direction:column;gap:6px}.field label{font-size:10px;color:#90a4c3}.field input{width:100%;background:#0a1323;border:1px solid #2b3d5a;color:#eff6ff;border-radius:10px;padding:11px 12px;outline:none;font-size:13px;transition:.2s}.field input:focus{border-color:#62baff;box-shadow:0 0 0 3px #62baff18}.field input::placeholder{color:#536681}
+.primary-btn,.ghost-btn{border:0;border-radius:10px;padding:12px 15px;font-size:11px;font-weight:800;letter-spacing:.4px;cursor:pointer;transition:.22s}.primary-btn{grid-column:1/-1;color:#07111e;background:linear-gradient(100deg,#71dcff,#8b8bff);box-shadow:0 7px 24px #579dff25}.primary-btn:hover{transform:translateY(-2px);filter:brightness(1.08)}.ghost-btn{background:#1a2941;border:1px solid #385071;color:#c4d9f5}.ghost-btn:hover{border-color:#70baff;color:white}
+.feedback{border:1px solid #34577a;background:linear-gradient(120deg,#142e45,#1c2449);border-radius:14px;padding:14px 15px;margin-top:14px}.feedback.good{border-color:#286c58;background:linear-gradient(120deg,#102c2a,#142b37)}.feedback.mid{border-color:#69572d;background:linear-gradient(120deg,#2a271c,#24243b)}.feedback.bad{border-color:#74374b;background:linear-gradient(120deg,#301b2a,#211d36)}.feedback strong{display:block;font-size:16px;margin-bottom:4px}.feedback span{font-size:10px;color:#a8bad4;line-height:1.55}
+.wr-track{height:7px;border-radius:20px;background:#26364e;overflow:hidden;margin-top:14px}.wr-track span{height:100%;display:block;width:0;background:linear-gradient(90deg,#57aaff,#6ce2c1);border-radius:20px;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.mini-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mini{background:#0b1526;border:1px solid #263954;border-radius:13px;padding:13px}.mini span{display:block;color:#879bb9;font-size:10px}.mini b{font:700 23px Orbitron,sans-serif;display:block;margin-top:7px}
+.training-progress{display:flex;align-items:center;gap:12px}.ring{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--cyan) var(--progress,0%),#293952 0);position:relative;flex:none}.ring:before{content:"";position:absolute;inset:5px;background:#111d31;border-radius:50%}.ring b{position:relative;font:700 10px Orbitron,sans-serif}.progress-copy b{display:block;font-size:12px}.progress-copy span{font-size:10px;color:var(--muted)}
+.training-groups{display:grid;gap:10px}.training-group{border:1px solid #263954;background:rgba(9,18,33,.55);border-radius:14px;padding:13px}.training-group h4{margin:0 0 8px;font-size:11px;color:#b8d9ff;letter-spacing:.2px;display:flex;justify-content:space-between}.training-group h4 small{font-size:9px;color:#7188aa;font-weight:500}
+.task{display:flex;align-items:flex-start;gap:10px;padding:9px 1px;border-top:1px solid rgba(135,164,205,.09);cursor:pointer}.task:first-of-type{border-top:0}.task input{appearance:none;width:17px;height:17px;border:1px solid #536d91;border-radius:5px;margin:1px 0 0;flex:none;position:relative;cursor:pointer;transition:.2s}.task input:checked{background:linear-gradient(135deg,#64dfff,#817dff);border-color:transparent;box-shadow:0 0 12px #65cfff55}.task input:checked:after{content:"✓";position:absolute;color:#071322;font-size:12px;font-weight:900;left:3px;top:-1px}.task span{font-size:10px;color:#c6d5e9;line-height:1.45;transition:.2s}.task small{display:block;color:#7288a9;font-size:9px;margin-top:2px}.task.done span{text-decoration:line-through;color:#7185a2}
+.task-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:13px;flex-wrap:wrap}.task-actions .ghost-btn{font-size:9px;padding:9px 11px}.saved-note{font-size:9px;color:#6f86a8}
+.footer{margin-top:34px;padding:18px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;color:#607493;font-size:9px;letter-spacing:.6px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#182a43;border:1px solid #4b719f;color:#e5f2ff;padding:11px 16px;border-radius:12px;font-size:11px;box-shadow:var(--shadow);transition:.3s;z-index:20}.toast.show{opacity:1;transform:translate(-50%,0)}
+.reveal{opacity:0;transform:translateY(18px);animation:rise .7s ease forwards}.delay1{animation-delay:.1s}.delay2{animation-delay:.2s}.delay3{animation-delay:.3s}
+@keyframes rise{to{opacity:1;transform:translateY(0)}}@keyframes orbit{to{transform:rotate(360deg)}}@keyframes pulse{50%{opacity:.5;transform:scale(1.18)}}@keyframes dash{to{stroke-dashoffset:-300}} 
+@media(max-width:820px){.stats-grid{grid-template-columns:repeat(2,1fr)}.content-grid{grid-template-columns:1fr}.cable-art{right:-8%;width:50%;opacity:.55}.hero{padding:32px 28px}}
+@media(max-width:520px){.shell{padding:14px 13px 45px}.hero-photo-controls{left:15px;bottom:15px;max-width:calc(50% - 22px)}.hero-photo-controls.open{width:max-content;max-width:calc(100% - 30px);flex-direction:column;align-items:stretch}.hero-photo-controls.open .photo-upload,.hero-photo-controls.open .photo-remove{width:100%;justify-content:center}.photo-controls{width:auto}.photo-upload{font-size:11px;padding:12px 15px}.nav{padding:7px 1px 17px}.brandname{font-size:11px}.season-chip{font-size:8px;padding:8px 10px}.hero{min-height:300px;padding:28px 22px;border-radius:22px}.hero:before{right:-40%;top:-100px}.cable-art{width:68%;right:-25%;opacity:.34}h1{font-size:42px;letter-spacing:-2px}.hero p{font-size:11px;max-width:300px}.hero-bottom{margin-top:20px}.section-head{margin-top:27px}.section-head h2{font-size:18px}.section-desc{font-size:9px}.stat-card{padding:14px;border-radius:15px}.stat-value{font-size:24px}.glass{padding:17px;border-radius:18px}.panel-title h3{font-size:13px}.footer{font-size:8px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+/* FANNY STATS 2.0 */
+.analytics-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,.8fr);gap:15px;margin-top:15px}
+.chart-wrap{height:220px;position:relative;margin-top:12px}
+.chart-wrap canvas{width:100%;height:100%;display:block}
+.chart-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#7890b3;font-size:11px;pointer-events:none}
+.chart-legend{display:flex;gap:14px;flex-wrap:wrap;color:#8ca2c3;font-size:9px;margin-top:8px}
+.chart-legend i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#68d9ff;margin-right:6px;box-shadow:0 0 9px #68d9ff88}
+.chart-controls{display:flex;gap:6px}
+.chart-controls button{border:1px solid #304765;background:#101d31;color:#8fa8ca;border-radius:8px;padding:7px 9px;font-size:9px;cursor:pointer}
+.chart-controls button.active{background:#23436a;border-color:#69b9ff;color:#eaf7ff}
+.rank-card{position:relative;overflow:hidden;background:linear-gradient(145deg,#172a49,#151a38 75%,#28214b);border:1px solid #637ce766;border-radius:20px;padding:20px;min-height:220px}
+.rank-card:after{content:"";position:absolute;width:170px;height:170px;right:-65px;top:-70px;border:1px solid #9c9aff55;border-radius:50%;box-shadow:0 0 0 20px #9c9aff0b,0 0 0 42px #9c9aff08}
+.rank-top{display:flex;justify-content:space-between;align-items:center;gap:10px;position:relative;z-index:1}
+.rank-emblem{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(145deg,#8ce8ff,#8b7bff);color:#091327;font:800 21px Orbitron,sans-serif;box-shadow:0 0 28px #78caff55}
+.rank-name{font:800 23px Orbitron,sans-serif;letter-spacing:-1px;margin:14px 0 4px;position:relative;z-index:1}
+.rank-sub{font-size:10px;color:#a7bad8;position:relative;z-index:1}
+.rank-progress{height:8px;background:#0a1426;border-radius:20px;overflow:hidden;margin:18px 0 8px;position:relative;z-index:1}
+.rank-progress span{display:block;height:100%;width:0;border-radius:20px;background:linear-gradient(90deg,#63dfff,#a18bff);transition:width .7s}
+.rank-meta{display:flex;justify-content:space-between;font-size:9px;color:#92a8c9;position:relative;z-index:1}
+.daily-challenges{display:grid;gap:9px}
+.challenge{display:flex;align-items:center;gap:11px;padding:11px;border:1px solid #293d5a;background:#0b1628;border-radius:12px}
+.challenge-icon{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:#1b3451;color:#8de5ff;font-size:15px;flex:none}
+.challenge-copy{min-width:0;flex:1}.challenge-copy b{font-size:10px;display:block}.challenge-copy span{font-size:9px;color:#8095b5;display:block;margin-top:3px}
+.challenge-state{font:700 9px Orbitron,sans-serif;color:#8de5ff;white-space:nowrap}
+.achievement-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.achievement{border:1px solid #2a3c58;background:#0c1729;border-radius:12px;padding:11px 9px;text-align:center;opacity:.48;filter:saturate(.55);transition:.25s}
+.achievement.unlocked{opacity:1;filter:none;border-color:#6a9ed477;background:linear-gradient(145deg,#172e49,#171d38);box-shadow:inset 0 0 18px #65cfff0a}
+.achievement b{display:block;font-size:9px;margin-top:6px}.achievement span{font-size:17px}
+.achievement small{display:block;color:#7f94b3;font-size:8px;margin-top:4px;line-height:1.4}
+.streak-line{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 13px;border-radius:12px;background:#101d31;border:1px solid #2d4565;margin:13px 0}
+.streak-line b{font:700 17px Orbitron,sans-serif;color:#ffcf79}.streak-line span{font-size:9px;color:#91a6c5}
+.particle{position:fixed;width:3px;height:3px;border-radius:50%;background:#9adfff;box-shadow:0 0 12px #74cfff;pointer-events:none;z-index:-1;animation:floatParticle linear infinite;opacity:0}
+@keyframes floatParticle{0%{transform:translate3d(0,20px,0);opacity:0}15%{opacity:.65}85%{opacity:.35}100%{transform:translate3d(35px,-110vh,0);opacity:0}}
+@keyframes glowPulse{50%{box-shadow:0 0 35px #6dbdff22,0 0 0 1px #8d8bff22}}
+.rank-card{animation:glowPulse 7s ease-in-out infinite}
+@media(max-width:760px){.analytics-grid{grid-template-columns:1fr}.chart-wrap{height:190px}}
+@media(max-width:520px){.achievement-grid{grid-template-columns:repeat(3,1fr)}.chart-controls button{padding:7px 6px;font-size:8px}.rank-name{font-size:20px}}
+@media(prefers-reduced-motion:reduce){.particle{display:none}.rank-card{animation:none}}
+
+
+.reaction-panel{margin-top:16px}.reaction-intro{font-size:11px;line-height:1.7;color:var(--muted);max-width:650px}.reaction-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:17px 0}.reaction-stats>div{padding:13px;border:1px solid var(--line);border-radius:13px;background:#0b1425;text-align:center}.reaction-stats b{display:block;font:700 21px Orbitron,sans-serif;color:#dff6ff}.reaction-stats span{display:block;margin-top:6px;font-size:9px;color:var(--muted)}.reaction-zone{width:100%;min-height:220px;border:1px solid #42648c;border-radius:18px;background:radial-gradient(circle at 50% 35%,#24456b,#101d34 68%);color:#eaf7ff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}.reaction-zone:active{transform:scale(.995)}.reaction-zone strong{font:800 clamp(17px,3vw,25px) Orbitron,sans-serif;letter-spacing:1.2px}.reaction-zone small{font-size:10px;color:#a7bbd7}.reaction-symbol{font-size:34px}.reaction-zone.waiting{background:radial-gradient(circle at 50% 35%,#533d24,#201a20 72%);border-color:#e6a34f}.reaction-zone.go{background:radial-gradient(circle at 50% 35%,#087b65,#07372f 72%);border-color:#55f2c0;box-shadow:0 0 40px #28d9a522}.reaction-zone.done{background:radial-gradient(circle at 50% 35%,#293c70,#111b36 72%);border-color:#8c75ff}.reaction-bottom{display:flex;justify-content:space-between;gap:12px;margin-top:12px;font-size:9px;letter-spacing:1px;color:#91a5c4}.reaction-history{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.reaction-history span{padding:7px 10px;border-radius:8px;background:#15243b;color:#c9def7;font:600 10px Orbitron,sans-serif}@media(max-width:520px){.reaction-stats{gap:6px}.reaction-stats>div{padding:11px 5px}.reaction-stats b{font-size:16px}.reaction-zone{min-height:190px}.reaction-bottom{font-size:8px}}
+
+/* FANNY TRAINING: compact section navigation + learning hub */
+.fs-nav{position:sticky;top:8px;z-index:30;display:flex;gap:7px;padding:8px;margin:0 0 20px;border:1px solid #314968aa;border-radius:16px;background:rgba(7,14,27,.9);backdrop-filter:blur(18px);box-shadow:0 12px 35px #0005;overflow-x:auto;scrollbar-width:none}
+.fs-nav::-webkit-scrollbar{display:none}
+.fs-tab{flex:1;min-width:max-content;border:1px solid transparent;border-radius:10px;padding:11px 14px;background:transparent;color:#91a8c9;font-size:10px;font-weight:800;letter-spacing:.4px;cursor:pointer;transition:.2s}
+.fs-tab.active{color:#061322;background:linear-gradient(110deg,#70dcff,#9387ff);box-shadow:0 5px 20px #6baaff35}
+.fs-page{display:none;animation:fsIn .28s ease both}.fs-page.active{display:block}
+@keyframes fsIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.fs-page>.section-head:first-child{margin-top:8px}
+.fs-guide-hero{padding:25px;border:1px solid #4c77a7aa;border-radius:22px;background:radial-gradient(ellipse at 80% 0%,#5c77d633,transparent 42%),linear-gradient(130deg,#142b49,#151b38);margin-bottom:17px}
+.fs-guide-hero .section-kicker{color:#83e7f3}
+.fs-guide-hero h2{font-size:clamp(24px,4vw,36px);letter-spacing:-1px;margin:8px 0}
+.fs-guide-hero p{font-size:11px;color:#a9bdd9;line-height:1.75;max-width:650px;margin:0}
+.fs-guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.fs-guide-card{border:1px solid #2b4262;border-radius:18px;background:linear-gradient(145deg,#13223a,#0c1729);padding:17px;min-width:0}
+.fs-guide-card h3{font-size:14px;margin:0 0 6px}.fs-guide-card p{font-size:10px;line-height:1.65;color:#91a7c7;margin:0 0 12px}
+.fs-tag{display:inline-flex;border:1px solid #4d739b88;border-radius:99px;padding:5px 8px;color:#a9dfff;font-size:8px;font-weight:800;letter-spacing:.7px;margin-bottom:10px}
+.fs-diagram{width:100%;display:block;border:1px solid #2e496b;border-radius:13px;background:radial-gradient(ellipse at 50% 40%,#1b3857,#0a1425 72%);margin:12px 0}
+.fs-diagram text{font-family:Manrope,system-ui,sans-serif}
+.fs-steps{display:grid;gap:8px;margin:12px 0 0;padding:0;list-style:none;counter-reset:fsstep}
+.fs-steps li{counter-increment:fsstep;display:flex;gap:9px;color:#c1d2e9;font-size:10px;line-height:1.55}
+.fs-steps li:before{content:counter(fsstep);width:20px;height:20px;display:grid;place-items:center;flex:none;border-radius:7px;background:#203c5d;color:#8ee7ff;font:800 9px Orbitron,sans-serif}
+.fs-note{border-left:3px solid #6dcdf2;background:#10243a;padding:11px 13px;border-radius:0 10px 10px 0;color:#a9c1df;font-size:10px;line-height:1.65;margin-top:12px}
+.fs-settings-list{display:grid;gap:9px}
+.fs-setting{display:flex;justify-content:space-between;gap:14px;padding:12px;border:1px solid #293f5e;background:#0b1729;border-radius:12px}
+.fs-setting b{font-size:10px;display:block}.fs-setting span{font-size:9px;line-height:1.5;color:#91a6c4;display:block;margin-top:4px}.fs-setting em{font-style:normal;color:#8de5ff;font-size:9px;font-weight:800;text-align:right;white-space:nowrap}
+.fs-guide-filter{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 14px}
+.fs-guide-filter button{border:1px solid #304968;background:#101d31;color:#91a8c9;padding:8px 11px;border-radius:9px;font-size:9px;font-weight:800;cursor:pointer}
+.fs-guide-filter button.active{border-color:#70cfff;background:#1a3a5c;color:#eaf8ff}
+.fs-guide-card[hidden]{display:none}
+.fs-admin-hint{font-size:9px;color:#758eaf;margin-top:12px;line-height:1.6}
+@media(max-width:650px){.fs-nav{margin-left:-2px;margin-right:-2px;gap:4px;padding:6px}.fs-tab{padding:10px 11px;font-size:9px}.fs-guide-grid{grid-template-columns:1fr}.fs-guide-hero{padding:19px}.fs-setting{flex-direction:column;gap:5px}.fs-setting em{text-align:left;white-space:normal}}
+
+/* FANNY CABLE TRAINING PROGRAM */
+.fs-program{margin-top:16px;border:1px solid #35577c;border-radius:20px;padding:18px;background:linear-gradient(145deg,#122640,#10192f)}
+.fs-program-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.fs-program-head h3{font-size:16px;margin:5px 0}.fs-program-head p{font-size:10px;color:#91a7c7;line-height:1.65;max-width:620px;margin:0}
+.fs-program-meta{display:flex;gap:7px;flex-wrap:wrap}.fs-program-meta span{font-size:9px;color:#b8dcff;border:1px solid #41648b;background:#10213a;padding:7px 9px;border-radius:99px}
+.fs-program-progress{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin:14px 0 16px}
+.fs-program-track{height:8px;background:#263a56;border-radius:99px;overflow:hidden}.fs-program-track i{display:block;height:100%;width:0;background:linear-gradient(90deg,#68dfff,#8d86ff);transition:width .25s}
+.fs-program-count{font:700 10px Orbitron,sans-serif;color:#c6e9ff;white-space:nowrap}
+.fs-drills{display:grid;gap:9px}
+.fs-drill{border:1px solid #2a4363;border-radius:14px;background:#0c192c;overflow:hidden}
+.fs-drill-top{display:flex;align-items:center;gap:11px;padding:12px;cursor:pointer;list-style:none}
+.fs-drill-top::-webkit-details-marker{display:none}
+.fs-drill-num{width:32px;height:32px;display:grid;place-items:center;flex:none;border-radius:10px;background:#1a3553;color:#8feaff;font:700 12px Orbitron,sans-serif}
+.fs-drill-title{min-width:0;flex:1}.fs-drill-title b{display:block;font-size:11px}.fs-drill-title small{display:block;color:#8098b9;font-size:9px;margin-top:4px}
+.fs-drill-time{font:700 9px Orbitron,sans-serif;color:#a9c8ec;white-space:nowrap}
+.fs-drill-check{width:19px;height:19px;accent-color:#69d9ff;flex:none}
+.fs-drill-body{padding:0 13px 14px 55px;color:#b9cce5;font-size:10px;line-height:1.65}
+.fs-drill-body p{margin:0 0 9px}.fs-drill-body b{color:#e6f4ff}.fs-drill-body ul{margin:5px 0 10px;padding-left:17px}.fs-drill-body li{margin:4px 0}
+.fs-drill-cue{border-left:2px solid #68dfff;padding:7px 10px;background:#12263d;border-radius:0 8px 8px 0;color:#b9eaff;margin-top:8px}
+.fs-program-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:13px}
+.fs-program-foot small{font-size:9px;color:#7f96b7;line-height:1.5}
+.fs-program-reset{border:1px solid #3c587b;background:#152943;color:#c7e1ff;border-radius:9px;padding:9px 11px;font-size:9px;font-weight:800;cursor:pointer}
+@media(max-width:520px){.fs-program{padding:13px}.fs-drill-body{padding-left:13px}.fs-drill-top{gap:8px}.fs-drill-time{font-size:8px}}
+
+</style>
+</head>
+<body>
+<div class="shell">
+ <nav class="nav">
+  <div class="brand"><div class="brandname">FANNY TRAINING</div></div><button id="installApp" type="button" aria-label="Установить приложение" style="display:none;border:1px solid #69b9ff66;border-radius:999px;padding:8px 11px;background:linear-gradient(120deg,#69b9ff,#8c75ff);color:#06101f;font-size:9px;font-weight:800;white-space:nowrap">УСТАНОВИТЬ</button>
+ </nav>
+
+ <section class="hero reveal">
+  <img class="hero-photo" id="heroPhoto" alt="Загруженное фото Фанни"><video class="hero-video" id="heroVideo" autoplay muted loop playsinline></video><div class="cable-art"><svg viewBox="0 0 500 330" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="cable" x1="0" x2="1"><stop stop-color="#65e4f0"/><stop offset=".55" stop-color="#668fff"/><stop offset="1" stop-color="#b08cff"/></linearGradient></defs><path class="cable-path" d="M70 270 Q180 15 260 155 T470 45 M45 45 Q240 270 330 105 T485 260 M160 330 Q210 180 380 185"/><path class="cable-path" d="M0 180 Q150 80 240 230 T500 130" opacity=".55"/><circle class="orb" cx="260" cy="155" r="5"/><circle class="orb" cx="330" cy="105" r="3"/><circle class="orb" cx="160" cy="270" r="3"/></svg></div>
+  <div class="photo-controls hero-photo-controls" id="photoTools"><label class="photo-upload" for="photoInput">＋ ФОТО</label><input id="photoInput" type="file" accept="image/*" hidden><label class="photo-upload" for="videoInput">＋ ВИДЕО</label><input id="videoInput" type="file" accept="video/*" hidden><button class="photo-remove" id="removePhoto" type="button">УДАЛИТЬ МЕДИА</button></div><button class="photo-tools-toggle" id="photoToolsToggle" type="button">ИЗМЕНИТЬ МЕДИА</button>
+ </section>
+
+ <div class="section-head reveal delay1"><div><div class="section-kicker">01 / PERFORMANCE</div><h2>Твоя статистика</h2></div><div class="section-desc">Общий прогресс и текущий сезон</div></div>
+ <section class="stats-grid reveal delay1">
+  <div class="stat-card" style="--glow:#428fff33"><div class="stat-label">ВСЕГО МАТЧЕЙ</div><div class="stat-value" id="oTotalGames">—</div><div class="stat-foot">За всё время</div></div>
+  <div class="stat-card" style="--glow:#7c71ff33"><div class="stat-label">ОБЩИЙ WIN RATE</div><div class="stat-value" id="oTotalWr">—</div><div class="stat-foot">Твоя общая статистика</div></div>
+  <div class="stat-card" style="--glow:#43c9e933"><div class="stat-label">МАТЧИ СЕЗОНА</div><div class="stat-value" id="oSeasonGames">—</div><div class="stat-foot">Текущий сезон</div></div>
+  <div class="stat-card" style="--glow:#54e0a533"><div class="stat-label">SEASON WIN RATE</div><div class="stat-value" id="oSeasonWr">—</div><div class="stat-foot">Результат этого сезона</div></div>
+ </section>
+
+
+ <div class="section-head reveal"><div><div class="section-kicker">02 / ANALYTICS</div><h2>Аналитика прогресса</h2></div><div class="section-desc">История WR и рост результатов</div></div>
+ <section class="analytics-grid reveal">
+  <div class="glass">
+   <div class="panel-title"><div><h3>Динамика Win Rate</h3><span class="tiny-label">PERSONAL PERFORMANCE</span></div><div class="chart-controls"><button type="button" data-range="7" class="active">7 ДН.</button><button type="button" data-range="30">30 ДН.</button><button type="button" data-range="all">ВСЁ</button></div></div>
+   <div class="chart-wrap"><canvas id="wrChart" aria-label="График изменения Win Rate"></canvas><div class="chart-empty" id="chartEmpty">Сохрани показатели, чтобы начать историю WR</div></div>
+   <div class="chart-legend"><span><i></i>Общий Win Rate</span><span id="chartSummary">История появится после обновления статистики</span></div>
+  </div>
+  <div class="rank-card">
+   <div class="rank-top"><span class="tiny-label">FANNY PLAYER RANK</span><div class="rank-emblem" id="rankEmblem">I</div></div>
+   <div class="rank-name" id="rankName">ROOKIE</div><div class="rank-sub" id="rankDescription">Твой путь к мастерству только начинается</div>
+   <div class="rank-progress"><span id="rankBar"></span></div>
+   <div class="rank-meta"><span id="rankPoints">0 очков</span><span id="rankNext">До следующего ранга: 100</span></div>
+  </div>
+ </section>
+ <div class="content-grid reveal">
+  <section class="glass">
+   <div class="panel-title"><h3>Ежедневные испытания</h3><span class="tiny-label">DAILY QUESTS</span></div>
+   <div class="streak-line"><div><b id="streakCount">0 ДНЕЙ</b><span>Текущая серия тренировок</span></div><div style="text-align:right"><b id="bestStreak">0</b><span>Лучшая серия</span></div></div>
+   <div class="daily-challenges" id="dailyChallenges"></div>
+  </section>
+  <section class="glass">
+   <div class="panel-title"><h3>Достижения</h3><span class="tiny-label">TROPHY ROOM</span></div>
+   <div class="achievement-grid" id="achievementGrid"></div>
+  </section>
+ </div>
+
+ <div class="content-grid">
+  <section class="glass reveal delay2">
+   <div class="panel-title"><h3>Обновить показатели</h3><span class="tiny-label">INPUT DATA</span></div>
+   <form id="form" class="form-grid">
+    <div class="field"><label for="totalGames">Всего матчей</label><input id="totalGames" type="number" min="0" max="99999" placeholder="112" required></div>
+    <div class="field"><label for="totalWr">Общий WR, %</label><input id="totalWr" type="number" min="0" max="100" step=".1" placeholder="31.2" required></div>
+    <div class="field"><label for="seasonGames">Матчи за сезон</label><input id="seasonGames" type="number" min="0" max="99999" placeholder="29" required></div>
+    <div class="field"><label for="seasonWr">WR за сезон, %</label><input id="seasonWr" type="number" min="0" max="100" step=".1" placeholder="27.1" required></div>
+    <button class="primary-btn" type="submit">СОХРАНИТЬ СТАТИСТИКУ</button>
+   </form>
+   <div class="feedback" id="totalVerdict"><strong>Ждём данные</strong><span>Заполни показатели, чтобы получить оценку.</span></div>
+   <div class="feedback" id="seasonVerdict"><strong>Текущий сезон</strong><span>Оценка появится после сохранения статистики.</span></div>
+   <div class="wr-track"><span id="seasonBar"></span></div>
+   <div class="saved-note" id="seasonLabel" style="margin-top:7px">WR текущего сезона</div>
+   <div style="margin-top:13px"><button class="ghost-btn" id="resetStats" type="button">СБРОСИТЬ СТАТИСТИКУ</button></div>
+  </section>
+
+  <section class="glass reveal delay3" id="training">
+   <div class="panel-title"><h3>Тренировочный маршрут</h3><span class="tiny-label">DAILY ROUTINE</span></div>
+   <div class="training-progress">
+    <div class="ring" id="trainingRing"><b id="trainingPct">0%</b></div>
+    <div class="progress-copy"><b id="trainingCount">0 / 11 упражнений</b><span>Отмечай выполненное. Прогресс сохранится на сегодня.</span></div>
+   </div>
+   <div class="wr-track" style="margin:14px 0 16px"><span id="trainingBar"></span></div>
+   <div class="training-groups">
+    <div class="training-group"><h4>01 / НАБИВКА ПАЛЬЦА <small>30 MIN</small></h4>
+     <label class="task"><input type="checkbox" data-task="upperFinger"><span>Верхняя линия · 10 минут<small>Точность тросов и повторение маршрута</small></span></label>
+     <label class="task"><input type="checkbox" data-task="midFinger"><span>Средняя линия · 10 минут<small>Смена направления и контроль полёта</small></span></label>
+     <label class="task"><input type="checkbox" data-task="lowerFinger"><span>Нижняя линия · 10 минут<small>Отработка тросов на нижнем маршруте</small></span></label>
+    </div>
+    <div class="training-group"><h4>02 / ВЫЛЕТЫ С РЕСПЫ <small>ROUTES</small></h4>
+     <label class="task"><input type="checkbox" data-task="baseTop"><span>Вылет с базы на верхнюю линию</span></label>
+     <label class="task"><input type="checkbox" data-task="baseMid"><span>Вылет с базы на среднюю линию</span></label>
+     <label class="task"><input type="checkbox" data-task="baseBot"><span>Вылет с базы на нижнюю линию</span></label>
+    </div>
+    <div class="training-group"><h4>03 / ТЕХНИКИ ПЕРЕДВИЖЕНИЯ <small>MECHANICS</small></h4>
+     <label class="task"><input type="checkbox" data-task="pendulum"><span>Маятник<small>Движение туда-обратно с контролем энергии</small></span></label>
+     <label class="task"><input type="checkbox" data-task="triangle"><span>Треугольник<small>Связка трёх направлений без потери контроля</small></span></label>
+    </div>
+    <div class="training-group"><h4>04 / ПРАКТИКА ГАНГОВ <small>MAP IMPACT</small></h4>
+     <label class="task"><input type="checkbox" data-task="gankTop"><span>Ганг на верхнюю линию</span></label>
+     <label class="task"><input type="checkbox" data-task="gankMid"><span>Ганг на среднюю линию</span></label>
+     <label class="task"><input type="checkbox" data-task="gankBot"><span>Ганг на нижнюю линию</span></label>
+    </div>
+   </div>
+   <div class="task-actions"><button class="ghost-btn" id="resetTraining" type="button">СБРОСИТЬ НА СЕГОДНЯ</button><span class="saved-note">LOCAL SAVE · DAILY</span></div>
+  </section>
+ </div>
+
+</div>
+
+ <section class="glass reaction-panel reveal" id="reactionTest">
+  <div class="panel-title"><div><span class="section-kicker">REFLEX LAB · FANNY TRAINING</span><h3 style="margin:6px 0 0">Тест реакции</h3></div><span class="tiny-label">5 РАУНДОВ</span></div>
+  <p class="reaction-intro">Жди сигнала и нажми как можно быстрее. Раннее нажатие считается фальстартом. В конце покажем среднюю реакцию и личный рекорд.</p>
+  <div class="reaction-stats"><div><b id="reactionLast">—</b><span>Последний результат</span></div><div><b id="reactionBest">—</b><span>Личный рекорд</span></div><div><b id="reactionAverage">—</b><span>Средняя реакция</span></div></div>
+  <button class="reaction-zone idle" id="reactionZone" type="button"><span class="reaction-symbol" id="reactionSymbol">⚡</span><strong id="reactionTitle">ГОТОВ К ПРОВЕРКЕ?</strong><small id="reactionHint">Нажми, чтобы начать 5 раундов</small></button>
+  <div class="reaction-bottom"><span id="reactionRound">РАУНД 0 / 5</span><span id="reactionGrade">Результаты сохраняются на этом устройстве</span></div>
+  <div class="reaction-history" id="reactionHistory"></div>
+ </section>
+<div class="toast" id="toast">Сохранено</div>
+
+<script>
+const $=id=>document.getElementById(id),PHOTO_KEY="fanny-training-photo-v1",KEY='fanny-simple-stats-v2',TRAIN_KEY='fanny-training-daily-v1';
+function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800)}
+const hero=$("heroPhoto"),heroVideo=$("heroVideo"),heroSection=document.querySelector(".hero");
+let activeVideoUrl=null;
+function showPhoto(data){if(data){hero.src=data;heroSection.classList.add("has-photo");heroSection.classList.remove("has-video");heroVideo.pause();heroVideo.removeAttribute("src");heroVideo.load();$("photoTools").classList.remove("open")}else{hero.removeAttribute("src");heroSection.classList.remove("has-photo");$("photoTools").classList.remove("open")}}
+function showVideo(blob){if(activeVideoUrl)URL.revokeObjectURL(activeVideoUrl);activeVideoUrl=URL.createObjectURL(blob);heroVideo.src=activeVideoUrl;heroVideo.load();heroVideo.play().catch(()=>{});heroSection.classList.add("has-video");heroSection.classList.remove("has-photo");$("photoTools").classList.remove("open")}
+function openMediaDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open("fanny-training-media",1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("media"))req.result.createObjectStore("media")};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+async function saveVideo(blob){const db=await openMediaDB();return new Promise((resolve,reject)=>{const tx=db.transaction("media","readwrite");tx.objectStore("media").put(blob,"hero-video");tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
+async function loadVideo(){try{const db=await openMediaDB();const blob=await new Promise((resolve,reject)=>{const req=db.transaction("media","readonly").objectStore("media").get("hero-video");req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});db.close();if(blob instanceof Blob)showVideo(blob)}catch{}}
+async function clearVideo(){try{const db=await openMediaDB();await new Promise((resolve,reject)=>{const tx=db.transaction("media","readwrite");tx.objectStore("media").delete("hero-video");tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close()}catch{}if(activeVideoUrl){URL.revokeObjectURL(activeVideoUrl);activeVideoUrl=null}heroVideo.pause();heroVideo.removeAttribute("src");heroVideo.load();heroSection.classList.remove("has-video")}
+$("photoToolsToggle").addEventListener("click",()=>{$("photoTools").classList.toggle("open")});
+try{const savedPhoto=localStorage.getItem(PHOTO_KEY);if(savedPhoto)showPhoto(savedPhoto)}catch{}
+loadVideo().then(()=>{if(heroVideo.src){}});
+$("photoInput").addEventListener("change",e=>{const file=e.target.files&&e.target.files[0];if(!file)return;if(!file.type.startsWith("image/")){toast("Выбери изображение");return}if(file.size>15*1024*1024){toast("Фото должно быть меньше 15 МБ");return}const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=async()=>{const max=1800,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement("canvas");canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);const data=canvas.toDataURL("image/webp",.86);try{localStorage.setItem(PHOTO_KEY,data);await clearVideo();showPhoto(data);toast("Фото загружено и сохранено")}catch{toast("Не удалось сохранить фото")}};img.onerror=()=>toast("Не удалось открыть изображение");img.src=reader.result};reader.readAsDataURL(file)});
+$("videoInput").addEventListener("change",async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;if(!file.type.startsWith("video/")){toast("Выбери видеофайл");return}if(file.size>100*1024*1024){toast("Видео должно быть меньше 100 МБ");return}try{await saveVideo(file);localStorage.removeItem(PHOTO_KEY);showVideo(file);toast("Видео загружено и сохранено")}catch{toast("Не удалось сохранить видео. Проверь свободное место.")}});
+$("removePhoto").addEventListener("click",async()=>{localStorage.removeItem(PHOTO_KEY);await clearVideo();showPhoto("");$("photoInput").value="";$("videoInput").value="";toast("Фото и видео удалены")});
+function evaluate(g,w){if(g===0)return['ПОКА НЕТ МАТЧЕЙ','Запиши первые игры, тогда будет что оценивать.','mid'];if(g<20)return['МАЛО ДАННЫХ','Пока мало матчей для уверенной оценки.','mid'];if(w>=60)return['ЗАЕБИСЬ 🔥','Очень сильный винрейт. Фанни приносит результат.','good'];if(w>=55)return['ОЧЕНЬ ХОРОШО ⚡','Отличный результат. Сохраняй стабильность.','good'];if(w>=50)return['НОРМАЛЬНО 👍','Есть база для роста. Продолжай держать темп.','good'];if(w>=48)return['ЕСТЬ НАД ЧЕМ РАБОТАТЬ','Почти на плаву. Разбирай смерти и неудачные ганги.','mid'];if(w>=45)return['СЛАБОВАТО','Поработай над стабильностью и выбором целей.','mid'];return['ХУЁВО 💀','Винрейт проседает. Лучше разобрать ошибки, а не спамить катки на тильте.','bad']}
+function putVerdict(id,g,w){const[t,d,k]=evaluate(g,w),el=$(id);el.className='feedback '+k;el.innerHTML='<strong></strong><span></span>';el.querySelector('strong').textContent=t;el.querySelector('span').textContent=d}
+function renderStats(d){$('oTotalGames').textContent=d.tg.toLocaleString('ru-RU');$('oTotalWr').textContent=d.tw.toLocaleString('ru-RU')+'%';$('oSeasonGames').textContent=d.sg.toLocaleString('ru-RU');$('oSeasonWr').textContent=d.sw.toLocaleString('ru-RU')+'%';putVerdict('totalVerdict',d.tg,d.tw);putVerdict('seasonVerdict',d.sg,d.sw);$('seasonBar').style.width=d.sw+'%';$('seasonLabel').textContent='WR ТЕКУЩЕГО СЕЗОНА · '+d.sw+'%'}
+$('form').addEventListener('submit',e=>{e.preventDefault();const d={tg:Number($('totalGames').value),tw:Number($('totalWr').value),sg:Number($('seasonGames').value),sw:Number($('seasonWr').value)};if(Object.values(d).some(x=>!Number.isFinite(x)||x<0)||d.tw>100||d.sw>100||!Number.isInteger(d.tg)||!Number.isInteger(d.sg))return;localStorage.setItem(KEY,JSON.stringify(d));renderStats(d);toast('Статистика обновлена ✦')});
+$('resetStats').onclick=()=>{localStorage.removeItem(KEY);$('form').reset();['oTotalGames','oTotalWr','oSeasonGames','oSeasonWr'].forEach(id=>$(id).textContent='—');['totalVerdict','seasonVerdict'].forEach(id=>{$(id).className='feedback';$(id).innerHTML='<strong>Ждём данные</strong><span>Заполни показатели, чтобы получить оценку.</span>'});$('seasonBar').style.width='0';$('seasonLabel').textContent='WR ТЕКУЩЕГО СЕЗОНА';toast('Статистика сброшена')};
+try{const d=JSON.parse(localStorage.getItem(KEY));if(d){$('totalGames').value=d.tg;$('totalWr').value=d.tw;$('seasonGames').value=d.sg;$('seasonWr').value=d.sw;renderStats(d)}}catch{}
+const today=()=>new Date().toLocaleDateString('sv-SE');
+function readTraining(){try{const d=JSON.parse(localStorage.getItem(TRAIN_KEY)||'{}');return d.date===today()?d.done||{}:{}}catch{return{}}}
+function renderTraining(){const done=readTraining(),checks=[...document.querySelectorAll('[data-task]')];checks.forEach(c=>{c.checked=!!done[c.dataset.task];c.closest('.task').classList.toggle('done',c.checked)});const n=checks.filter(c=>c.checked).length,p=Math.round(n/checks.length*100);$('trainingCount').textContent=n+' / '+checks.length+' упражнений';$('trainingPct').textContent=p+'%';$('trainingBar').style.width=p+'%';$('trainingRing').style.setProperty('--progress',p+'%')}
+document.querySelectorAll('[data-task]').forEach(c=>c.addEventListener('change',()=>{const d=readTraining();d[c.dataset.task]=c.checked;localStorage.setItem(TRAIN_KEY,JSON.stringify({date:today(),done:d}));renderTraining();toast(c.checked?'Упражнение выполнено ✓':'Отметка снята')}));
+$('resetTraining').onclick=()=>{localStorage.removeItem(TRAIN_KEY);renderTraining();toast('Чек-лист сброшен')};renderTraining();
+
+
+/* FANNY STATS 2.0: analytics, quests, ranks and motion */
+const HISTORY_KEY='fanny-stats-history-v1',STREAK_KEY='fanny-training-streak-v1';
+let chartRange='7';
+function safeHistory(){try{const x=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');return Array.isArray(x)?x:[]}catch{return[]}}
+function saveHistory(d){const h=safeHistory(),day=today(),last=h[h.length-1];if(last&&last.date===day){last.wr=d.tw;last.games=d.tg;last.seasonWr=d.sw;last.seasonGames=d.sg}else h.push({date:day,wr:d.tw,games:d.tg,seasonWr:d.sw,seasonGames:d.sg});localStorage.setItem(HISTORY_KEY,JSON.stringify(h.slice(-180)));drawChart()}
+function drawChart(){const canvas=$('wrChart'),empty=$('chartEmpty');if(!canvas)return;const rect=canvas.getBoundingClientRect(),w=Math.max(280,rect.width),h=Math.max(160,rect.height),dpr=Math.min(devicePixelRatio||1,2);canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);let data=safeHistory();if(chartRange!=='all'){const days=Number(chartRange);const cutoff=new Date();cutoff.setDate(cutoff.getDate()-days+1);const key=cutoff.toLocaleDateString('sv-SE');data=data.filter(x=>x.date>=key)}if(data.length<1){empty.style.display='grid';$('chartSummary').textContent='История появится после обновления статистики';return}empty.style.display='none';const left=30,right=12,top=14,bottom=25,cw=w-left-right,ch=h-top-bottom;[0,25,50,75,100].forEach(v=>{const y=top+ch-(v/100)*ch;c.strokeStyle='rgba(137,170,220,.13)';c.lineWidth=1;c.beginPath();c.moveTo(left,y);c.lineTo(w-right,y);c.stroke();c.fillStyle='#7187a8';c.font='9px Manrope';c.fillText(v+'%',2,y+3)});const pts=data.map((x,i)=>({x:left+(data.length===1?cw/2:i/(data.length-1)*cw),y:top+ch-(Math.max(0,Math.min(100,Number(x.wr)||0))/100)*ch,v:Number(x.wr)||0}));const grad=c.createLinearGradient(0,top,0,h);grad.addColorStop(0,'rgba(104,217,255,.25)');grad.addColorStop(1,'rgba(104,217,255,0)');c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));if(pts.length===1)c.lineTo(pts[0].x,pts[0].y);c.lineTo(pts[pts.length-1].x,top+ch);c.lineTo(pts[0].x,top+ch);c.closePath();c.fillStyle=grad;c.fill();c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.strokeStyle='#68d9ff';c.lineWidth=2.5;c.lineJoin='round';c.stroke();pts.forEach(p=>{c.beginPath();c.arc(p.x,p.y,3.5,0,Math.PI*2);c.fillStyle='#b9f3ff';c.fill();c.strokeStyle='#4dbfe9';c.lineWidth=1.5;c.stroke()});const first=data[0],last=data[data.length-1],delta=(Number(last.wr)-Number(first.wr));$('chartSummary').textContent=(delta>0?'+':'')+delta.toFixed(1)+' п.п. за '+data.length+' зам.';
+}
+document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>{chartRange=b.dataset.range;document.querySelectorAll('[data-range]').forEach(x=>x.classList.toggle('active',x===b));drawChart()}));
+const rankLevels=[{name:'ROOKIE',min:0,desc:'Первые шаги на пути к мастерству',mark:'I'},{name:'APPRENTICE',min:100,desc:'Осваиваешь базовую механику',mark:'II'},{name:'ELITE',min:250,desc:'Появляется стабильность',mark:'III'},{name:'EPIC',min:500,desc:'Уверенно влияешь на карту',mark:'IV'},{name:'LEGEND',min:850,desc:'Тросы становятся продолжением рук',mark:'V'},{name:'MYTHIC',min:1300,desc:'Высокий уровень контроля и решений',mark:'M'},{name:'GLORY',min:1900,desc:'Мастерство подтверждено результатами',mark:'G'},{name:'IMMORTAL',min:2700,desc:'Вершина Fanny Training',mark:'X'}];
+function getProgress(){const d=(()=>{try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch{return null}})();const checks=[...document.querySelectorAll('[data-task]')],done=checks.filter(x=>x.checked).length;const games=d?.tg||0,wr=d?.tw||0;return Math.round(games*.45+Math.max(0,wr-40)*5+done*4)}
+function renderRank(){const points=getProgress();let idx=0;rankLevels.forEach((r,i)=>{if(points>=r.min)idx=i});const cur=rankLevels[idx],next=rankLevels[idx+1];$('rankName').textContent=cur.name;$('rankDescription').textContent=cur.desc;$('rankEmblem').textContent=cur.mark;$('rankPoints').textContent=points+' очков';$('rankNext').textContent=next?'До следующего ранга: '+(next.min-points):'МАКСИМАЛЬНЫЙ РАНГ';$('rankBar').style.width=next?Math.min(100,(points-cur.min)/(next.min-cur.min)*100)+'%':'100%'}
+function readStreak(){try{return JSON.parse(localStorage.getItem(STREAK_KEY)||'{"current":0,"best":0,"last":""}')}catch{return{current:0,best:0,last:''}}}
+function updateStreak(doneCount,total){const s=readStreak(),day=today();if(doneCount>=Math.ceil(total*.7)&&s.last!==day){const prev=new Date();prev.setDate(prev.getDate()-1);const yesterday=prev.toLocaleDateString('sv-SE');s.current=s.last===yesterday?s.current+1:1;s.best=Math.max(s.best,s.current);s.last=day;localStorage.setItem(STREAK_KEY,JSON.stringify(s))}$('streakCount').textContent=s.current+' ДНЕЙ';$('bestStreak').textContent=s.best}
+function renderChallenges(){const checks=[...document.querySelectorAll('[data-task]')],n=checks.filter(x=>x.checked).length,total=checks.length,items=[{icon:'⚡',name:'Разогрев',desc:'Выполни 3 упражнения',goal:3},{icon:'🎯',name:'Точность',desc:'Выполни 7 упражнений',goal:7},{icon:'🔥',name:'Полный контроль',desc:'Заверши весь тренировочный маршрут',goal:total}];$('dailyChallenges').innerHTML=items.map(q=>'<div class="challenge"><div class="challenge-icon">'+q.icon+'</div><div class="challenge-copy"><b>'+q.name+'</b><span>'+q.desc+'</span></div><div class="challenge-state">'+Math.min(n,q.goal)+'/'+q.goal+'</div></div>').join('')}
+function renderAchievements(){const d=(()=>{try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch{return null}})(),s=readStreak(),checks=[...document.querySelectorAll('[data-task]')],n=checks.filter(x=>x.checked).length;const list=[{i:'⚔️',n:'Первая кровь',d:'Сохрани статистику',ok:!!d},{i:'🏹',n:'100 матчей',d:'Сыграй 100 матчей',ok:(d?.tg||0)>=100},{i:'💎',n:'WR 60%',d:'Достигни 60% WR',ok:(d?.tw||0)>=60},{i:'🔥',n:'Серия 3',d:'Три дня тренировок',ok:s.best>=3},{i:'⚡',n:'Тренер',d:'Выполни все упражнения',ok:n===checks.length},{i:'👑',n:'Мастер',d:'Достигни ранга MYTHIC',ok:getProgress()>=1300}];$('achievementGrid').innerHTML=list.map(x=>'<div class="achievement '+(x.ok?'unlocked':'')+'"><span>'+x.i+'</span><b>'+x.n+'</b><small>'+x.d+'</small></div>').join('')}
+function refreshUpgrade(){const checks=[...document.querySelectorAll('[data-task]')],n=checks.filter(x=>x.checked).length;updateStreak(n,checks.length);renderChallenges();renderRank();renderAchievements()}
+const originalRenderTraining=renderTraining;renderTraining=function(){originalRenderTraining();refreshUpgrade()};
+const originalRenderStats=renderStats;renderStats=function(d){originalRenderStats(d);refreshUpgrade();drawChart()};
+const originalSaveTraining=localStorage.setItem.bind(localStorage);
+document.querySelectorAll('[data-task]').forEach(x=>x.addEventListener('change',()=>{refreshUpgrade()}));
+const originalSubmit=$('form').onsubmit;
+$('form').addEventListener('submit',()=>{setTimeout(()=>{try{const d=JSON.parse(localStorage.getItem(KEY));if(d)saveHistory(d);refreshUpgrade()}catch{}},0)});
+window.addEventListener('resize',()=>{clearTimeout(window.__fannyChartResize);window.__fannyChartResize=setTimeout(drawChart,120)});
+(function particles(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;for(let i=0;i<18;i++){const p=document.createElement('i');p.className='particle';p.style.left=(Math.random()*100)+'%';p.style.bottom=(-Math.random()*100)+'px';p.style.animationDuration=(13+Math.random()*18)+'s';p.style.animationDelay=(-Math.random()*25)+'s';document.body.appendChild(p)}})();
+refreshUpgrade();drawChart();
+
+
+/* Reaction test: five randomized signal rounds */
+(()=>{const zone=$('reactionZone');if(!zone)return;const KEY='fanny-reaction-best-v1';let phase='idle',round=0,timer=null,started=0,results=[],best=Number(localStorage.getItem(KEY)||0);const $v=id=>$(id);const fmt=n=>n+' мс';function stats(last='—',avg='—'){ $v('reactionLast').textContent=last;$v('reactionBest').textContent=best?fmt(best):'—';$v('reactionAverage').textContent=avg}function show(title,hint,symbol,cls){zone.className='reaction-zone '+cls;$v('reactionTitle').textContent=title;$v('reactionHint').textContent=hint;$v('reactionSymbol').textContent=symbol}function begin(){round=0;results=[];$v('reactionHistory').innerHTML='';$v('reactionRound').textContent='РАУНД 0 / 5';$v('reactionGrade').textContent='Не торопись. Ложный старт сбрасывает раунд.';next()}function next(){round++;phase='waiting';$v('reactionRound').textContent='РАУНД '+round+' / 5';show('ЖДИ ЗЕЛЁНЫЙ СИГНАЛ','Не нажимай раньше времени…','⌛','waiting');timer=setTimeout(()=>{phase='go';started=performance.now();show('ЖМИ!','Коснись экрана прямо сейчас','⚡','go')},1100+Math.random()*2900)}function finishRound(ms){results.push(Math.round(ms));const avg=Math.round(results.reduce((a,b)=>a+b,0)/results.length);$v('reactionLast').textContent=fmt(Math.round(ms));$v('reactionAverage').textContent=fmt(avg);$v('reactionHistory').innerHTML=results.map((v,i)=>'<span>'+ (i+1)+': '+v+' мс</span>').join('');if(round>=5){phase='done';if(!best||avg<best){best=avg;localStorage.setItem(KEY,String(best))}stats(fmt(Math.round(ms)),fmt(avg));const grade=avg<180?'МОЛНИЕНОСНО ⚡':avg<230?'ОТЛИЧНАЯ РЕАКЦИЯ':avg<280?'ХОРОШИЙ РЕЗУЛЬТАТ':avg<350?'ЕСТЬ ЗАПАС ДЛЯ РОСТА':'ТРЕНИРУЙ РЕФЛЕКСЫ';$v('reactionGrade').textContent=grade;show('ТЕСТ ЗАВЕРШЁН',grade+' · среднее '+avg+' мс','🏆','done');$v('reactionHint').textContent='Нажми, чтобы пройти ещё раз';}else{phase='result';show(fmt(Math.round(ms)),'Раунд завершён. Нажми для следующего.','✓','done')}}zone.addEventListener('click',()=>{if(phase==='idle'||phase==='done'){begin();return}if(phase==='waiting'){clearTimeout(timer);phase='false';$v('reactionGrade').textContent='Фальстарт! Дождись сигнала.';show('СЛИШКОМ РАНО','Нажми, чтобы повторить этот раунд','✕','waiting');return}if(phase==='false'){phase='waiting';show('ЖДИ ЗЕЛЁНЫЙ СИГНАЛ','Повторяем этот раунд. Не нажимай раньше времени…','⌛','waiting');timer=setTimeout(()=>{phase='go';started=performance.now();show('ЖМИ!','Коснись экрана прямо сейчас','⚡','go')},1100+Math.random()*2900);return}if(phase==='result'){next();return}if(phase==='go'){const ms=performance.now()-started;phase='result';finishRound(ms)}});stats();})();
+
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+let installPrompt;
+const installButton = $('installApp');
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault(); installPrompt = event; installButton.style.display = 'block';
+});
+installButton.addEventListener('click', async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt = null; installButton.style.display = 'none';
+});
+window.addEventListener('appinstalled', () => { installButton.style.display = 'none'; toast('FANNY JOURNAL установлен ✓'); });
+
+/* Sectioned Fanny Training navigation and guide library */
+(()=>{
+ const shell=document.querySelector('.shell'); if(!shell)return;
+ const nav=shell.querySelector('.nav');
+ const pageNav=document.createElement('nav');pageNav.className='fs-nav';pageNav.setAttribute('aria-label','Разделы Fanny Training');
+ const pages={overview:document.createElement('main'),training:document.createElement('main'),guides:document.createElement('main'),settings:document.createElement('main')};
+ Object.entries(pages).forEach(([key,node])=>{node.className='fs-page'+(key==='overview'?' active':'');node.dataset.page=key;});
+ const tabs=[['overview','Обзор'],['training','Тренировка'],['guides','Гайды'],['settings','Настройки']];
+ tabs.forEach(([key,label],i)=>{const b=document.createElement('button');b.type='button';b.className='fs-tab'+(i===0?' active':'');b.textContent=label;b.dataset.pageTarget=key;b.addEventListener('click',()=>activate(key));pageNav.appendChild(b)});
+ nav.after(pageNav);Object.values(pages).forEach(p=>pageNav.after(p));
+ function activate(key){Object.entries(pages).forEach(([k,p])=>p.classList.toggle('active',k===key));pageNav.querySelectorAll('.fs-tab').forEach(b=>b.classList.toggle('active',b.dataset.pageTarget===key));try{localStorage.setItem('fanny-section-v1',key)}catch{}window.scrollTo({top:0,behavior:'smooth'});if(key==='overview'&&typeof drawChart==='function')setTimeout(()=>drawChart(),80)}
+ const heads=[...shell.querySelectorAll(':scope > .section-head')];
+ const grids=[...shell.querySelectorAll(':scope > .content-grid')];
+ const direct=[...shell.children];
+ direct.forEach(el=>{
+  if(el===nav||el===pageNav)return;
+  if(el.classList.contains('hero')||el===heads[0]||el.matches('.stats-grid')||el===heads[1]||el.matches('.analytics-grid')||el===grids[0])pages.overview.appendChild(el);
+ });
+ if(grids[1]){
+  const formPanel=grids[1].querySelector('#form')?.closest('section');
+  const trainingPanel=grids[1].querySelector('#training');
+  if(formPanel)pages.settings.appendChild(formPanel);
+  if(trainingPanel)pages.training.appendChild(trainingPanel);
+  grids[1].remove();
+ }
+
+ const reaction=document.querySelector('#reactionTest');if(reaction)pages.training.appendChild(reaction);
+ /* Structured cable practice: explanations, repeat targets and saved daily progress */
+ const program=document.createElement('section');program.className='fs-program';program.innerHTML=`
+  <div class="fs-program-head">
+   <div><div class="section-kicker">FANNY CENTER · MECHANICS LAB</div><h3>Программа точности и мышечной памяти</h3><p>Проходи упражнения по порядку в режиме тренировки. Сначала добивайся одинакового результата, затем ускоряйся. Здесь нет задачи нажимать как можно быстрее любой ценой: чистые подключения важнее хаотичной скорости.</p></div>
+   <div class="fs-program-meta"><span>30 МИНУТ</span><span>5 УПРАЖНЕНИЙ</span><span>ЕЖЕДНЕВНО</span></div>
+  </div>
+  <div class="fs-program-progress"><div class="fs-program-track"><i id="fsProgramBar"></i></div><div class="fs-program-count" id="fsProgramCount">0 / 5</div></div>
+  <div class="fs-drills">
+   <details class="fs-drill" open>
+    <summary class="fs-drill-top"><span class="fs-drill-num">01</span><span class="fs-drill-title"><b>Одиночный трос: точка попадания</b><small>5 минут · 10–15 чистых повторений на одну стену</small></span><span class="fs-drill-time">5 MIN</span><input class="fs-drill-check" type="checkbox" aria-label="Отметить одиночный трос выполненным"></summary>
+    <div class="fs-drill-body"><p><b>Как выполнять:</b> зайди в тренировочный режим и выбери одну хорошо видимую стену. Встань в одной стартовой точке. Перед каждым применением второго навыка выбери конкретную область стены и направь прицел туда. После подключения вернись в исходное положение и повтори.</p><ul><li>Сделай 5 повторений медленно, наблюдая за направлением полёта.</li><li>Сделай ещё 5–10 повторений с тем же стартом и той же целью.</li><li>Считай чистым только попадание в выбранную область без случайного перелёта или промаха.</li></ul><p><b>Частая ошибка:</b> менять цель и старт после каждого промаха. Тогда сравнивать движения невозможно.</p><div class="fs-drill-cue"><b>Критерий:</b> минимум 8 успешных попаданий из 10. Если точность ниже, замедлись и повтори блок.</div></div>
+   </details>
+   <details class="fs-drill">
+    <summary class="fs-drill-top"><span class="fs-drill-num">02</span><span class="fs-drill-title"><b>Double Cable: два разных угла</b><small>7 минут · 10 связок, сначала с паузой</small></span><span class="fs-drill-time">7 MIN</span><input class="fs-drill-check" type="checkbox" aria-label="Отметить двойной трос выполненным"></summary>
+    <div class="fs-drill-body"><p><b>Как выполнять:</b> выбери две доступные стены, которые дают разные направления движения. Из одной стартовой точки прицелься первым тросом в первую стену. Пока Фанни движется, перенеси прицел на вторую стену и выпусти второй трос.</p><ul><li>Первые 3 связки делай с комфортной паузой, чтобы понять последовательность.</li><li>Следующие 4 выполняй плавно, сокращая паузу, но не жертвуя попаданием.</li><li>Последние 3 повтори в игровом темпе.</li></ul><p><b>Частая ошибка:</b> второй трос направлен почти туда же, куда первый, или прицел переносится слишком поздно.</p><div class="fs-drill-cue"><b>Критерий:</b> 7 чистых двойных связок из 10. Если второй трос срывается, отдельно повтори переход от первого направления ко второму.</div></div>
+   </details>
+   <details class="fs-drill">
+    <summary class="fs-drill-top"><span class="fs-drill-num">03</span><span class="fs-drill-title"><b>Triple Cable: три подключения подряд</b><small>7 минут · разбивка на пары и полная связка</small></span><span class="fs-drill-time">7 MIN</span><input class="fs-drill-check" type="checkbox" aria-label="Отметить тройной трос выполненным"></summary>
+    <div class="fs-drill-body"><p><b>Как выполнять:</b> заранее выбери три стены или три точки подключения, которые доступны из планируемой траектории. Отрабатывай один и тот же маршрут, пока порядок действий не станет предсказуемым.</p><ul><li>2 минуты: связка «первый + второй».</li><li>2 минуты: связка «второй + третий».</li><li>3 минуты: все три подключения подряд, сначала спокойно, затем быстрее.</li></ul><p><b>Частая ошибка:</b> пытаться ускорить всю комбинацию, когда третье направление ещё не получается стабильно.</p><div class="fs-drill-cue"><b>Критерий:</b> 5 полных чистых троек подряд без потери контроля. Если не получается, вернись к проблемной паре.</div></div>
+   </details>
+   <details class="fs-drill">
+    <summary class="fs-drill-top"><span class="fs-drill-num">04</span><span class="fs-drill-title"><b>Смена направления и контроль камеры</b><small>6 минут · 10 разворотов в разные стороны</small></span><span class="fs-drill-time">6 MIN</span><input class="fs-drill-check" type="checkbox" aria-label="Отметить смену направления выполненной"></summary>
+    <div class="fs-drill-body"><p><b>Как выполнять:</b> начни с короткого перемещения на одной стене. Затем выбери другую стену сбоку или позади текущего направления, заранее переведи обзор и выполни подключение. Чередуй левый и правый разворот.</p><ul><li>Сделай 5 разворотов в одну сторону и 5 в другую.</li><li>Перед нажатием навыка сначала найди цель взглядом, затем направь прицел.</li><li>После каждого подключения оцени, где оказалась Фанни и видна ли следующая стена.</li></ul><p><b>Частая ошибка:</b> резко крутить камеру и одновременно пытаться угадать направление троса.</p><div class="fs-drill-cue"><b>Критерий:</b> 8 удачных смен направления из 10 с сохранением контроля над следующей целью.</div></div>
+   </details>
+   <details class="fs-drill">
+    <summary class="fs-drill-top"><span class="fs-drill-num">05</span><span class="fs-drill-title"><b>Свободный маршрут: перенос навыка в игру</b><small>5 минут · 3 маршрута без остановки</small></span><span class="fs-drill-time">5 MIN</span><input class="fs-drill-check" type="checkbox" aria-label="Отметить свободную практику выполненной"></summary>
+    <div class="fs-drill-body"><p><b>Как выполнять:</b> соедини знакомые одиночные, двойные и тройные тросы в короткий маршрут по тренировочной карте. Каждый раз меняй стартовую позицию, но не усложняй маршрут случайными движениями.</p><ul><li>Первый проход: медленно, с акцентом на чистые подключения.</li><li>Второй проход: в обычном игровом темпе.</li><li>Третий проход: добавь смену направления и заранее ищи следующую стену.</li></ul><p><b>Частая ошибка:</b> гнаться за длиной маршрута и продолжать после потери контроля.</p><div class="fs-drill-cue"><b>Критерий:</b> три контролируемых прохода. Если маршрут развалился, остановись и найди первое ошибочное подключение.</div></div>
+   </details>
+  </div>
+  <div class="fs-program-foot"><small>Прогресс сохраняется на этом устройстве. Повторяй программу регулярно, но делай короткий перерыв, если кисть или палец устали.</small><button class="fs-program-reset" type="button" id="fsProgramReset">СБРОСИТЬ ОТМЕТКИ</button></div>
+ `;
+ pages.training.appendChild(program);
+ const checks=[...program.querySelectorAll('.fs-drill-check')],bar=program.querySelector('#fsProgramBar'),count=program.querySelector('#fsProgramCount');
+ let programState={};const programKey='fanny-cable-program-v1-'+new Date().toLocaleDateString('sv-SE');
+ try{programState=JSON.parse(localStorage.getItem(programKey)||'{}')||{}}catch{programState={}}
+ function paintProgram(){let done=0;checks.forEach((c,i)=>{c.checked=!!programState[i];if(c.checked)done++});bar.style.width=(done/checks.length*100)+'%';count.textContent=done+' / '+checks.length}
+ checks.forEach((c,i)=>c.addEventListener('change',()=>{programState[i]=c.checked;try{localStorage.setItem(programKey,JSON.stringify(programState))}catch{}paintProgram()}));
+ program.querySelector('#fsProgramReset').addEventListener('click',()=>{programState={};try{localStorage.removeItem(programKey)}catch{}paintProgram()});paintProgram();
+
+ const guides=document.createElement('section');guides.className='fs-guides';
+ guides.innerHTML=`
+ <div class="fs-guide-hero"><div class="section-kicker">FANNY TRAINING / KNOWLEDGE BASE</div><h2>Освой тросы. Контролируй полёт.</h2><p>Пошаговые уроки с визуальными схемами: точка прицеливания, направление каждого троса и порядок действий. Сначала отрабатывай точность, затем скорость. Схемы ниже показывают принцип направления, а не пиксельные координаты конкретной стены на карте.</p></div>
+ <div class="fs-guide-filter" role="group" aria-label="Фильтр гайдов"><button class="active" data-filter="all">ВСЕ УРОКИ</button><button data-filter="basic">БАЗА</button><button data-filter="combo">КОМБИНАЦИИ</button><button data-filter="control">КОНТРОЛЬ</button><button data-filter="settings">НАСТРОЙКИ</button></div>
+ 
+ <section class="fs-guide-card" data-kind="basic" style="grid-column:1/-1">
+  <span class="fs-tag">РАЗБОР ОТ XEN0N · 2025</span><h3>Посмотри механику в реальном матче</h3>
+  <p>Вместо выдуманных координат здесь привязка к конкретным фрагментам подробного видео: один трос, дабл, положение Фанни после связки, несколько тросов и разворот.</p>
+  <div class="fs-settings-list">
+   <div class="fs-setting"><div><b>Одиночный трос и скорость</b><span>Как точка крепления и длина троса задают начальное движение</span></div><em><a href="https://www.youtube.com/watch?v=gwu2sBjPiH8&t=11s" target="_blank" rel="noopener" style="color:inherit">00:11–01:08 ↗</a></em></div>
+   <div class="fs-setting"><div><b>Double Cable и точка выхода</b><span>Смотри именно на положение Фанни после подключения второго троса</span></div><em><a href="https://www.youtube.com/watch?v=gwu2sBjPiH8&t=69s" target="_blank" rel="noopener" style="color:inherit">01:09–03:19 ↗</a></em></div>
+   <div class="fs-setting"><div><b>Несколько тросов и разворот</b><span>Как менять активную пару тросов, не теряя направление маршрута</span></div><em><a href="https://www.youtube.com/watch?v=gwu2sBjPiH8&t=200s" target="_blank" rel="noopener" style="color:inherit">03:20–06:34 ↗</a></em></div>
+   <div class="fs-setting"><div><b>Wall Spam и Cable Swing</b><span>Отдельные техники для узких коридоров и боёв у стен</span></div><em><a href="https://www.youtube.com/watch?v=gwu2sBjPiH8&t=433s" target="_blank" rel="noopener" style="color:inherit">07:13–08:20 ↗</a></em></div>
+  </div>
+  <div class="fs-note">Видео: XEN0N, Ultimate Fanny Guide, опубликовано 28 декабря 2025 года. Таймкоды ведут прямо к нужной технике.</div>
+ </section>
+ <section class="fs-guide-card" data-kind="combo">
+  <span class="fs-tag">РАЗМЕТКА СТЕН · ВИЗУАЛЬНЫЙ ПРИМЕР</span><h3>Как читать точки на карте</h3>
+  <img src="https://i.ytimg.com/vi/XVVcshDby1E/hq720.jpg" alt="Размеченные стены и последовательность точек для straight cable Fanny" class="fs-diagram" loading="lazy" style="object-fit:contain">
+  <p>На примере отмечены конкретные стены и порядок точек для straight cable. Смотри не на цифру саму по себе, а на то, как следующая точка продолжает направление полёта.</p>
+  <div class="fs-note">Это иллюстрация из отдельного видеогайда, а не гарантированная актуальная схема карты после последних обновлений. Точные маршруты для текущей карты будем подписывать по свежим игровым кадрам.</div>
+  <a href="https://www.youtube.com/watch?v=XVVcshDby1E" target="_blank" rel="noopener" style="color:#8feaff;font-size:10px;font-weight:800">Открыть видео с разметкой ↗</a>
+ </section>
+ <section class="fs-guide-card" data-kind="settings" style="grid-column:1/-1">
+  <span class="fs-tag">НАСТРОЙКИ · СТАРТОВЫЙ ПРЕСЕТ</span><h3>Практичная отправная точка для HUD</h3>
+  <p>Это не «секретные настройки всех про-игроков», а стартовый вариант, который нужно проверить на своём экране и хвате.</p>
+  <div class="fs-settings-list">
+   <div class="fs-setting"><div><b>Кнопка навыка 2</b><span>Вынеси в удобную зону большого пальца. Начни с размера 110–120%, затем проверь, не цепляешь ли соседние кнопки.</span></div><em>110–120%</em></div>
+   <div class="fs-setting"><div><b>Чувствительность камеры</b><span>Для первого теста попробуй около 60%. Если перелетаешь нужную стену при свайпе камеры, снижай по 5%; если не доворачиваешь, повышай по 5%.</span></div><em>СТАРТ 60%</em></div>
+   <div class="fs-setting"><div><b>Высота камеры</b><span>Проверь высокую высоту камеры: так проще заранее видеть следующую стену и точку выхода.</span></div><em>HIGH</em></div>
+   <div class="fs-setting"><div><b>Джойстик</b><span>Попробуй фиксированный джойстик, чтобы одинаковые движения пальца давали предсказуемое направление.</span></div><em>FIXED</em></div>
+   <div class="fs-setting"><div><b>Своя раскладка</b><span>Сохрани отдельный HUD для Фанни. Не меняй одновременно размер кнопки, камеру и расположение навыков.</span></div><em>ОТДЕЛЬНЫЙ HUD</em></div>
+  </div>
+  <ol class="fs-steps"><li>Сделай 10 одинаковых разворотов в тренировке.</li><li>Если камера перелетает цель, уменьши чувствительность на 5 пунктов.</li><li>Если палец не успевает довести прицел, проверь размер и положение кнопки навыка 2.</li><li>Отыграй 2–3 матча без изменений и только потом оцени результат.</li></ol>
+  <div class="fs-note">Источники для стартовых значений: <a href="https://bittopup.ru/article/Mobile-Legends-Controls-Guide-2025-Pro-Settings-Setup" target="_blank" rel="noopener" style="color:#8feaff">гайд по управлению MLBB</a> и <a href="https://www.youtube.com/watch?v=zcWlGDA4ugI" target="_blank" rel="noopener" style="color:#8feaff">Fanny Bootcamp: Settings & UI</a>. Размеры и чувствительность индивидуальны, не копируй их вслепую.</div>
+ </section>
+<div class="fs-guide-grid">
+  <article class="fs-guide-card" data-kind="basic"><span class="fs-tag">УРОВЕНЬ 01 · БАЗА</span><h3>Один трос: точка и направление</h3><p>Задача не в том, чтобы нажать навык куда-нибудь в сторону стены. Выбирай конкретную точку на поверхности и заранее понимай, куда Фанни должна выйти после контакта.</p>
+  <svg class="fs-diagram" viewBox="0 0 520 245" role="img" aria-label="Схема одного троса: направление от Фанни к отмеченной точке на стене"><defs><marker id="fsArrowA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#70ddff" stroke-width="1.3"/></marker></defs><path d="M375 30V215" stroke="#6885aa" stroke-width="18" stroke-linecap="round" opacity=".35"/><path d="M375 30V215" stroke="#9bb7dc" stroke-width="2" stroke-dasharray="5 7" opacity=".65"/><circle cx="112" cy="154" r="17" fill="#7f85ff" opacity=".2"/><circle cx="112" cy="154" r="7" fill="#d7f5ff"/><text x="82" y="188" fill="#d7e8ff" font-size="12">ФАННИ</text><path d="M128 148Q230 85 366 102" stroke="#72e2ff" stroke-width="3" fill="none" marker-end="url(#fsArrowA)"/><circle cx="375" cy="102" r="9" fill="#0c1729" stroke="#72e2ff" stroke-width="3"/><circle cx="375" cy="102" r="3" fill="#fff"/><text x="394" y="99" fill="#8feaff" font-size="12">ЦЕЛЬ 1</text><text x="394" y="115" fill="#829ab9" font-size="10">точка на стене</text><text x="28" y="30" fill="#7894b9" font-size="10">НАПРАВЛЕНИЕ ПОЛЁТА →</text></svg>
+  <ol class="fs-steps"><li>Останови хаотичное движение и выбери стену, к которой хочешь подключиться.</li><li>Наведи область прицеливания на выбранную точку поверхности, а не просто на край экрана.</li><li>Нажми навык и проследи за выходом Фанни. Следующий трос планируй уже из новой позиции.</li></ol><div class="fs-note">Критерий качества: повторяй один и тот же угол 10 раз. Если траектория каждый раз разная, снизь скорость и исправь направление.</div></article>
+  <article class="fs-guide-card" data-kind="combo"><span class="fs-tag">УРОВЕНЬ 02 · КОМБИНАЦИИ</span><h3>Double Cable: два направления</h3><p>Дабл-трос строится на двух последовательных подключениях к разным направлениям. Важно не задерживаться на первом тросе и заранее подготовить второй угол.</p>
+  <svg class="fs-diagram" viewBox="0 0 520 245" role="img" aria-label="Схема дабл-троса с двумя последовательными точками прицеливания"><defs><marker id="fsArrowB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#75e4ff" stroke-width="1.3"/></marker><marker id="fsArrowC" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#aa9aff" stroke-width="1.3"/></marker></defs><path d="M205 28V215" stroke="#7189aa" stroke-width="17" opacity=".32"/><path d="M205 28V215" stroke="#9bb7dc" stroke-width="2" stroke-dasharray="5 7"/><path d="M400 28V215" stroke="#7189aa" stroke-width="17" opacity=".32"/><path d="M400 28V215" stroke="#9bb7dc" stroke-width="2" stroke-dasharray="5 7"/><circle cx="75" cy="173" r="7" fill="#e2f7ff"/><text x="42" y="199" fill="#d7e8ff" font-size="11">СТАРТ</text><path d="M85 168Q140 90 195 90" fill="none" stroke="#75e4ff" stroke-width="3" marker-end="url(#fsArrowB)"/><circle cx="205" cy="90" r="8" fill="#10243a" stroke="#75e4ff" stroke-width="3"/><text x="145" y="72" fill="#75e4ff" font-size="12" font-weight="bold">1 · ПЕРВЫЙ</text><path d="M215 92Q310 28 390 145" fill="none" stroke="#aa9aff" stroke-width="3" marker-end="url(#fsArrowC)"/><circle cx="400" cy="145" r="8" fill="#10243a" stroke="#aa9aff" stroke-width="3"/><text x="322" y="26" fill="#b9adff" font-size="12" font-weight="bold">2 · ВТОРОЙ</text><text x="20" y="30" fill="#7894b9" font-size="10">ДВА РАЗНЫХ УГЛА · ОДНА СВЯЗКА</text></svg>
+  <ol class="fs-steps"><li>Первым тросом задай направление и не пытайся сразу сделать максимальную дугу.</li><li>Пока Фанни движется, перенеси прицел на вторую точку, расположенную под другим углом.</li><li>Отправь второй трос без лишней паузы. Следи, чтобы второй вектор продолжал маршрут, а не возвращал тебя в стену.</li><li>Повтори связку сначала медленно, затем сокращай паузу между нажатиями.</li></ol><div class="fs-note">Типичная ошибка: обе точки почти на одной линии. В итоге второй трос не меняет траекторию так, как ожидается. Тренируй связку на двух отчётливо разных направлениях.</div></article>
+  <article class="fs-guide-card" data-kind="combo"><span class="fs-tag">УРОВЕНЬ 03 · КОМБИНАЦИИ</span><h3>Triple Cable: три подключения</h3><p>Тройная связка добавляет третье направление. Здесь важнее заранее видеть продолжение маршрута, чем пытаться нажимать навыки максимально быстро.</p>
+  <svg class="fs-diagram" viewBox="0 0 520 245" role="img" aria-label="Схема тройного троса с тремя последовательными точками"><defs><marker id="fsArrowD" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#70ddff" stroke-width="1.3"/></marker></defs><path d="M145 25V220M300 25V220M455 25V220" stroke="#7189aa" stroke-width="15" opacity=".3"/><path d="M145 25V220M300 25V220M455 25V220" stroke="#9bb7dc" stroke-width="2" stroke-dasharray="5 7"/><path d="M38 185Q85 95 137 80T292 145T447 65" fill="none" stroke="#70ddff" stroke-width="3" stroke-dasharray="none" marker-end="url(#fsArrowD)"/><circle cx="145" cy="80" r="8" fill="#10243a" stroke="#70ddff" stroke-width="3"/><circle cx="300" cy="145" r="8" fill="#10243a" stroke="#aa9aff" stroke-width="3"/><circle cx="455" cy="65" r="8" fill="#10243a" stroke="#6de4ad" stroke-width="3"/><text x="115" y="55" fill="#70ddff" font-size="12">1</text><text x="270" y="122" fill="#aa9aff" font-size="12">2</text><text x="425" y="40" fill="#6de4ad" font-size="12">3</text><text x="20" y="30" fill="#7894b9" font-size="10">ПЛАНИРУЙ ТРИ СЛЕДУЮЩИЕ ТОЧКИ</text></svg>
+  <ol class="fs-steps"><li>До старта выбери три поверхности, между которыми можно безопасно провести маршрут.</li><li>Первый трос задаёт вход в связку, второй меняет угол, третий выводит в нужную сторону.</li><li>Не гонись за рекордом скорости: сначала добейся трёх чистых подключений подряд.</li><li>После стабильного выполнения добавляй движение камеры и меняй стартовую позицию.</li></ol><div class="fs-note">Если третий трос срывается, разбери связку на пары: первый + второй, затем второй + третий. Не пытайся исправлять все ошибки одновременно.</div></article>
+  <article class="fs-guide-card" data-kind="control"><span class="fs-tag">УРОВЕНЬ 04 · КОНТРОЛЬ</span><h3>Разворот и смена направления</h3><p>Разворот нужен, когда маршрут требует изменить вектор движения. Сначала определи новую стену, затем переводи прицел на неё.</p>
+  <svg class="fs-diagram" viewBox="0 0 520 245" role="img" aria-label="Схема смены направления движения"><defs><marker id="fsArrowE" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#70ddff" stroke-width="1.3"/></marker></defs><path d="M45 195H475" stroke="#7189aa" stroke-width="15" opacity=".3"/><path d="M45 195H475" stroke="#9bb7dc" stroke-width="2" stroke-dasharray="5 7"/><path d="M120 150Q200 55 280 95Q350 130 400 55" fill="none" stroke="#70ddff" stroke-width="3" marker-end="url(#fsArrowE)"/><circle cx="280" cy="95" r="9" fill="#10243a" stroke="#aa9aff" stroke-width="3"/><path d="M280 95Q325 165 400 150" fill="none" stroke="#aa9aff" stroke-width="3" stroke-dasharray="6 5"/><text x="295" y="82" fill="#c3b8ff" font-size="12">СМЕНА ВЕКТОРА</text><text x="20" y="30" fill="#7894b9" font-size="10">НЕ ПОВТОРЯЙ ПРЕДЫДУЩИЙ УГОЛ</text></svg>
+  <ol class="fs-steps"><li>Определи точку, в которой нужно изменить направление.</li><li>Переведи прицел на другую поверхность, не дублируя предыдущую линию.</li><li>После подключения скорректируй камеру и продолжай маршрут.</li></ol><div class="fs-note">Тренируй разворот отдельно от длинных связок. Цель упражнения: 8 успешных смен направления из 10 попыток.</div></article>
+  <article class="fs-guide-card" data-kind="settings"><span class="fs-tag">SETUP · УПРАВЛЕНИЕ</span><h3>Настройки управления Фанни</h3><p>Универсальной чувствительности для всех телефонов нет. Важнее стабильное управление, свободная зона для прицеливания и одинаковое положение кнопок из матча в матч.</p>
+  <div class="fs-settings-list">
+   <div class="fs-setting"><div><b>Расположение кнопки второго навыка</b><span>Поставь так, чтобы большой палец мог быстро менять направление прицеливания, не перекрывая обзор.</span></div><em>ПОД СВОЮ РУКУ</em></div>
+   <div class="fs-setting"><div><b>Размер кнопки навыка</b><span>Начни со стандартного размера. Меняй его небольшими шагами, если часто промахиваешься по кнопке или перекрываешь обзор.</span></div><em>ТЕСТ 10 МАТЧЕЙ</em></div>
+   <div class="fs-setting"><div><b>Режим прицеливания</b><span>Проверь доступные режимы умного прицеливания и выбора цели в настройках управления. Выбери тот, при котором навык не уходит на случайную цель.</span></div><em>ПРОВЕРИТЬ В ИГРЕ</em></div>
+   <div class="fs-setting"><div><b>Камера и обзор</b><span>Настрой так, чтобы видеть следующую стену и точку выхода до подключения троса. Не меняй чувствительность камеры каждый день.</span></div><em>СТАБИЛЬНОСТЬ</em></div>
+   <div class="fs-setting"><div><b>HUD и положение пальцев</b><span>Сохрани отдельную раскладку под Фанни. Кнопки атаки, ультимейта и боевого заклинания не должны мешать свайпу навыка.</span></div><em>СВОЯ РАСКЛАДКА</em></div>
+  </div><div class="fs-note">После изменения одной настройки сыграй 10–15 тренировочных минут и сравни точность. Не меняй сразу всё: иначе не поймёшь, что реально помогло.</div></article>
+  <article class="fs-guide-card" data-kind="basic"><span class="fs-tag">ПЛАН · 15 МИНУТ</span><h3>Ежедневная тренировка тросов</h3><p>Короткая программа, которую можно повторять перед рейтингом.</p><ol class="fs-steps"><li>5 минут: одиночные тросы в разные точки стены, без спешки.</li><li>5 минут: дабл-тросы, сначала с паузой, затем в одном ритме.</li><li>3 минуты: тройные связки на знакомом маршруте.</li><li>2 минуты: свободное движение и чистые выходы из маршрута.</li></ol><div class="fs-note">Записывай не только скорость, но и долю чистых повторений. Быстрый, но нестабильный трос не делает тебя сильнее.</div></article>
+ </div>
+ <p class="fs-admin-hint">Схемы являются учебными иллюстрациями направлений. Для точных маршрутов по конкретным стенам карты можно добавлять собственные скриншоты и размечать на них точки прицеливания.</p>`;
+ pages.guides.appendChild(guides);
+ pageNav.querySelectorAll('[data-page-target]').forEach(b=>b.addEventListener('click',()=>activate(b.dataset.pageTarget)));
+ guides.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.filter;guides.querySelectorAll('[data-filter]').forEach(x=>x.classList.toggle('active',x===b));guides.querySelectorAll('.fs-guide-card').forEach(card=>card.hidden=k!=='all'&&card.dataset.kind!==k)}));
+ let saved='overview';try{saved=localStorage.getItem('fanny-section-v1')||'overview'}catch{}activate(pages[saved]?saved:'overview');
+})();
+</script>
+</body></html>

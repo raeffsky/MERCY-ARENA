@@ -14,6 +14,7 @@ cp -R "$ROOT_DIR/public" "$OUTPUT_DIR/public"
 
 python3 "$ROOT_DIR/scripts/configure-posthog.py" "$OUTPUT_DIR/index.html"
 
+
 if [[ -f "$ROOT_DIR/_headers" ]]; then
   cp "$ROOT_DIR/_headers" "$OUTPUT_DIR/_headers"
 fi
